@@ -1,0 +1,80 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #F2F4F7;
+  --foreground: #111827;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+html {
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  min-height: 100dvh;
+  /* Max-width for mobile-first layout */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* Mobile container */
+.mobile-container {
+  width: 100%;
+  max-width: 430px;
+  min-height: 100dvh;
+  background-color: var(--background);
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* Scrollable content area above bottom nav */
+.page-content {
+  padding-bottom: 4.5rem; /* space for bottom nav */
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 0;
+}
+
+/* Safe area padding */
+.safe-area-pb {
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+
+/* Gradient text */
+.gradient-text {
+  background: linear-gradient(135deg, #7C3AED, #3B82F6);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Gradient button */
+.gradient-btn {
+  background: linear-gradient(135deg, #7C3AED, #3B82F6);
+}
+
+/* Gradient header (AI coach) */
+.gradient-header {
+  background: linear-gradient(135deg, #7C3AED, #3B82F6);
+}
+
+/* Pulse animation for active dot */
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.pulse-dot {
+  animation: pulse-dot 2s ease-in-out infinite;
+}
