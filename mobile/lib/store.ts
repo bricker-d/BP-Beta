@@ -22,9 +22,9 @@ export const useHealthStore = create<HealthStore>((set) => ({
     {
       id: 'welcome',
       role: 'assistant',
-      content: "Hi! I've reviewed your lab results. Your Fasting Glucose is borderline at 102 mg/dL — that's your biggest area to address. I'm here 24/7 to help. What would you like to know?",
+      content: "Hi! I've reviewed your lab results. Your Fasting Glucose is borderline at 102 mg/dL — that is your biggest area to address. What would you like to know?",
       timestamp: new Date().toISOString(),
-    },
+    } as any,
   ],
   addMessage: (msg) =>
     set((state) => ({ messages: [...state.messages, msg] })),
