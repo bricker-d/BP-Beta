@@ -50,7 +50,7 @@ export const useHealthStore = create<HealthStore>((set) => ({
       role: "assistant",
       content:
         "I've reviewed your lab results and identified **6 biomarkers** that need attention.\n\nYour **Fasting Glucose** is currently 102 mg/dL (elevated). This is your biggest constraint right now, so I've prioritized actions to address it.\n\nI'm here 24/7 to answer questions, explain your results, and adjust your plan based on real-time data. What would you like to know?",
-      timestamp: new Date().toISOString(),
+            timestamp: "2025-01-18T09:00:00.000Z",
     },
   ],
   addMessage: (msg) =>
