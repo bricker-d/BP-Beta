@@ -46,7 +46,7 @@ export async function POST(req: Request) {
 
     // Use streaming
     const stream = await client.messages.stream({
-      model: "claude-opus-4-5",
+            model: "claude-3-5-sonnet-20241022",
       max_tokens: 1024,
       system: systemPrompt,
       messages: messages.map((m: { role: string; content: string }) => ({
