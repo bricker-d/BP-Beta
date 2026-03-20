@@ -62,3 +62,21 @@ export interface UserProfile {
   name: string;
   avatarInitials: string;
 }
+
+
+// ─── Onboarding / Intake ─────────────────────────────────────────────────────
+
+export interface IntakeProfile {
+  name: string;
+    goals: string[];
+      age?: number;
+        biologicalSex?: 'Male' | 'Female' | 'Other / prefer not to say';
+          heightFt?: number;
+            heightIn?: number;
+              weightLbs?: number;
+                symptoms: string[];
+                  symptomsOther?: string;
+                    labDataSource?: 'upload' | 'demo' | 'skip';
+                      wearableSource?: 'Apple Health' | 'Whoop' | 'Oura' | 'Garmin' | 'none';
+                        completedAt?: string; // ISO date
+                        }
