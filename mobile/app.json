@@ -14,7 +14,10 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.brickerd.bioprecision"
+      "bundleIdentifier": "com.brickerd.bioprecision",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -23,9 +26,18 @@
       },
       "package": "com.brickerd.bioprecision"
     },
-    "plugins": ["expo-router"],
+    "plugins": [
+      "expo-router"
+    ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "23880ad4-c7af-4860-8d52-4adfc1ada5a5"
+      }
+    },
+    "owner": "bp-beta"
   }
 }
