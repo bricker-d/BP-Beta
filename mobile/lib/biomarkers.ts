@@ -438,6 +438,9 @@ export function generateActionsFromPanel(
       why: t.why,
       completed: false,
       targetBiomarkers: t.targetBiomarkers,
+      biomarkerTarget: t.targetBiomarkers
+        .map((id: string) => BIOMARKER_REFS[id]?.name ?? id)
+        .join(', '),
     }));
 }
 
