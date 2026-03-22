@@ -1,5 +1,4 @@
-// ─── Biomarkers ────────────────────────────────────────────────────────────────
-
+// ── Biomarkers ────────────────────────────────────────────────────────────────
 export type BiomarkerStatus = "optimal" | "elevated" | "low" | "borderline";
 
 export interface Biomarker {
@@ -16,26 +15,30 @@ export interface Biomarker {
 
 export interface LabPanel {
   id: string;
-  date: string; // ISO date string
-  source: string; // "Quest", "Rupa", "LabCorp", etc.
+  date: string;          // ISO date string
+  source: string;        // "Quest", "Rupa", "LabCorp", etc.
   biomarkers: Biomarker[];
 }
 
-// ─── Wearable ──────────────────────────────────────────────────────────────────
-
+// ── Wearable ──────────────────────────────────────────────────────────────────
 export interface WearableData {
   dailySteps: number;
-  sleepDuration: number; // hours
+  sleepDuration: number;   // hours
   restingHeartRate: number; // bpm
-  hrv: number; // ms RMSSD
-  hrvTrend: number; // % change
+  hrv: number;             // ms RMSSD
+  hrvTrend: number;        // % change
   source: "Apple Health" | "Garmin" | "Whoop" | "Oura" | "Manual";
-  syncedAt: string; // ISO date
+  syncedAt: string;        // ISO date
 }
 
-// ─── Actions ───────────────────────────────────────────────────────────────────
-
-export type ActionCategory = "Movement" | "Nutrition" | "Exercise" | "Sleep" | "Supplement";
+// ── Actions ───────────────────────────────────────────────────────────────────
+export type ActionCategory =
+  | "Movement"
+  | "Nutrition"
+  | "Exercise"
+  | "Sleep"
+  | "Supplement"
+  | "Lifestyle";
 
 export interface HealthAction {
   id: string;
@@ -44,11 +47,14 @@ export interface HealthAction {
   category: ActionCategory;
   why: string;
   completed: boolean;
-  targetBiomarkers: string[]; // biomarker IDs this action addresses
+  targetBiomarkers: string[];  // biomarker IDs this action addresses
+  biomarkerTarget?: string;    // human-readable display string, e.g. "Glucose, HbA1c"
 }
 
-// ─── Chat ──────────────────────────────────────────────────────────────────────
+// Alias for convenience
+export type Action = HealthAction;
 
+// ── Chat ──────────────────────────────────────────────────────────────────────
 export interface ChatMessage {
   id: string;
   role: "user" | "assistant";
@@ -56,27 +62,24 @@ export interface ChatMessage {
   timestamp: string;
 }
 
-// ─── User ──────────────────────────────────────────────────────────────────────
-
+// ── User ──────────────────────────────────────────────────────────────────────
 export interface UserProfile {
   name: string;
   avatarInitials: string;
 }
 
-
-// ─── Onboarding / Intake ─────────────────────────────────────────────────────
-
+// ── Onboarding / Intake ───────────────────────────────────────────────────────
 export interface IntakeProfile {
   name: string;
-    goals: string[];
-      age?: number;
-        biologicalSex?: 'Male' | 'Female' | 'Other / prefer not to say';
-          heightFt?: number;
-            heightIn?: number;
-              weightLbs?: number;
-                symptoms: string[];
-                  symptomsOther?: string;
-                    labDataSource?: 'upload' | 'demo' | 'skip';
-                      wearableSource?: 'Apple Health' | 'Whoop' | 'Oura' | 'Garmin' | 'none';
-                        completedAt?: string; // ISO date
-                        }
+  goals: string[];
+  age?: number;
+  biologicalSex?: 'Male' | 'Female' | 'Other / prefer not to say';
+  heightFt?: number;
+  heightIn?: number;
+  weightLbs?: number;
+  symptoms: string[];
+  symptomsOther?: string;
+  labDataSource?: 'upload' | 'demo' | 'skip';
+  wearableSource?: 'Apple Health' | 'Whoop' | 'Oura' | 'Garmin' | 'none';
+  completedAt?: string; // ISO date
+}
