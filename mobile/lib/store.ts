@@ -7,98 +7,100 @@ import {
   generateActionsFromPanel,
   DEMO_LAB_VALUES,
 } from './biomarkers';
-import type { HealthAction, ChatMessage, LabPanel } from './types';
+import type { HealthAction, ChatMessage, LabPanel, WearableData } from './types';
 import type { IntakeProfile } from './types';
 
+// ── Store interface ───────────────────────────────────────────────────────────
 interface HealthStore {
-  // — Onboarding ——————————————————————————————————————————————
+  // Onboarding
   hasCompletedOnboarding: boolean;
   intakeProfile: IntakeProfile | null;
   completeOnboarding: (profile: IntakeProfile, summaryMsg: string) => void;
   resetOnboarding: () => void;
 
-  // — Lab panel —————————————————————————————————————————————————
+  // Lab panel
   labPanel: LabPanel | null;
   setLabPanel: (panel: LabPanel) => void;
 
-  // — Actions ——————————————————————————————————————————————————
+  // Wearable data
+  wearableData: WearableData | null;
+  setWearableData: (data: WearableData) => void;
+
+  // Actions
   actions: HealthAction[];
   toggleAction: (id: string) => void;
   refreshActions: () => void;
 
-  // — Chat ———————————————————————————————————————————————————
+  // Chat
   messages: ChatMessage[];
   addMessage: (msg: ChatMessage) => void;
   clearMessages: () => void;
 }
 
-const DEFAULT_WELCOME: ChatMessage = {
-  id: 'welcome',
-  role: 'assistant',
-  content:
-    "Hi! I'm your Bioprecision AI coach. Once you complete onboarding I'll have access to your lab results and health profile so I can give you personalised guidance. What would you like to know?",
-  timestamp: new Date('2026-03-18T10:00:00').toISOString(),
-} as any;
-
+// ── Store ─────────────────────────────────────────────────────────────────────
 export const useHealthStore = create<HealthStore>()(
   persist(
     (set, get) => ({
-      // — Onboarding ——————————————————————————————————————————
+      // ── Onboarding ──────────────────────────────────────────────────────
       hasCompletedOnboarding: false,
       intakeProfile: null,
 
-      completeOnboarding: (profile, summaryMsg) => {
-        // Build the lab panel immediately when onboarding completes
-        let panel: LabPanel | null = null;
-        if (profile.labDataSource === 'demo') {
-          panel = buildLabPanel(DEMO_LAB_VALUES, profile, 'Demo Data');
-        }
+      completeOnboarding: (profile: IntakeProfile, summaryMsg: string) => {
+        // Build lab panel immediately using demo values + intake profile
+        const panel   = buildLabPanel(DEMO_LAB_VALUES, profile);
+        const actions = generateActionsFromPanel(panel, profile);
 
-        // Generate personalised actions from actual panel + intake profile
-        const actions = panel
-          ? generateActionsFromPanel(panel, profile)
-          : MOCK_ACTIONS;
-
+        // Welcome message from the summary step streamed content
         const welcomeMsg: ChatMessage = {
-          id: 'welcome',
-          role: 'assistant',
-          content: summaryMsg,
+          id:        'welcome',
+          role:      'assistant',
+          content:   summaryMsg || 'Welcome! I\'ve analysed your profile. Ask me anything about your health.',
           timestamp: new Date().toISOString(),
-        } as any;
+        };
 
         set({
           hasCompletedOnboarding: true,
-          intakeProfile: { ...profile, completedAt: new Date().toISOString() },
+          intakeProfile: profile,
           labPanel: panel,
           actions,
           messages: [welcomeMsg],
         });
       },
 
-      resetOnboarding: () =>
-        set({
-          hasCompletedOnboarding: false,
-          intakeProfile: null,
-          labPanel: null,
-          actions: MOCK_ACTIONS,
-          messages: [DEFAULT_WELCOME],
-        }),
+      resetOnboarding: () => set({
+        hasCompletedOnboarding: false,
+        intakeProfile: null,
+        labPanel: null,
+        wearableData: null,
+        actions: [],
+        messages: [],
+      }),
 
-      // — Lab panel ——————————————————————————————————————————
+      // ── Lab panel ───────────────────────────────────────────────────────
       labPanel: null,
-
-      setLabPanel: (panel) => {
-        const profile = get().intakeProfile;
-        const actions = generateActionsFromPanel(panel, profile);
-        set({ labPanel: panel, actions });
+      setLabPanel: (panel: LabPanel) => {
+        const { intakeProfile } = get();
+        const actions = generateActionsFromPanel(panel, intakeProfile ?? undefined);
+        // Preserve completed state from existing actions
+        const completedIds = new Set(
+          get().actions.filter(a => a.completed).map(a => a.id)
+        );
+        set({
+          labPanel: panel,
+          actions: actions.map(a => ({ ...a, completed: completedIds.has(a.id) })),
+        });
       },
 
-      // — Actions ——————————————————————————————————————————
-      actions: MOCK_ACTIONS,
+      // ── Wearable data ───────────────────────────────────────────────────
+      wearableData: null,
+      setWearableData: (data: WearableData) => set({ wearableData: data }),
 
-      toggleAction: (id) =>
+      // ── Actions ─────────────────────────────────────────────────────────
+      actions: [],
+
+      toggleAction: (id: string) =>
         set((state) => ({
-          actions: state.actions.map((a) =>
+          actions: state.actions.map(a =>
             a.id === id ? { ...a, completed: !a.completed } : a
           ),
         })),
@@ -106,8 +108,7 @@ export const useHealthStore = create<HealthStore>()(
       refreshActions: () => {
         const { labPanel, intakeProfile } = get();
         if (!labPanel) return;
-        const actions = generateActionsFromPanel(labPanel, intakeProfile);
-        // Preserve completed state from current actions
+        const actions = generateActionsFromPanel(labPanel, intakeProfile ?? undefined);
         const completedIds = new Set(
           get().actions.filter(a => a.completed).map(a => a.id)
         );
@@ -119,8 +120,9 @@ export const useHealthStore = create<HealthStore>()(
         });
       },
 
-      // — Chat ———————————————————————————————————————————————
-      messages: [DEFAULT_WELCOME],
+      // ── Chat ────────────────────────────────────────────────────────────
+      // Start empty — CoachScreen renders its own empty/starter state
+      messages: [],
 
       addMessage: (msg) =>
         set((state) => ({ messages: [...state.messages, msg] })),
@@ -135,6 +137,7 @@ export const useHealthStore = create<HealthStore>()(
         hasCompletedOnboarding: state.hasCompletedOnboarding,
         intakeProfile:          state.intakeProfile,
         labPanel:               state.labPanel,
+        wearableData:           state.wearableData,
         messages:               state.messages,
         actions:                state.actions,
       }),
@@ -142,6 +145,6 @@ export const useHealthStore = create<HealthStore>()(
   )
 );
 
-// Re-export MOCK_PANEL so existing screens don't break during migration
+// Re-export for backward compatibility
 export { MOCK_ACTIONS };
 export { buildLabPanel, generateActionsFromPanel } from './biomarkers';
