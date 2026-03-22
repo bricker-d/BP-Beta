@@ -1,9 +1,17 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { LabPanel, WearableData } from "@/lib/types";
 
-const client = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
+// Lazy client — only instantiated on first request so missing key gives a clear 503
+let _client: Anthropic | null = null;
+function getClient(): Anthropic {
+  if (!process.env.ANTHROPIC_API_KEY) {
+    throw new Error("ANTHROPIC_API_KEY environment variable is not set");
+  }
+  if (!_client) {
+    _client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+  }
+  return _client;
+}
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface IntakeProfile {
@@ -504,7 +512,7 @@ export async function POST(req: Request) {
 
     const systemPrompt = buildSystemPrompt(labPanel, wearableData, intakeProfile);
 
-    const stream = await client.messages.stream({
+    const stream = await getClient().messages.stream({
       model: "claude-opus-4-5",
       max_tokens: 2048,
       system: systemPrompt,
@@ -545,8 +553,10 @@ export async function POST(req: Request) {
     });
   } catch (error) {
     console.error("Chat API error:", error);
-    return new Response(JSON.stringify({ error: "Internal server error" }), {
-      status: 500,
+    const msg = error instanceof Error ? error.message : "Internal server error";
+    const status = msg.includes("ANTHROPIC_API_KEY") ? 503 : 500;
+    return new Response(JSON.stringify({ error: msg }), {
+      status,
       headers: { "Content-Type": "application/json" },
     });
   }
