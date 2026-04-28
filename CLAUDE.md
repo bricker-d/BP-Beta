@@ -24,6 +24,8 @@ You are the autonomous engineering agent for BioPrecision. Dan Bricker is the fo
 | Vercel project | `https://vercel.com/dan-brickers-projects/bp-beta` |
 | Vercel preview URL | `https://bp-beta-9fdp-git-main-dan-brickers-projects.vercel.app` |
 | Anthropic API key | Set in Vercel env vars as `ANTHROPIC_API_KEY` — get from Dan |
+| Supabase URL | `https://lrblvcixijbbfxiutgnp.supabase.co` |
+| Supabase anon key | `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxyYmx2Y2l4aWpiYmZ4aXV0Z25wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzczOTU0OTUsImV4cCI6MjA5Mjk3MTQ5NX0.WgBIwYNy16GF4_6pGP1lCURrV1AYAtvJasQlFL-r5IY` |
 | GitHub token (rotate when expired) | Set via `git remote set-url` at session start |
 
 **Session startup command:**
@@ -153,6 +155,9 @@ BP-Beta/
 ### 🔴 Critical (blocks clinical use)
 1. ~~**Wire DailyCheckIn to home tab**~~ ✅ Done 2026-04-28 — morning modal, 800ms delay, 90-day log history, skippable
 2. ~~**Supabase integration**~~ ✅ Done 2026-04-28 — schema, client, patient/daily-log API routes, mobile sync, clinician dashboard at /clinician
+   - Project: `lrblvcixijbbfxiutgnp` | URL: `https://lrblvcixijbbfxiutgnp.supabase.co`
+   - Schema: run `supabase/schema.sql` in SQL editor ✅ (confirm after Dan runs it)
+   - Vercel env vars: need `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `ANTHROPIC_API_KEY`
 3. **Vercel env vars** — confirm `ANTHROPIC_API_KEY` is set in Vercel dashboard. Agent 1/2/3 will fail in production without it.
 
 ### 🟡 High value (next sprint)
