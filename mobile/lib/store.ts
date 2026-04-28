@@ -10,6 +10,9 @@ import {
 import type { HealthAction, ChatMessage, LabPanel, WearableData, DailyLog } from './types';
 import type { IntakeProfile } from './types';
 
+// ── Config ────────────────────────────────────────────────────────────────────
+const API_BASE = 'https://bp-beta-9fdp-git-main-dan-brickers-projects.vercel.app';
+
 // ── Store interface ───────────────────────────────────────────────────────────
 interface HealthStore {
   // Onboarding
@@ -17,6 +20,11 @@ interface HealthStore {
   intakeProfile: IntakeProfile | null;
   completeOnboarding: (profile: IntakeProfile, summaryMsg: string) => void;
   resetOnboarding: () => void;
+
+  // Supabase patient ID (set after first sync)
+  patientId: string | null;
+  deviceId: string | null;
+  syncPatient: () => Promise<void>;
 
   // Lab panel
   labPanel: LabPanel | null;
@@ -32,7 +40,7 @@ interface HealthStore {
   refreshActions: () => void;
 
   // Daily check-in
-  lastCheckInDate: string | null;   // ISO date string YYYY-MM-DD
+  lastCheckInDate: string | null;
   dailyLogs: DailyLog[];
   submitDailyLog: (log: DailyLog) => void;
   skipCheckIn: () => void;
@@ -49,6 +57,10 @@ function today(): string {
   return new Date().toISOString().split('T')[0];
 }
 
+function generateDeviceId(): string {
+  return 'bp_' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+}
+
 // ── Store ─────────────────────────────────────────────────────────────────────
 export const useHealthStore = create<HealthStore>()(
   persist(
@@ -56,6 +68,8 @@ export const useHealthStore = create<HealthStore>()(
       // ── Onboarding ──────────────────────────────────────────────────────
       hasCompletedOnboarding: false,
       intakeProfile: null,
+      patientId: null,
+      deviceId: null,
 
       completeOnboarding: (profile: IntakeProfile, summaryMsg: string) => {
         const panel   = buildLabPanel(DEMO_LAB_VALUES, profile);
@@ -68,15 +82,21 @@ export const useHealthStore = create<HealthStore>()(
           timestamp: new Date().toISOString(),
         };
 
+        // Generate device ID if not already set
+        const deviceId = get().deviceId ?? generateDeviceId();
+
         set({
           hasCompletedOnboarding: true,
           intakeProfile: profile,
           labPanel: panel,
           actions,
           messages: [welcomeMsg],
-          // Mark onboarding day as checked-in so modal doesn't fire immediately
           lastCheckInDate: today(),
+          deviceId,
         });
+
+        // Sync to Supabase in background
+        get().syncPatient().catch(() => {});
       },
 
       resetOnboarding: () => set({
@@ -88,7 +108,28 @@ export const useHealthStore = create<HealthStore>()(
         messages: [],
         lastCheckInDate: null,
         dailyLogs: [],
+        patientId: null,
       }),
+
+      // ── Supabase sync ───────────────────────────────────────────────────
+      syncPatient: async () => {
+        const { deviceId, intakeProfile } = get();
+        if (!deviceId || !intakeProfile) return;
+
+        try {
+          const res = await fetch(`${API_BASE}/api/patient`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ deviceId, profile: intakeProfile }),
+          });
+
+          if (!res.ok) return;
+          const { patientId } = await res.json();
+          if (patientId) set({ patientId });
+        } catch {
+          // Fail silently — app works offline
+        }
+      },
 
       // ── Lab panel ───────────────────────────────────────────────────────
       labPanel: null,
@@ -141,22 +182,30 @@ export const useHealthStore = create<HealthStore>()(
         const { lastCheckInDate, hasCompletedOnboarding, actions } = get();
         if (!hasCompletedOnboarding) return false;
         if (!actions.length) return false;
-        // Show if never checked in, or last check-in was before today
         return lastCheckInDate !== today();
       },
 
       submitDailyLog: (log: DailyLog) => {
-        const { actions } = get();
-        // Apply completions from log to today's actions
+        const { actions, patientId } = get();
         const updatedActions = actions.map(a => ({
           ...a,
           completed: log.actionCompletions[a.id] ?? a.completed,
         }));
+
         set((state) => ({
           lastCheckInDate: today(),
-          dailyLogs: [...state.dailyLogs.slice(-89), log], // keep 90 days
+          dailyLogs: [...state.dailyLogs.slice(-89), log],
           actions: updatedActions,
         }));
+
+        // Persist to Supabase in background
+        if (patientId) {
+          fetch(`${API_BASE}/api/daily-log`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ patientId, log }),
+          }).catch(() => {});
+        }
       },
 
       skipCheckIn: () => set({ lastCheckInDate: today() }),
@@ -181,6 +230,8 @@ export const useHealthStore = create<HealthStore>()(
         actions:                state.actions,
         lastCheckInDate:        state.lastCheckInDate,
         dailyLogs:              state.dailyLogs,
+        patientId:              state.patientId,
+        deviceId:               state.deviceId,
       }),
     }
   )

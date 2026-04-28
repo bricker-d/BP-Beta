@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { LabPanel, WearableData } from "@/lib/types";
+import { saveChatMessage } from "@/lib/supabase";
 
 // Lazy client — only instantiated on first request so missing key gives a clear 503
 let _client: Anthropic | null = null;
@@ -508,7 +509,8 @@ ${optimal.map(b => `- ${BIOMARKER_META[b.id]?.name ?? b.id}: ${b.value} ${b.unit
 // ── POST handler ──────────────────────────────────────────────────────────────
 export async function POST(req: Request) {
   try {
-    const { messages, labPanel, wearableData, intakeProfile, todaysActions } = await req.json();
+    const { messages, labPanel, wearableData, intakeProfile, todaysActions, patientId } = await req.json();
+    let fullResponse = "";
 
     let systemPrompt = buildSystemPrompt(labPanel, wearableData, intakeProfile);
 
@@ -549,12 +551,21 @@ When asked about their plan or what to do next, refer to these specific actions 
               event.type === "content_block_delta" &&
               event.delta.type === "text_delta"
             ) {
+              fullResponse += event.delta.text;
               const chunk = `data: ${JSON.stringify({ text: event.delta.text })}\n\n`;
               controller.enqueue(encoder.encode(chunk));
             }
           }
           controller.enqueue(encoder.encode("data: [DONE]\n\n"));
           controller.close();
+          // Persist to Supabase (fire-and-forget)
+          if (patientId) {
+            const lastUser = messages[messages.length - 1];
+            if (lastUser?.role === "user") {
+              saveChatMessage(patientId, "user", lastUser.content).catch(() => {});
+            }
+            saveChatMessage(patientId, "assistant", fullResponse).catch(() => {});
+          }
         } catch (err) {
           controller.error(err);
         }

@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { getBiomarkerStatus } from "@/lib/biomarkers";
 import { LabPanel, Biomarker } from "@/lib/types";
+import { saveLabPanel } from "@/lib/supabase";
 
 let _client: Anthropic | null = null;
 function getClient(): Anthropic {
@@ -47,6 +48,7 @@ export async function POST(req: Request) {
     const formData = await req.formData();
     const file = formData.get("file") as File;
     const source = (formData.get("source") as string) || "Unknown";
+    const patientId = formData.get("patientId") as string | null ?? undefined;
 
     if (!file) {
       return Response.json({ error: "No file provided" }, { status: 400 });
@@ -87,7 +89,7 @@ export async function POST(req: Request) {
       });
 
       const rawJson = response.content[0].type === "text" ? response.content[0].text : "[]";
-      return buildResponse(rawJson, source, file.name);
+      return buildResponse(rawJson, source, file.name, patientId);
     } else {
       // Excel: treat as text for now (a real implementation would use xlsx library)
       textContent = await file.text();
@@ -113,7 +115,7 @@ export async function POST(req: Request) {
   }
 }
 
-function buildResponse(rawJson: string, source: string, fileName: string) {
+function buildResponse(rawJson: string, source: string, fileName: string, patientId?: string) {
   try {
     // Extract JSON from response (handle markdown code blocks)
     const jsonMatch = rawJson.match(/\[[\s\S]*\]/);
@@ -130,6 +132,11 @@ function buildResponse(rawJson: string, source: string, fileName: string) {
       source,
       biomarkers,
     };
+
+    // Persist to Supabase if patient_id provided (fire-and-forget, don't block response)
+    if (patientId) {
+      saveLabPanel(patientId, source, biomarkers, panel.date).catch(() => {});
+    }
 
     return Response.json({ panel, fileName });
   } catch {
