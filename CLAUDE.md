@@ -156,9 +156,9 @@ BP-Beta/
 3. **Vercel env vars** — confirm `ANTHROPIC_API_KEY` is set in Vercel dashboard. Agent 1/2/3 will fail in production without it.
 
 ### 🟡 High value (next sprint)
-4. **Weekly progress summary** — Sunday auto-message from Agent 3: "Here's what moved this week and what to focus on next." Triggered by cron or on app open Sunday.
+4. ~~**Weekly progress summary**~~ ✅ Done 2026-04-28 — /api/weekly-summary, Sunday trigger, coach tab banner, completion rates + wellbeing trends: "Here's what moved this week and what to focus on next." Triggered by cron or on app open Sunday.
 5. **Real wearable API connections** — Oura and WHOOP APIs. Current data is mock. Oura has a free REST API; WHOOP requires OAuth.
-6. **Lab delta tracking** — when patient uploads second panel, show which biomarkers moved and by how much. "Your glucose dropped from 102 → 94 — the post-meal walks are working."
+6. ~~**Lab delta tracking**~~ ✅ Done 2026-04-28 — DeltaBadge on labs tab, previousValue stored, improved/worsened/stable classification
 
 ### 🟢 Good to have
 7. ~~**Frame Longevity clinician view**~~ ✅ Done 2026-04-28 — /clinician page, patient_overview DB view, completion rates, check-in status
@@ -218,3 +218,5 @@ Agents will handle any biomarker in a lab panel but only the above have deep cli
 | 2026-04-28 | DailyCheckIn wired to home tab — morning modal, `needsCheckIn()`, `submitDailyLog()`, 90-day log |
 | 2026-04-28 | Supabase integration — schema, client, API routes, mobile sync, clinician dashboard |
 | 2026-04-28 | Task 3 (Vercel env vars) — instructions added to CLAUDE.md, requires Dan to action |
+| 2026-04-28 | Weekly summary agent — /api/weekly-summary, Sunday trigger, coach tab banner |
+| 2026-04-28 | Lab delta tracking — DeltaBadge, previousLabPanel, improved/worsened/stable |
