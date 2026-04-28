@@ -158,11 +158,14 @@ BP-Beta/
    - Project: `lrblvcixijbbfxiutgnp` | URL: `https://lrblvcixijbbfxiutgnp.supabase.co`
    - Schema: run `supabase/schema.sql` in SQL editor ✅ (confirm after Dan runs it)
    - Vercel env vars: need `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `ANTHROPIC_API_KEY`
-3. **Vercel env vars** — confirm `ANTHROPIC_API_KEY` is set in Vercel dashboard. Agent 1/2/3 will fail in production without it.
+3. ~~**Vercel env vars**~~ ✅ Done 2026-04-28 — ANTHROPIC_API_KEY + Supabase vars set
+   - Still needed: OURA_CLIENT_ID, OURA_CLIENT_SECRET, WHOOP_CLIENT_ID, WHOOP_CLIENT_SECRET, NEXT_PUBLIC_APP_URL
+   - Oura app: cloud.ouraring.com/oauth/applications
+   - WHOOP app: developer.whoop.com
 
 ### 🟡 High value (next sprint)
 4. ~~**Weekly progress summary**~~ ✅ Done 2026-04-28 — /api/weekly-summary, Sunday trigger, coach tab banner, completion rates + wellbeing trends: "Here's what moved this week and what to focus on next." Triggered by cron or on app open Sunday.
-5. **Real wearable API connections** — Oura and WHOOP APIs. Current data is mock. Oura has a free REST API; WHOOP requires OAuth.
+5. ~~**Real wearable API connections**~~ ✅ Done 2026-04-28 — Oura + WHOOP OAuth2, token refresh, real 7-day data sync, /connect/success page
 6. ~~**Lab delta tracking**~~ ✅ Done 2026-04-28 — DeltaBadge on labs tab, previousValue stored, improved/worsened/stable classification
 
 ### 🟢 Good to have
@@ -225,3 +228,4 @@ Agents will handle any biomarker in a lab panel but only the above have deep cli
 | 2026-04-28 | Task 3 (Vercel env vars) — instructions added to CLAUDE.md, requires Dan to action |
 | 2026-04-28 | Weekly summary agent — /api/weekly-summary, Sunday trigger, coach tab banner |
 | 2026-04-28 | Lab delta tracking — DeltaBadge, previousLabPanel, improved/worsened/stable |
+| 2026-04-28 | Wearable OAuth2 — Oura + WHOOP full auth flow, real data sync, token refresh, /connect/success |

@@ -22,7 +22,9 @@
     "react-native-safe-area-context": "~5.6.2",
     "react-native-screens": "~4.23.0",
     "react-native-svg": "^15.15.3",
-    "zustand": "^5.0.12"
+    "zustand": "^5.0.12",
+    "expo-notifications": "~0.31.3",
+    "expo-device": "~7.0.2"
   },
   "devDependencies": {
     "@types/react": "~19.2.2",

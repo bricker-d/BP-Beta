@@ -9,9 +9,37 @@ import { formatDate } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 
 export default function LabResultsPage() {
-  const { labPanel } = useHealthStore();
+  const { labPanel, actions, intakeProfile } = useHealthStore();
   const [view, setView] = useState<"upload" | "results">("results");
+  const [generatingReport, setGeneratingReport] = useState(false);
   const router = useRouter();
+
+  async function downloadReport() {
+    if (!labPanel) return;
+    setGeneratingReport(true);
+    try {
+      const res = await fetch("/api/report", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          labPanel,
+          actions,
+          intakeProfile,
+          patientName: intakeProfile?.name,
+        }),
+      });
+      const html = await res.text();
+      const blob = new Blob([html], { type: "text/html" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `BioPrecision-Report-${new Date().toISOString().split("T")[0]}.html`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      setGeneratingReport(false);
+    }
+  }
 
   return (
     <div className="page-content bg-background min-h-screen">
@@ -27,6 +55,17 @@ export default function LabResultsPage() {
             Upload and track your biomarkers
           </p>
         </div>
+
+        {/* Report download */}
+        {labPanel && (
+          <button
+            onClick={downloadReport}
+            disabled={generatingReport}
+            className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl border border-purple-200 bg-purple-50 text-purple-700 font-semibold text-sm disabled:opacity-50"
+          >
+            {generatingReport ? "Generating report..." : "📄 Download Clinical Report"}
+          </button>
+        )}
 
         {/* Toggle tabs */}
         <div className="flex bg-gray-100 rounded-xl p-1 gap-1">
