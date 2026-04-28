@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, useMemo } from 'react';
+import React, { useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity,
   FlatList, StyleSheet, KeyboardAvoidingView,
@@ -32,6 +32,25 @@ async function streamChat(
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ messages, labPanel, wearableData, intakeProfile }),
     });
+
+const wk = StyleSheet.create({
+  banner: {
+    backgroundColor: '#faf5ff',
+    borderWidth: 1,
+    borderColor: '#e9d5ff',
+    borderRadius: 14,
+    padding: 14,
+    marginHorizontal: 12,
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+  headerTxt: { fontSize: 13, fontWeight: '700', color: '#6b21a8' },
+  dismiss: { fontSize: 14, color: '#9ca3af', fontWeight: '600' },
+  loading: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  loadingTxt: { fontSize: 13, color: '#9333ea' },
+  body: { fontSize: 13, color: '#374151', lineHeight: 20 },
+});
 
     if (!res.ok || !res.body) {
       onError('Server error. Please try again.');
@@ -391,7 +410,27 @@ export default function CoachScreen() {
         {!hasMessages ? (
           renderEmpty()
         ) : (
-          <FlatList
+  
+        {/* Weekly summary banner (Sundays) */}
+        {(weeklySummary || loadingWeekly) && (
+          <View style={wk.banner}>
+            <View style={wk.header}>
+              <Text style={wk.headerTxt}>📊 Weekly Progress Summary</Text>
+              <TouchableOpacity onPress={() => setWeeklySummary(null)}>
+                <Text style={wk.dismiss}>✕</Text>
+              </TouchableOpacity>
+            </View>
+            {loadingWeekly ? (
+              <View style={wk.loading}>
+                <ActivityIndicator size="small" color="#9333ea" />
+                <Text style={wk.loadingTxt}>Analysing your week...</Text>
+              </View>
+            ) : (
+              <Text style={wk.body}>{weeklySummary}</Text>
+            )}
+          </View>
+        )}
+        <FlatList
             ref={listRef}
             data={messages}
             keyExtractor={m => m.id}

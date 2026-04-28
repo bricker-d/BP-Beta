@@ -46,6 +46,11 @@ interface HealthStore {
   skipCheckIn: () => void;
   needsCheckIn: () => boolean;
 
+  // Weekly summary
+  lastWeeklySummaryDate: string | null;
+  needsWeeklySummary: () => boolean;
+  markWeeklySummaryShown: () => void;
+
   // Chat
   messages: ChatMessage[];
   addMessage: (msg: ChatMessage) => void;
@@ -210,6 +215,20 @@ export const useHealthStore = create<HealthStore>()(
 
       skipCheckIn: () => set({ lastCheckInDate: today() }),
 
+      // ── Weekly summary ──────────────────────────────────────────────────
+      lastWeeklySummaryDate: null,
+
+      needsWeeklySummary: () => {
+        const { lastWeeklySummaryDate, hasCompletedOnboarding, dailyLogs } = get();
+        if (!hasCompletedOnboarding) return false;
+        if (dailyLogs.length < 3) return false; // need at least 3 days of data
+        const dayOfWeek = new Date().getDay(); // 0 = Sunday
+        if (dayOfWeek !== 0) return false; // only on Sundays
+        return lastWeeklySummaryDate !== today();
+      },
+
+      markWeeklySummaryShown: () => set({ lastWeeklySummaryDate: today() }),
+
       // ── Chat ────────────────────────────────────────────────────────────
       messages: [],
 
@@ -232,6 +251,7 @@ export const useHealthStore = create<HealthStore>()(
         dailyLogs:              state.dailyLogs,
         patientId:              state.patientId,
         deviceId:               state.deviceId,
+        lastWeeklySummaryDate:  state.lastWeeklySummaryDate,
       }),
     }
   )
