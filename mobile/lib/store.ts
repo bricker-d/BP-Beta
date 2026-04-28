@@ -28,6 +28,7 @@ interface HealthStore {
 
   // Lab panel
   labPanel: LabPanel | null;
+  previousLabPanel: LabPanel | null;   // last panel for delta tracking
   setLabPanel: (panel: LabPanel) => void;
 
   // Wearable data
@@ -138,16 +139,41 @@ export const useHealthStore = create<HealthStore>()(
 
       // ── Lab panel ───────────────────────────────────────────────────────
       labPanel: null,
+      previousLabPanel: null,
       setLabPanel: (panel: LabPanel) => {
+        // Annotate biomarkers with delta from previous panel
+        const prev = get().labPanel;
+        if (prev) {
+          const prevMap = new Map(prev.biomarkers.map(b => [b.id, b]));
+          panel = {
+            ...panel,
+            biomarkers: panel.biomarkers.map(b => {
+              const prevB = prevMap.get(b.id);
+              if (!prevB) return b;
+              const delta = parseFloat((b.value - prevB.value).toFixed(2));
+              const improved =
+                (b.status === 'optimal' && prevB.status !== 'optimal') ||
+                (b.optimalMin <= b.value && b.value <= b.optimalMax) ||
+                (Math.abs(delta) > 0 && Math.abs(b.value - (b.optimalMin + b.optimalMax) / 2) < Math.abs(prevB.value - (b.optimalMin + b.optimalMax) / 2));
+              return {
+                ...b,
+                previousValue: prevB.value,
+                delta,
+                deltaStatus: Math.abs(delta) < 0.5 ? 'stable' : improved ? 'improved' : 'worsened',
+              };
+            }),
+          };
+        }
         const { intakeProfile } = get();
         const actions = generateActionsFromPanel(panel, intakeProfile ?? undefined);
         const completedIds = new Set(
           get().actions.filter(a => a.completed).map(a => a.id)
         );
-        set({
+        set((state) => ({
+          previousLabPanel: state.labPanel,
           labPanel: panel,
           actions: actions.map(a => ({ ...a, completed: completedIds.has(a.id) })),
-        });
+        }));
       },
 
       // ── Wearable data ───────────────────────────────────────────────────
@@ -244,6 +270,7 @@ export const useHealthStore = create<HealthStore>()(
         hasCompletedOnboarding: state.hasCompletedOnboarding,
         intakeProfile:          state.intakeProfile,
         labPanel:               state.labPanel,
+        previousLabPanel:       state.previousLabPanel,
         wearableData:           state.wearableData,
         messages:               state.messages,
         actions:                state.actions,

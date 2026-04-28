@@ -12,6 +12,10 @@ export interface Biomarker {
   optimalMin: number;
   optimalMax: number;
   category: "metabolic" | "lipid" | "hormone" | "vitamin" | "inflammatory";
+  // Delta from previous panel
+  previousValue?: number;
+  delta?: number;
+  deltaStatus?: 'improved' | 'worsened' | 'stable';
 }
 
 export interface LabPanel {

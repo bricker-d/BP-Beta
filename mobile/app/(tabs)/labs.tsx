@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { FlaskConical, AlertTriangle, TrendingUp, TrendingDown, Minus } from 'lucide-react-native';
+import { FlaskConical, AlertTriangle, TrendingUp, TrendingDown, Minus, ArrowUp, ArrowDown } from 'lucide-react-native';
 import { useHealthStore } from '../../lib/store';
 import {
   biomarkerPriorityScore,
@@ -24,6 +24,31 @@ const STATUS: Record<string, { color: string; bg: string; label: string; icon: R
   elevated:   { color: '#dc2626', bg: '#fee2e2', label: 'Elevated',   icon: TrendingUp },
   low:        { color: '#2563eb', bg: '#dbeafe', label: 'Low',        icon: TrendingDown },
 };
+
+
+// ─── Delta badge ─────────────────────────────────────────────────────────────
+
+function DeltaBadge({ biomarker }: { biomarker: Biomarker }) {
+  if (biomarker.delta === undefined || biomarker.deltaStatus === 'stable') return null;
+  const improved = biomarker.deltaStatus === 'improved';
+  const color = improved ? '#16a34a' : '#dc2626';
+  const bg    = improved ? '#dcfce7' : '#fee2e2';
+  const sign  = biomarker.delta > 0 ? '+' : '';
+  return (
+    <View style={[db.badge, { backgroundColor: bg }]}>
+      {improved
+        ? <ArrowDown color={color} size={10} />
+        : <ArrowUp color={color} size={10} />
+      }
+      <Text style={[db.txt, { color }]}>{sign}{biomarker.delta} {biomarker.unit}</Text>
+    </View>
+  );
+}
+
+const db = StyleSheet.create({
+  badge: { flexDirection: 'row', alignItems: 'center', gap: 3, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 8 },
+  txt:   { fontSize: 10, fontWeight: '700' },
+});
 
 // ─── Category filter config ──────────────────────────────────────────────────
 
