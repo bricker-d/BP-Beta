@@ -1,7 +1,7 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect, useState } from 'react';
 import {
   View, Text, ScrollView, StyleSheet,
-  TouchableOpacity, Dimensions,
+  TouchableOpacity, Dimensions, Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -17,6 +17,8 @@ import {
   computeHealthScore,
 } from '../../lib/biomarkers';
 import type { Biomarker } from '../../lib/types';
+import DailyCheckIn from '../../lib/DailyCheckIn';
+import type { DailyLog } from '../../lib/types';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 const PURPLE = '#9333ea';
@@ -86,7 +88,16 @@ function ActionRow({ label, done, onPress }: { label: string; done: boolean; onP
 // ── Main ──────────────────────────────────────────────────────────────────────
 export default function HomeScreen() {
   const router   = useRouter();
-  const { actions, intakeProfile, labPanel } = useHealthStore();
+  const { actions, intakeProfile, labPanel, needsCheckIn, submitDailyLog, skipCheckIn } = useHealthStore();
+  const [showCheckIn, setShowCheckIn] = useState(false);
+
+  // Show check-in modal on mount if needed
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (needsCheckIn()) setShowCheckIn(true);
+    }, 800); // slight delay so home screen renders first
+    return () => clearTimeout(timer);
+  }, []);
 
   const firstName = intakeProfile?.name?.split(' ')[0] ?? 'there';
   const hour      = new Date().getHours();
@@ -277,6 +288,31 @@ export default function HomeScreen() {
 
         <View style={{ height: 32 }} />
       </ScrollView>
+
+      {/* ── Daily check-in modal ─────────────────────────────────────── */}
+      <Modal
+        visible={showCheckIn}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => { skipCheckIn(); setShowCheckIn(false); }}
+      >
+        <DailyCheckIn
+          actions={actions.map(a => ({
+            id: a.id,
+            title: a.title,
+            category: a.category,
+            biomarkerTarget: a.biomarkerTarget,
+          }))}
+          onComplete={(log: DailyLog) => {
+            submitDailyLog(log);
+            setShowCheckIn(false);
+          }}
+          onSkip={() => {
+            skipCheckIn();
+            setShowCheckIn(false);
+          }}
+        />
+      </Modal>
     </SafeAreaView>
   );
 }

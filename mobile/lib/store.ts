@@ -7,7 +7,7 @@ import {
   generateActionsFromPanel,
   DEMO_LAB_VALUES,
 } from './biomarkers';
-import type { HealthAction, ChatMessage, LabPanel, WearableData } from './types';
+import type { HealthAction, ChatMessage, LabPanel, WearableData, DailyLog } from './types';
 import type { IntakeProfile } from './types';
 
 // ── Store interface ───────────────────────────────────────────────────────────
@@ -31,10 +31,22 @@ interface HealthStore {
   toggleAction: (id: string) => void;
   refreshActions: () => void;
 
+  // Daily check-in
+  lastCheckInDate: string | null;   // ISO date string YYYY-MM-DD
+  dailyLogs: DailyLog[];
+  submitDailyLog: (log: DailyLog) => void;
+  skipCheckIn: () => void;
+  needsCheckIn: () => boolean;
+
   // Chat
   messages: ChatMessage[];
   addMessage: (msg: ChatMessage) => void;
   clearMessages: () => void;
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function today(): string {
+  return new Date().toISOString().split('T')[0];
 }
 
 // ── Store ─────────────────────────────────────────────────────────────────────
@@ -46,11 +58,9 @@ export const useHealthStore = create<HealthStore>()(
       intakeProfile: null,
 
       completeOnboarding: (profile: IntakeProfile, summaryMsg: string) => {
-        // Build lab panel immediately using demo values + intake profile
         const panel   = buildLabPanel(DEMO_LAB_VALUES, profile);
         const actions = generateActionsFromPanel(panel, profile);
 
-        // Welcome message from the summary step streamed content
         const welcomeMsg: ChatMessage = {
           id:        'welcome',
           role:      'assistant',
@@ -64,6 +74,8 @@ export const useHealthStore = create<HealthStore>()(
           labPanel: panel,
           actions,
           messages: [welcomeMsg],
+          // Mark onboarding day as checked-in so modal doesn't fire immediately
+          lastCheckInDate: today(),
         });
       },
 
@@ -74,6 +86,8 @@ export const useHealthStore = create<HealthStore>()(
         wearableData: null,
         actions: [],
         messages: [],
+        lastCheckInDate: null,
+        dailyLogs: [],
       }),
 
       // ── Lab panel ───────────────────────────────────────────────────────
@@ -81,7 +95,6 @@ export const useHealthStore = create<HealthStore>()(
       setLabPanel: (panel: LabPanel) => {
         const { intakeProfile } = get();
         const actions = generateActionsFromPanel(panel, intakeProfile ?? undefined);
-        // Preserve completed state from existing actions
         const completedIds = new Set(
           get().actions.filter(a => a.completed).map(a => a.id)
         );
@@ -120,8 +133,35 @@ export const useHealthStore = create<HealthStore>()(
         });
       },
 
+      // ── Daily check-in ──────────────────────────────────────────────────
+      lastCheckInDate: null,
+      dailyLogs: [],
+
+      needsCheckIn: () => {
+        const { lastCheckInDate, hasCompletedOnboarding, actions } = get();
+        if (!hasCompletedOnboarding) return false;
+        if (!actions.length) return false;
+        // Show if never checked in, or last check-in was before today
+        return lastCheckInDate !== today();
+      },
+
+      submitDailyLog: (log: DailyLog) => {
+        const { actions } = get();
+        // Apply completions from log to today's actions
+        const updatedActions = actions.map(a => ({
+          ...a,
+          completed: log.actionCompletions[a.id] ?? a.completed,
+        }));
+        set((state) => ({
+          lastCheckInDate: today(),
+          dailyLogs: [...state.dailyLogs.slice(-89), log], // keep 90 days
+          actions: updatedActions,
+        }));
+      },
+
+      skipCheckIn: () => set({ lastCheckInDate: today() }),
+
       // ── Chat ────────────────────────────────────────────────────────────
-      // Start empty — CoachScreen renders its own empty/starter state
       messages: [],
 
       addMessage: (msg) =>
@@ -132,7 +172,6 @@ export const useHealthStore = create<HealthStore>()(
     {
       name: 'bioprecision-store',
       storage: createJSONStorage(() => AsyncStorage),
-      // Only persist serialisable fields — exclude functions
       partialize: (state) => ({
         hasCompletedOnboarding: state.hasCompletedOnboarding,
         intakeProfile:          state.intakeProfile,
@@ -140,6 +179,8 @@ export const useHealthStore = create<HealthStore>()(
         wearableData:           state.wearableData,
         messages:               state.messages,
         actions:                state.actions,
+        lastCheckInDate:        state.lastCheckInDate,
+        dailyLogs:              state.dailyLogs,
       }),
     }
   )
