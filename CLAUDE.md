@@ -152,7 +152,7 @@ BP-Beta/
 
 ### 🔴 Critical (blocks clinical use)
 1. ~~**Wire DailyCheckIn to home tab**~~ ✅ Done 2026-04-28 — morning modal, 800ms delay, 90-day log history, skippable
-2. **Supabase integration** — persistent patient data across sessions. Tables needed: `patients`, `lab_panels`, `daily_logs`, `actions`. Without this, Frame Longevity can't use it clinically.
+2. ~~**Supabase integration**~~ ✅ Done 2026-04-28 — schema, client, patient/daily-log API routes, mobile sync, clinician dashboard at /clinician
 3. **Vercel env vars** — confirm `ANTHROPIC_API_KEY` is set in Vercel dashboard. Agent 1/2/3 will fail in production without it.
 
 ### 🟡 High value (next sprint)
@@ -161,9 +161,25 @@ BP-Beta/
 6. **Lab delta tracking** — when patient uploads second panel, show which biomarkers moved and by how much. "Your glucose dropped from 102 → 94 — the post-meal walks are working."
 
 ### 🟢 Good to have
-7. **Frame Longevity clinician view** — read-only dashboard showing all enrolled patients, their latest panels, action completion rates. This is the B2B product.
+7. ~~**Frame Longevity clinician view**~~ ✅ Done 2026-04-28 — /clinician page, patient_overview DB view, completion rates, check-in status
 8. **Push notifications** — morning check-in reminder, evening action nudge.
 9. **PDF report generation** — exportable summary Dan can hand to patients or include in chart.
+
+
+---
+
+## Supabase Setup (One-time, Dan must do)
+
+1. Go to https://app.supabase.com → New project → name it `bioprecision`
+2. SQL Editor → New Query → paste contents of `supabase/schema.sql` → Run
+3. Settings → API → copy `Project URL` and `anon public` key
+4. Vercel dashboard → bp-beta project → Settings → Environment Variables → add:
+   - `NEXT_PUBLIC_SUPABASE_URL` = your project URL
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY` = your anon key
+   - `ANTHROPIC_API_KEY` = sk-ant-... (from Dan)
+5. Redeploy on Vercel (or push any commit to trigger)
+
+Once done: patients persist across sessions, clinician dashboard at /clinician is live, daily logs sync automatically.
 
 ---
 
@@ -200,3 +216,5 @@ Agents will handle any biomarker in a lab panel but only the above have deep cli
 | 2026-04-28 | `DailyCheckIn` component built — action completion log + sleep/energy/stress ratings |
 | 2026-04-28 | `IntakeProfile` updated — `primaryFocus`, `habits`, `DailyLog` types added |
 | 2026-04-28 | DailyCheckIn wired to home tab — morning modal, `needsCheckIn()`, `submitDailyLog()`, 90-day log |
+| 2026-04-28 | Supabase integration — schema, client, API routes, mobile sync, clinician dashboard |
+| 2026-04-28 | Task 3 (Vercel env vars) — instructions added to CLAUDE.md, requires Dan to action |
