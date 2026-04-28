@@ -170,9 +170,35 @@ BP-Beta/
 
 ### 🟢 Good to have
 7. ~~**Frame Longevity clinician view**~~ ✅ Done 2026-04-28 — /clinician page, patient_overview DB view, completion rates, check-in status
-8. **Push notifications** — morning check-in reminder, evening action nudge.
-9. **PDF report generation** — exportable summary Dan can hand to patients or include in chart.
+8. ~~**Push notifications**~~ ✅ Done 2026-04-28 — 8am check-in, 7pm action nudge, 9am Sunday summary, tap routing
+9. ~~**PDF report generation**~~ ✅ Done 2026-04-28 — /api/report, print-ready HTML, Claude narrative, biomarker table, download button on lab page
 
+
+---
+
+## Remaining One-Time Setup (Dan must do)
+
+### Wearable OAuth apps (to activate Oura + WHOOP connections)
+1. **Oura:** go to cloud.ouraring.com/oauth/applications → Create app → set redirect URI to `https://bp-beta-9fdp-git-main-dan-brickers-projects.vercel.app/api/wearables/oura/callback` → copy Client ID + Secret → add to Vercel as `OURA_CLIENT_ID` + `OURA_CLIENT_SECRET`
+2. **WHOOP:** go to developer.whoop.com → Create app → same redirect pattern for `/api/wearables/whoop/callback` → add to Vercel as `WHOOP_CLIENT_ID` + `WHOOP_CLIENT_SECRET`
+3. Add `NEXT_PUBLIC_APP_URL=https://bp-beta-9fdp-git-main-dan-brickers-projects.vercel.app` to Vercel env vars
+
+### Supabase wearable_connections table
+Run in SQL editor (supabase.com/dashboard/project/lrblvcixijbbfxiutgnp/sql/new):
+```sql
+CREATE TABLE IF NOT EXISTS wearable_connections (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  patient_id uuid REFERENCES patients(id) ON DELETE CASCADE,
+  provider text NOT NULL CHECK (provider IN ('oura', 'whoop', 'garmin')),
+  access_token text NOT NULL,
+  refresh_token text,
+  token_expires_at timestamptz,
+  connected_at timestamptz DEFAULT now(),
+  UNIQUE(patient_id, provider)
+);
+CREATE INDEX IF NOT EXISTS wearable_connections_patient_idx ON wearable_connections(patient_id);
+ALTER TABLE wearable_connections DISABLE ROW LEVEL SECURITY;
+```
 
 ---
 
@@ -229,3 +255,5 @@ Agents will handle any biomarker in a lab panel but only the above have deep cli
 | 2026-04-28 | Weekly summary agent — /api/weekly-summary, Sunday trigger, coach tab banner |
 | 2026-04-28 | Lab delta tracking — DeltaBadge, previousLabPanel, improved/worsened/stable |
 | 2026-04-28 | Wearable OAuth2 — Oura + WHOOP full auth flow, real data sync, token refresh, /connect/success |
+| 2026-04-28 | Push notifications — morning/evening/weekly schedule, permission request, tap routing |
+| 2026-04-28 | PDF clinical report — /api/report, Claude narrative, biomarker table, download button |
