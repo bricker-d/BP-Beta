@@ -33,7 +33,11 @@ interface HealthStore {
 
   // Wearable data
   wearableData: WearableData | null;
+  wearableProvider: string | null;
+  wearableConnected: boolean;
   setWearableData: (data: WearableData) => void;
+  syncWearable: () => Promise<void>;
+  markWearableConnected: (provider: string) => void;
 
   // Actions
   actions: HealthAction[];
@@ -279,6 +283,8 @@ export const useHealthStore = create<HealthStore>()(
         patientId:              state.patientId,
         deviceId:               state.deviceId,
         lastWeeklySummaryDate:  state.lastWeeklySummaryDate,
+        wearableProvider:       state.wearableProvider,
+        wearableConnected:      state.wearableConnected,
       }),
     }
   )

@@ -75,6 +75,24 @@ create table if not exists chat_messages (
 
 create index if not exists chat_messages_patient_idx on chat_messages(patient_id, created_at asc);
 
+
+-- ── Wearable connections ──────────────────────────────────────────────────────
+create table if not exists wearable_connections (
+  id                uuid primary key default gen_random_uuid(),
+  patient_id        uuid references patients(id) on delete cascade,
+  provider          text not null check (provider in ('oura', 'whoop', 'garmin')),
+  access_token      text not null,
+  refresh_token     text,
+  token_expires_at  timestamptz,
+  connected_at      timestamptz default now(),
+  unique(patient_id, provider)
+);
+
+create index if not exists wearable_connections_patient_idx on wearable_connections(patient_id);
+
+-- Disable RLS on wearable_connections (run with the others)
+-- ALTER TABLE wearable_connections DISABLE ROW LEVEL SECURITY;
+
 -- ── Helper: update updated_at automatically ───────────────────────────────────
 create or replace function update_updated_at()
 returns trigger as $$
