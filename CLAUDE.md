@@ -151,7 +151,7 @@ BP-Beta/
 ## Open Tasks (Priority Order)
 
 ### 🔴 Critical (blocks clinical use)
-1. **Wire DailyCheckIn to home tab** — should appear as morning modal when app opens, after first day of use. Trigger: `lastCheckInDate !== today`. Store log in Zustand + AsyncStorage.
+1. ~~**Wire DailyCheckIn to home tab**~~ ✅ Done 2026-04-28 — morning modal, 800ms delay, 90-day log history, skippable
 2. **Supabase integration** — persistent patient data across sessions. Tables needed: `patients`, `lab_panels`, `daily_logs`, `actions`. Without this, Frame Longevity can't use it clinically.
 3. **Vercel env vars** — confirm `ANTHROPIC_API_KEY` is set in Vercel dashboard. Agent 1/2/3 will fail in production without it.
 
@@ -199,3 +199,4 @@ Agents will handle any biomarker in a lab panel but only the above have deep cli
 | 2026-04-28 | Onboarding expanded to 8 steps — `StepHealthFocus`, `StepHabits` added |
 | 2026-04-28 | `DailyCheckIn` component built — action completion log + sleep/energy/stress ratings |
 | 2026-04-28 | `IntakeProfile` updated — `primaryFocus`, `habits`, `DailyLog` types added |
+| 2026-04-28 | DailyCheckIn wired to home tab — morning modal, `needsCheckIn()`, `submitDailyLog()`, 90-day log |
