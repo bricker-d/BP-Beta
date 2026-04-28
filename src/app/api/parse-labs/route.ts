@@ -2,37 +2,45 @@ import Anthropic from "@anthropic-ai/sdk";
 import { getBiomarkerStatus } from "@/lib/biomarkers";
 import { LabPanel, Biomarker } from "@/lib/types";
 
-const client = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
+let _client: Anthropic | null = null;
+function getClient(): Anthropic {
+  if (!process.env.ANTHROPIC_API_KEY) throw new Error("ANTHROPIC_API_KEY not set");
+  if (!_client) _client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+  return _client;
+}
 
-const PARSE_PROMPT = `You are a medical data extraction system. Extract all biomarker values from the provided lab report text.
+const PARSE_PROMPT = `You are a medical data extraction system for BioPrecision. Extract all biomarker values from the provided lab report.
 
-Return a JSON array of biomarkers with this exact schema:
-[
-  {
-    "id": "snake_case_id",
-    "name": "Full biomarker name",
-    "shortName": "ABBREV",
-    "value": 102,
-    "unit": "mg/dL",
-    "category": "metabolic" | "lipid" | "hormone" | "vitamin" | "inflammatory",
-    "optimalMin": 70,
-    "optimalMax": 99
-  }
-]
+Return ONLY a valid JSON array. No markdown, no explanation, no code fences. Just the raw JSON array.
 
-Common reference ranges:
-- Fasting Glucose: 70–99 mg/dL (optimal), metabolic
-- HbA1c: 4.0–5.6% (optimal), metabolic
-- LDL Cholesterol: 0–100 mg/dL (optimal), lipid
-- HDL Cholesterol: 60–120 mg/dL (optimal), lipid
-- Triglycerides: 0–150 mg/dL (optimal), lipid
-- Vitamin D: 40–80 ng/mL (optimal), vitamin
-- CRP: 0–1.0 mg/L (optimal), inflammatory
-- Testosterone (male): 400–900 ng/dL (optimal), hormone
+Schema for each item:
+{
+  "id": "snake_case_id matching these known IDs when possible: glucose, hba1c, totalCholesterol, ldl, hdl, triglycerides, hscrp, vitaminD, testosterone, cortisol, ferritin, tsh",
+  "name": "Full biomarker name as printed on report",
+  "shortName": "ABBREVIATION",
+  "value": <number>,
+  "unit": "unit string",
+  "category": "metabolic" | "lipid" | "hormone" | "vitamin" | "inflammatory",
+  "optimalMin": <number — use functional medicine optimal ranges, not just lab reference ranges>,
+  "optimalMax": <number>
+}
 
-Extract ONLY values that are clearly present in the document. Return valid JSON only, no other text.`;
+Functional medicine optimal ranges to use:
+- Fasting Glucose: id=glucose, 70–99 mg/dL, metabolic
+- HbA1c: id=hba1c, 4.8–5.4 %, metabolic
+- Total Cholesterol: id=totalCholesterol, 150–199 mg/dL, lipid
+- LDL Cholesterol: id=ldl, 0–100 mg/dL, lipid
+- HDL Cholesterol: id=hdl, 60–120 mg/dL, lipid
+- Triglycerides: id=triglycerides, 0–100 mg/dL, lipid
+- hs-CRP: id=hscrp, 0–0.5 mg/L, inflammatory
+- Vitamin D (25-OH): id=vitaminD, 50–80 ng/mL, vitamin
+- Total Testosterone: id=testosterone, 600–900 ng/dL (men) / 50–150 (women), hormone
+- Cortisol AM: id=cortisol, 10–18 mcg/dL, hormone
+- Ferritin: id=ferritin, 50–150 ng/mL (men) / 40–100 (women), metabolic
+- TSH: id=tsh, 0.5–2.0 mIU/L, hormone
+
+For any biomarker not in the above list, assign a sensible id, infer category, and use the lab's own reference range as the optimal range.
+Extract EVERY biomarker present in the document. Return valid JSON array only.`;
 
 export async function POST(req: Request) {
   try {
@@ -54,9 +62,9 @@ export async function POST(req: Request) {
       const buffer = await file.arrayBuffer();
       const base64 = Buffer.from(buffer).toString("base64");
 
-      const response = await client.messages.create({
+      const response = await getClient().messages.create({
         model: "claude-opus-4-5",
-        max_tokens: 2048,
+        max_tokens: 4096,
         messages: [
           {
             role: "user",
@@ -86,13 +94,13 @@ export async function POST(req: Request) {
     }
 
     // Parse text content with Claude
-    const response = await client.messages.create({
+    const response = await getClient().messages.create({
       model: "claude-opus-4-5",
-      max_tokens: 2048,
+      max_tokens: 4096,
       messages: [
         {
           role: "user",
-          content: `${PARSE_PROMPT}\n\nLab report content:\n\`\`\`\n${textContent.slice(0, 8000)}\n\`\`\``,
+          content: `${PARSE_PROMPT}\n\nLab report content:\n\`\`\`\n${textContent.slice(0, 12000)}\n\`\`\``,
         },
       ],
     });

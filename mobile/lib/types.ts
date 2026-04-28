@@ -71,7 +71,8 @@ export interface UserProfile {
 // ── Onboarding / Intake ───────────────────────────────────────────────────────
 export interface IntakeProfile {
   name: string;
-  goals: string[];
+  primaryFocus?: string;         // single highest-priority goal
+  goals: string[];               // all selected goals including primary
   age?: number;
   biologicalSex?: 'Male' | 'Female' | 'Other / prefer not to say';
   heightFt?: number;
@@ -79,7 +80,23 @@ export interface IntakeProfile {
   weightLbs?: number;
   symptoms: string[];
   symptomsOther?: string;
+  habits?: {
+    sleepHours?: string;          // e.g. '7-8 hrs'
+    exerciseDaysPerWeek?: string; // e.g. '3-4 days'
+    dietType?: string;            // e.g. 'mediterranean'
+    stressLevel?: string;         // e.g. 'Moderate'
+    alcoholPerWeek?: string;      // e.g. '1-3/week'
+  };
   labDataSource?: 'upload' | 'demo' | 'skip';
   wearableSource?: 'Apple Health' | 'Whoop' | 'Oura' | 'Garmin' | 'none';
   completedAt?: string; // ISO date
+}
+
+// ── Daily Check-in ────────────────────────────────────────────────────────────
+export interface DailyLog {
+  date: string;
+  actionCompletions: Record<string, boolean>;
+  sleepQuality: number | null;
+  stressLevel: number | null;
+  energyLevel: number | null;
 }

@@ -508,9 +508,26 @@ ${optimal.map(b => `- ${BIOMARKER_META[b.id]?.name ?? b.id}: ${b.value} ${b.unit
 // ── POST handler ──────────────────────────────────────────────────────────────
 export async function POST(req: Request) {
   try {
-    const { messages, labPanel, wearableData, intakeProfile } = await req.json();
+    const { messages, labPanel, wearableData, intakeProfile, todaysActions } = await req.json();
 
-    const systemPrompt = buildSystemPrompt(labPanel, wearableData, intakeProfile);
+    let systemPrompt = buildSystemPrompt(labPanel, wearableData, intakeProfile);
+
+    // Agent 3 synthesis: inject today's actions so the coach knows what the patient is working on
+    if (todaysActions && Array.isArray(todaysActions) && todaysActions.length > 0) {
+      const completed = todaysActions.filter((a: { completed: boolean }) => a.completed);
+      const pending = todaysActions.filter((a: { completed: boolean }) => !a.completed);
+      systemPrompt += `
+## Today's Action Plan (Daily Actions Agent)
+Reference these naturally — you know exactly what the patient is working on today.
+
+Pending (${pending.length}):
+${pending.map((a: { title: string; targetBiomarkers: string[]; biomarkerTarget?: string }) =>
+  `- ${a.title} → targets: ${a.targetBiomarkers.join(", ")}${a.biomarkerTarget ? ` (${a.biomarkerTarget})` : ""}`
+).join("\n")}
+${completed.length > 0 ? `\nCompleted today:\n${completed.map((a: { title: string }) => `- ✓ ${a.title}`).join("\n")}` : ""}
+
+When asked about their plan or what to do next, refer to these specific actions with clinical context.`;
+    }
 
     const stream = await getClient().messages.stream({
       model: "claude-opus-4-5",

@@ -9,7 +9,7 @@ import QuickQuestions from "@/components/coach/QuickQuestions";
 import Link from "next/link";
 
 export default function CoachPage() {
-  const { messages, addMessage, labPanel, wearableData } = useHealthStore();
+  const { messages, addMessage, labPanel, wearableData, actions, intakeProfile } = useHealthStore();
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -45,6 +45,8 @@ export default function CoachPage() {
           })),
           labPanel,
           wearableData,
+          intakeProfile,
+          todaysActions: actions,
         }),
       });
 

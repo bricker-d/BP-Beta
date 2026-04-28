@@ -24,12 +24,22 @@ async function streamSummary(
   onDone: () => void,
   onError: (msg: string) => void,
 ) {
-  const systemPrompt = `You are a precision health AI coach doing an intake summary.
-The user just completed onboarding. Based on their intake profile, write a warm, personal welcome message (2-3 sentences) that:
+  const primaryFocus = profile.primaryFocus ?? profile.goals?.[0] ?? 'overall health';
+  const habitContext = profile.habits
+    ? `Sleep: ${profile.habits.sleepHours || 'unknown'}, Exercise: ${profile.habits.exerciseDaysPerWeek || 'unknown'}/week, Stress: ${profile.habits.stressLevel || 'unknown'}`
+    : '';
+  const symptomsStr = profile.symptoms?.length ? profile.symptoms.join(', ') : 'none reported';
+
+  const systemPrompt = `You are BioPrecision — a precision health AI coach completing a patient intake.
+The patient just finished onboarding. Write a personal, clinically-grounded welcome (3-4 sentences) that:
 1. Addresses them by first name
-2. Acknowledges their primary health goals
-3. Mentions one specific area you'll help them focus on first (based on their symptoms or goals)
-Keep it concise, encouraging, and specific. Do NOT use generic phrases like "welcome to the app".`;
+2. Names their PRIMARY focus (${primaryFocus}) and one specific biomarker cluster it connects to
+3. References ONE specific habit from their baseline (${habitContext}) and why it's relevant
+4. Ends with what their first actions will target
+
+Be direct and clinical, not generic. Sound like a knowledgeable doctor who has reviewed their profile, not a chatbot.
+Do NOT say "welcome to the app", "I'm here to help", or other filler phrases.
+Aim for 3-4 sentences total.`;
 
   const userMsg = `My intake profile: ${JSON.stringify(profile, null, 2)}`;
 
@@ -114,14 +124,16 @@ export default function StepSummary({ profile, onFinish }: Props) {
   }
 
   const ITEMS = [
-    profile.goals?.length ? { label: 'Goals', value: profile.goals.join(', ') } : null,
-    profile.biologicalSex ? { label: 'Sex', value: profile.biologicalSex } : null,
-    profile.age ? { label: 'Age', value: String(profile.age) } : null,
-    profile.labDataSource ? { label: 'Lab data', value: profile.labDataSource } : null,
+    profile.primaryFocus ? { label: 'Primary focus', value: profile.primaryFocus.replace(/_/g, ' ') } : null,
+    profile.biologicalSex ? { label: 'Sex / Age', value: `${profile.biologicalSex}${profile.age ? ', ' + profile.age + ' yrs' : ''}` } : null,
+    profile.habits?.sleepHours ? { label: 'Sleep', value: profile.habits.sleepHours } : null,
+    profile.habits?.exerciseDaysPerWeek ? { label: 'Exercise', value: profile.habits.exerciseDaysPerWeek + '/week' } : null,
+    profile.habits?.stressLevel ? { label: 'Stress', value: profile.habits.stressLevel } : null,
+    profile.symptoms?.length ? { label: 'Symptoms', value: profile.symptoms.slice(0, 3).join(', ') + (profile.symptoms.length > 3 ? ' +' + (profile.symptoms.length - 3) + ' more' : '') } : null,
+    profile.labDataSource ? { label: 'Labs', value: profile.labDataSource } : null,
     profile.wearableSource && profile.wearableSource !== 'none'
       ? { label: 'Wearable', value: profile.wearableSource }
       : null,
-    profile.symptoms?.length ? { label: 'Symptoms', value: profile.symptoms.join(', ') } : null,
   ].filter(Boolean) as { label: string; value: string }[];
 
   return (
