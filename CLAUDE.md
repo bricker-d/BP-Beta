@@ -171,8 +171,8 @@ BP-Beta/
 6. ~~**Lab delta tracking**~~ ✅ Done 2026-04-28 — DeltaBadge on labs tab, previousValue stored, improved/worsened/stable classification
 
 ### 🔴 Beta blockers (do before first Frame Longevity patient)
-10. **Simple auth gate on /clinician** — anyone with URL can see all patients. Need password or magic link before Frame patients are in the system.
-11. **Longitudinal biomarker charts** — when patient uploads 2nd panel, show trend line per biomarker across time. Core clinical value for repeat visits.
+10. ~~**Auth gate on /clinician**~~ ✅ Done — /clinician/login, cookie session, middleware redirect. Default pw: 'FrameLongevity2024!' — set CLINICIAN_PASSWORD in Vercel to change.
+11. ~~**Longitudinal biomarker trends**~~ ✅ Done — SVG sparklines, optimal zone band, improving/worsening/stable classification, labHistory[] store.
 
 ### 🟢 Good to have
 7. ~~**Frame Longevity clinician view**~~ ✅ Done 2026-04-28 — /clinician page, patient_overview DB view, completion rates, check-in status
@@ -276,3 +276,5 @@ All agents import from this library. To add a new biomarker, add it to `BIOMARKE
 | 2026-04-28 | PDF clinical report — /api/report, Claude narrative, biomarker table, download button |
 | 2026-04-28 | Lab upload refocus — real file picker in onboarding + labs tab, error handling, parsedLabPanel wired through |
 | 2026-04-28 | Clinical library — 40+ biomarkers, peer citations with PMIDs, evidence grades, liability disclaimer baked in |
+| 2026-04-28 | Auth gate — /clinician/login, httpOnly cookie, Next.js middleware, CLINICIAN_PASSWORD env var |
+| 2026-04-28 | Longitudinal trends — BiomarkerTrends SVG sparklines, optimal zone, direction classification |
