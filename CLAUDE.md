@@ -170,6 +170,10 @@ BP-Beta/
 5. ~~**Real wearable API connections**~~ ✅ Done 2026-04-28 — Oura + WHOOP OAuth2, token refresh, real 7-day data sync, /connect/success page
 6. ~~**Lab delta tracking**~~ ✅ Done 2026-04-28 — DeltaBadge on labs tab, previousValue stored, improved/worsened/stable classification
 
+### 🔴 Beta blockers (do before first Frame Longevity patient)
+10. **Simple auth gate on /clinician** — anyone with URL can see all patients. Need password or magic link before Frame patients are in the system.
+11. **Longitudinal biomarker charts** — when patient uploads 2nd panel, show trend line per biomarker across time. Core clinical value for repeat visits.
+
 ### 🟢 Good to have
 7. ~~**Frame Longevity clinician view**~~ ✅ Done 2026-04-28 — /clinician page, patient_overview DB view, completion rates, check-in status
 8. ~~**Push notifications**~~ ✅ Done 2026-04-28 — 8am check-in, 7pm action nudge, 9am Sunday summary, tap routing
@@ -232,10 +236,21 @@ Once done: patients persist across sessions, clinician dashboard at /clinician i
 
 ## Biomarker Coverage
 
-Currently supported with full clinical context (mechanism, ranges, interventions, goal relevance):
-`glucose`, `hba1c`, `totalCholesterol`, `ldl`, `hdl`, `triglycerides`, `hscrp`, `vitaminD`, `testosterone`, `cortisol`, `ferritin`, `tsh`
+**Clinical library:** `src/lib/clinicalLibrary.ts` — single source of truth for all biomarker metadata.
+All agents import from this library. To add a new biomarker, add it to `BIOMARKER_LIBRARY` in clinicalLibrary.ts only.
 
-Agents will handle any biomarker in a lab panel but only the above have deep clinical metadata. New biomarkers should be added to `BIOMARKER_META` in `src/app/api/chat/route.ts` and `BIOMARKER_ACTIONS` in `src/app/api/generate-actions/route.ts`.
+**40+ biomarkers with full clinical context, peer citations, and evidence grades:**
+- Metabolic: `glucose`, `hba1c`, `fastingInsulin`, `uricAcid`
+- Lipids: `ldl`, `hdl`, `triglycerides`, `totalCholesterol`, `apoB`, `lpa`
+- Inflammatory: `hscrp`, `homocysteine`
+- Hormones: `testosterone`, `freeTesto`, `shbg`, `estradiol`, `progesterone`, `dheas`, `cortisol`, `igf1`
+- Thyroid: `tsh`, `freeT3`, `reverseT3`, `tpoAntibodies`
+- Vitamins: `vitaminD`, `vitaminB12`, `folate`, `vitaminB6`, `ferritin`, `magnesium`, `zinc`, `omega3Index`
+- Liver: `alt`, `ast`
+- CBC: `hemoglobin`
+- Kidney: `creatinine`, `egfr`
+
+**Evidence standard:** Every intervention has Grade A/B/C, named citations with PMID, effect size, time-to-effect, contraindications.
 
 ---
 
@@ -260,3 +275,4 @@ Agents will handle any biomarker in a lab panel but only the above have deep cli
 | 2026-04-28 | Push notifications — morning/evening/weekly schedule, permission request, tap routing |
 | 2026-04-28 | PDF clinical report — /api/report, Claude narrative, biomarker table, download button |
 | 2026-04-28 | Lab upload refocus — real file picker in onboarding + labs tab, error handling, parsedLabPanel wired through |
+| 2026-04-28 | Clinical library — 40+ biomarkers, peer citations with PMIDs, evidence grades, liability disclaimer baked in |
