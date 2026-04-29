@@ -82,7 +82,8 @@ export const useHealthStore = create<HealthStore>()(
       deviceId: null,
 
       completeOnboarding: (profile: IntakeProfile, summaryMsg: string) => {
-        const panel   = buildLabPanel(DEMO_LAB_VALUES, profile);
+        // Use uploaded panel if patient uploaded during onboarding, else demo
+        const panel   = profile.parsedLabPanel ?? buildLabPanel(DEMO_LAB_VALUES, profile);
         const actions = generateActionsFromPanel(panel, profile);
 
         const welcomeMsg: ChatMessage = {

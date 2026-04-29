@@ -1,7 +1,8 @@
 import React, { useMemo, useState } from 'react';
+import * as DocumentPicker from 'expo-document-picker';
 import {
   View, Text, ScrollView, StyleSheet,
-  TouchableOpacity, Dimensions,
+  TouchableOpacity, Dimensions, ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -48,6 +49,17 @@ function DeltaBadge({ biomarker }: { biomarker: Biomarker }) {
 const db = StyleSheet.create({
   badge: { flexDirection: 'row', alignItems: 'center', gap: 3, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 8 },
   txt:   { fontSize: 10, fontWeight: '700' },
+});
+
+const up = StyleSheet.create({
+  btn: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: '#faf5ff', borderWidth: 1.5, borderColor: '#e9d5ff',
+    borderRadius: 12, paddingHorizontal: 16, paddingVertical: 12,
+    marginBottom: 16,
+  },
+  icon: { fontSize: 18 },
+  txt: { fontSize: 14, fontWeight: '600', color: '#7c3aed', flex: 1 },
 });
 
 // ─── Category filter config ──────────────────────────────────────────────────

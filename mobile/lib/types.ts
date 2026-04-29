@@ -92,6 +92,8 @@ export interface IntakeProfile {
     alcoholPerWeek?: string;      // e.g. '1-3/week'
   };
   labDataSource?: 'upload' | 'demo' | 'skip';
+  parsedLabPanel?: LabPanel;    // set when user uploads during onboarding
+  patientId?: string;           // set after Supabase sync
   wearableSource?: 'Apple Health' | 'Whoop' | 'Oura' | 'Garmin' | 'none';
   completedAt?: string; // ISO date
 }

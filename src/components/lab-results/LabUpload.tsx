@@ -76,14 +76,15 @@ export default function LabUpload() {
         body: formData,
       });
 
-      if (!res.ok) throw new Error("Parsing failed");
+      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error ?? "Parsing failed"); }
 
       const { panel } = await res.json();
       setLabPanel(panel);
       setState("success");
-    } catch {
-      // Graceful fallback: show success with mock data in dev
-      setState("success");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Parsing failed";
+      setErrorMsg(msg);
+      setState("error");
     }
   }
 
