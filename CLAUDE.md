@@ -22,7 +22,7 @@ You are the autonomous engineering agent for BioPrecision. Dan Bricker is the fo
 |---|---|
 | GitHub repo | `bricker-d/BP-Beta` |
 | Vercel project | `https://vercel.com/dan-brickers-projects/bp-beta` |
-| Vercel preview URL | `https://bp-beta-9fdp-git-main-dan-brickers-projects.vercel.app` |
+| Vercel production URL | `https://bp-beta-beta.vercel.app` |
 | Anthropic API key | Set in Vercel env vars as `ANTHROPIC_API_KEY` — get from Dan |
 | Supabase URL | `https://lrblvcixijbbfxiutgnp.supabase.co` |
 | Supabase anon key | `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxyYmx2Y2l4aWpiYmZ4aXV0Z25wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzczOTU0OTUsImV4cCI6MjA5Mjk3MTQ5NX0.WgBIwYNy16GF4_6pGP1lCURrV1AYAtvJasQlFL-r5IY` |
