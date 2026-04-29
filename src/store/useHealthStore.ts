@@ -24,6 +24,7 @@ interface HealthStore {
 
   // Lab data
   labPanel: LabPanel | null;
+  labHistory: LabPanel[];              // all panels in chronological order
   setLabPanel: (panel: LabPanel) => void;
 
   // Wearable
@@ -55,8 +56,16 @@ export const useHealthStore = create<HealthStore>((set, get) => ({
   setIntakeProfile: (profile) => set({ intakeProfile: profile }),
 
   labPanel: MOCK_PANEL,
+  labHistory: [],
   setLabPanel: async (panel) => {
-    set({ labPanel: panel, isGeneratingActions: true });
+    // Add to history (keep up to 24 panels — 6 years of quarterly)
+    set((state) => ({
+      labPanel: panel,
+      labHistory: [...state.labHistory.filter(p => p.date !== panel.date), panel]
+        .sort((a, b) => new Date(a.date ?? 0).getTime() - new Date(b.date ?? 0).getTime())
+        .slice(-24),
+      isGeneratingActions: true,
+    }));
 
     try {
       const state = get();

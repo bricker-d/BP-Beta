@@ -5,12 +5,13 @@ import { useHealthStore } from "@/store/useHealthStore";
 import Header from "@/components/layout/Header";
 import LabUpload from "@/components/lab-results/LabUpload";
 import BiomarkerList from "@/components/lab-results/BiomarkerList";
-import { formatDate } from "@/lib/utils";
+import BiomarkerTrends from "@/components/lab-results/BiomarkerTrends";
+import { formatDate, cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 
 export default function LabResultsPage() {
-  const { labPanel, actions, intakeProfile } = useHealthStore();
-  const [view, setView] = useState<"upload" | "results">("results");
+  const { labPanel, labHistory, actions, intakeProfile } = useHealthStore();
+  const [view, setView] = useState<"upload" | "results" | "trends">("results");
   const [generatingReport, setGeneratingReport] = useState(false);
   const router = useRouter();
 
@@ -79,6 +80,19 @@ export default function LabResultsPage() {
           >
             Current Results
           </button>
+          {labHistory && labHistory.length >= 2 && (
+            <button
+              onClick={() => setView("trends")}
+              className={cn(
+                "px-4 py-2 rounded-xl text-[13px] font-semibold transition-all",
+                view === "trends"
+                  ? "bg-purple-600 text-white"
+                  : "bg-gray-100 text-text-secondary"
+              )}
+            >
+              Trends ({labHistory.length} panels)
+            </button>
+          )}
           <button
             onClick={() => setView("upload")}
             className={`flex-1 py-2 rounded-lg text-[13px] font-semibold transition-all ${
@@ -122,7 +136,9 @@ export default function LabResultsPage() {
             )}
 
             {/* Biomarker list */}
-            {labPanel ? (
+            {view === "trends" && labHistory && labHistory.length >= 2 ? (
+              <BiomarkerTrends labHistory={labHistory} />
+            ) : labPanel ? (
               <BiomarkerList biomarkers={labPanel.biomarkers} />
             ) : (
               <div className="text-center py-12">
