@@ -53,6 +53,8 @@ An AI health intelligence platform that takes panel biomarkers and gives users d
 
 **Differentiator vs WHOOP:** WHOOP = wearable signals → recovery scores. BioPrecision = lab biomarkers → clinical protocol actions. WHOOP has no longitudinal lab accountability loop — that's the white space.
 
+**Primary input is lab upload.** Wearables are supplementary context, not required. The entire product works and delivers clinical value from a PDF upload alone.
+
 **What "done well" looks like:**
 - Lab → protocol output: something Dan would hand to a Frame Longevity patient without editing
 - Daily actions: specific, mechanism-cited, effect-size quantified, tied to actual values (not generic)
@@ -257,3 +259,4 @@ Agents will handle any biomarker in a lab panel but only the above have deep cli
 | 2026-04-28 | Wearable OAuth2 — Oura + WHOOP full auth flow, real data sync, token refresh, /connect/success |
 | 2026-04-28 | Push notifications — morning/evening/weekly schedule, permission request, tap routing |
 | 2026-04-28 | PDF clinical report — /api/report, Claude narrative, biomarker table, download button |
+| 2026-04-28 | Lab upload refocus — real file picker in onboarding + labs tab, error handling, parsedLabPanel wired through |
