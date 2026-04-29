@@ -13,7 +13,7 @@ import { useHealthStore } from '../../lib/store';
 import { BIOMARKER_REFS } from '../../lib/biomarkers';
 import type { ChatMessage } from '../../lib/types';
 
-const API_URL = 'https://bp-beta-9fdp-git-main-dan-brickers-projects.vercel.app/api/chat';
+const API_URL = 'https://bp-beta-beta.vercel.app/api/chat';
 const PURPLE  = '#9333ea';
 
 // ── SSE streaming helper ──────────────────────────────────────────────────────

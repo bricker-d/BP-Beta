@@ -17,7 +17,7 @@ export async function GET(req: Request) {
     );
   }
 
-  const BASE = process.env.NEXT_PUBLIC_APP_URL ?? "https://bp-beta-9fdp-git-main-dan-brickers-projects.vercel.app";
+  const BASE = process.env.NEXT_PUBLIC_APP_URL ?? "https://bp-beta-beta.vercel.app";
   const redirectUri = `${BASE}/api/wearables/oura/callback`;
 
   // State encodes patientId + returnTo for callback

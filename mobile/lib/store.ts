@@ -11,7 +11,7 @@ import type { HealthAction, ChatMessage, LabPanel, WearableData, DailyLog } from
 import type { IntakeProfile } from './types';
 
 // ── Config ────────────────────────────────────────────────────────────────────
-const API_BASE = 'https://bp-beta-9fdp-git-main-dan-brickers-projects.vercel.app';
+const API_BASE = 'https://bp-beta-beta.vercel.app';
 
 // ── Store interface ───────────────────────────────────────────────────────────
 interface HealthStore {

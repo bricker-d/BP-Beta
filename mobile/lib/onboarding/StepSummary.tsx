@@ -10,7 +10,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { IntakeProfile } from '../types';
 
-const API_URL = 'https://bp-beta-9fdp-git-main-dan-brickers-projects.vercel.app/api/chat';
+const API_URL = 'https://bp-beta-beta.vercel.app/api/chat';
 
 interface Props {
   profile: Partial<IntakeProfile>;

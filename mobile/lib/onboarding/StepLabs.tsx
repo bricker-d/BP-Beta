@@ -9,7 +9,7 @@ import type { StepProps } from './types';
 
 type LabSource = 'upload' | 'demo' | 'skip';
 
-const API_BASE = 'https://bp-beta-9fdp-git-main-dan-brickers-projects.vercel.app';
+const API_BASE = 'https://bp-beta-beta.vercel.app';
 
 const LAB_PROVIDERS = [
   'Quest Diagnostics', 'LabCorp', 'Rupa Health',

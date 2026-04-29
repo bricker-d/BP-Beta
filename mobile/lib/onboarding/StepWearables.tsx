@@ -7,7 +7,7 @@ import type { StepProps } from './types';
 
 type WearableSource = 'Apple Health' | 'Whoop' | 'Oura' | 'Garmin' | 'none';
 
-const API_BASE = 'https://bp-beta-9fdp-git-main-dan-brickers-projects.vercel.app';
+const API_BASE = 'https://bp-beta-beta.vercel.app';
 
 const DEVICES: {
   value: WearableSource;

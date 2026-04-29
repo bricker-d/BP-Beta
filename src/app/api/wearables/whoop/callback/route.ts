@@ -19,7 +19,7 @@ export async function GET(req: Request) {
 
   const clientId = process.env.WHOOP_CLIENT_ID!;
   const clientSecret = process.env.WHOOP_CLIENT_SECRET!;
-  const BASE = process.env.NEXT_PUBLIC_APP_URL ?? "https://bp-beta-9fdp-git-main-dan-brickers-projects.vercel.app";
+  const BASE = process.env.NEXT_PUBLIC_APP_URL ?? "https://bp-beta-beta.vercel.app";
   const redirectUri = `${BASE}/api/wearables/whoop/callback`;
 
   const tokenRes = await fetch("https://api.prod.whoop.com/oauth/oauth2/token", {

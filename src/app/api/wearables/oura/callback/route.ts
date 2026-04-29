@@ -30,7 +30,7 @@ export async function GET(req: Request) {
 
   const clientId = process.env.OURA_CLIENT_ID!;
   const clientSecret = process.env.OURA_CLIENT_SECRET!;
-  const BASE = process.env.NEXT_PUBLIC_APP_URL ?? "https://bp-beta-9fdp-git-main-dan-brickers-projects.vercel.app";
+  const BASE = process.env.NEXT_PUBLIC_APP_URL ?? "https://bp-beta-beta.vercel.app";
   const redirectUri = `${BASE}/api/wearables/oura/callback`;
 
   // Exchange code for tokens
@@ -71,6 +71,6 @@ export async function GET(req: Request) {
   }
 
   // Show success page (mobile deep link won't work from server redirect in all cases)
-  const BASE_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://bp-beta-9fdp-git-main-dan-brickers-projects.vercel.app";
+  const BASE_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://bp-beta-beta.vercel.app";
   return Response.redirect(`${BASE_URL}/connect/success?provider=oura&patientId=${patientId}`);
 }
