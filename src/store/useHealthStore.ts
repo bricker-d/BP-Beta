@@ -55,7 +55,7 @@ export const useHealthStore = create<HealthStore>((set, get) => ({
   intakeProfile: null,
   setIntakeProfile: (profile) => set({ intakeProfile: profile }),
 
-  labPanel: MOCK_PANEL,
+  labPanel: null,
   labHistory: [],
   setLabPanel: async (panel) => {
     // Add to history (keep up to 24 panels — 6 years of quarterly)
@@ -88,16 +88,16 @@ export const useHealthStore = create<HealthStore>((set, get) => ({
         }
       }
     } catch (err) {
-      console.error("Action generation failed, falling back to mock:", err);
+      console.error("Action generation failed:", err);
     }
 
-    set({ actions: MOCK_ACTIONS, isGeneratingActions: false });
+    set({ isGeneratingActions: false });
   },
 
-  wearableData: MOCK_WEARABLE,
+  wearableData: null,
   setWearableData: (data) => set({ wearableData: data }),
 
-  actions: MOCK_ACTIONS,
+  actions: [],
   setActions: (actions) => set({ actions }),
   isGeneratingActions: false,
   toggleAction: (id) =>
@@ -107,15 +107,7 @@ export const useHealthStore = create<HealthStore>((set, get) => ({
       ),
     })),
 
-  messages: [
-    {
-      id: "welcome",
-      role: "assistant",
-      content:
-        "I've reviewed your lab results and identified **6 biomarkers** that need attention.\n\nYour **Fasting Glucose** is currently 102 mg/dL (elevated). This is your biggest constraint right now, so I've prioritized actions to address it.\n\nI'm here 24/7 to answer questions, explain your results, and adjust your plan based on real-time data. What would you like to know?",
-      timestamp: "2025-01-18T09:00:00.000Z",
-    },
-  ],
+  messages: [],
   addMessage: (msg) =>
     set((state) => ({ messages: [...state.messages, msg] })),
   clearMessages: () => set({ messages: [] }),

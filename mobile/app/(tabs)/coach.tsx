@@ -11,7 +11,7 @@ import {
 } from 'lucide-react-native';
 import { useHealthStore } from '../../lib/store';
 import { BIOMARKER_REFS } from '../../lib/biomarkers';
-import type { ChatMessage } from '../../lib/types';
+import type { ChatMessage, LabPanel, IntakeProfile } from '../../lib/types';
 
 const API_URL = 'https://bp-beta-beta.vercel.app/api/chat';
 const PURPLE  = '#9333ea';
@@ -32,25 +32,6 @@ async function streamChat(
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ messages, labPanel, wearableData, intakeProfile }),
     });
-
-const wk = StyleSheet.create({
-  banner: {
-    backgroundColor: '#faf5ff',
-    borderWidth: 1,
-    borderColor: '#e9d5ff',
-    borderRadius: 14,
-    padding: 14,
-    marginHorizontal: 12,
-    marginTop: 8,
-    marginBottom: 4,
-  },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-  headerTxt: { fontSize: 13, fontWeight: '700', color: '#6b21a8' },
-  dismiss: { fontSize: 14, color: '#9ca3af', fontWeight: '600' },
-  loading: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  loadingTxt: { fontSize: 13, color: '#9333ea' },
-  body: { fontSize: 13, color: '#374151', lineHeight: 20 },
-});
 
     if (!res.ok || !res.body) {
       onError('Server error. Please try again.');
@@ -90,8 +71,8 @@ const wk = StyleSheet.create({
 
 // ── Generate dynamic starter prompts from real data ───────────────────────────
 function buildStarterPrompts(
-  labPanel:      ReturnType<typeof useHealthStore>['labPanel'],
-  intakeProfile: ReturnType<typeof useHealthStore>['intakeProfile']
+  labPanel:      LabPanel | null,
+  intakeProfile: IntakeProfile | null
 ): { label: string; prompt: string; icon: string }[] {
   const prompts: { label: string; prompt: string; icon: string }[] = [];
 
@@ -235,10 +216,27 @@ export default function CoachScreen() {
     labPanel, intakeProfile, wearableData,
   } = useHealthStore();
 
-  const [input,     setInput]     = useState('');
-  const [streaming, setStreaming] = useState(false);
+  const [input,          setInput]          = useState('');
+  const [streaming,      setStreaming]      = useState(false);
+  const [weeklySummary,  setWeeklySummary]  = useState<string | null>(null);
+  const [loadingWeekly,  setLoadingWeekly]  = useState(false);
   const listRef = useRef<FlatList>(null);
   const streamingIdRef = useRef<string | null>(null);
+
+  // Load weekly summary on Sundays
+  useEffect(() => {
+    if (new Date().getDay() !== 0 || !labPanel) return;
+    setLoadingWeekly(true);
+    fetch('https://bp-beta-beta.vercel.app/api/weekly-summary', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ labPanel, intakeProfile }),
+    })
+      .then(r => r.json())
+      .then(d => { if (d.summary) setWeeklySummary(d.summary); })
+      .catch(() => {})
+      .finally(() => setLoadingWeekly(false));
+  }, []);
 
   const firstName    = intakeProfile?.name?.split(' ')[0] ?? null;
   const hasMessages  = messages.length > 0;
@@ -410,9 +408,9 @@ export default function CoachScreen() {
         {!hasMessages ? (
           renderEmpty()
         ) : (
-  
-        {/* Weekly summary banner (Sundays) */}
-        {(weeklySummary || loadingWeekly) && (
+          <>
+          {/* Weekly summary banner (Sundays) */}
+          {(weeklySummary || loadingWeekly) && (
           <View style={wk.banner}>
             <View style={wk.header}>
               <Text style={wk.headerTxt}>📊 Weekly Progress Summary</Text>
@@ -444,6 +442,7 @@ export default function CoachScreen() {
               />
             )}
           />
+          </>
         )}
 
         {/* Suggest follow-ups after responses */}
@@ -565,4 +564,15 @@ const sc = StyleSheet.create({
   card:  { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#fff', borderRadius: 12, padding: 14, borderWidth: 1.5, borderColor: '#e5e7eb', shadowColor: '#000', shadowOpacity: 0.03, shadowRadius: 4, elevation: 1 },
   icon:  { fontSize: 18 },
   label: { flex: 1, fontSize: 13, fontWeight: '600', color: '#374151', lineHeight: 18 },
+});
+
+// ── Weekly summary banner styles ──────────────────────────────────────────────
+const wk = StyleSheet.create({
+  banner:     { backgroundColor: '#faf5ff', borderWidth: 1, borderColor: '#e9d5ff', borderRadius: 14, padding: 14, marginHorizontal: 12, marginTop: 8, marginBottom: 4 },
+  header:     { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+  headerTxt:  { fontSize: 13, fontWeight: '700', color: '#6b21a8' },
+  dismiss:    { fontSize: 14, color: '#9ca3af', fontWeight: '600' },
+  loading:    { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  loadingTxt: { fontSize: 13, color: '#9333ea' },
+  body:       { fontSize: 13, color: '#374151', lineHeight: 20 },
 });

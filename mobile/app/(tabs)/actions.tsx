@@ -135,7 +135,7 @@ export default function ActionsScreen() {
           <Text style={s.emptyBody}>
             Complete onboarding with your lab results to get personalised recommendations.
           </Text>
-          <TouchableOpacity style={s.emptyBtn} onPress={() => router.push('/onboarding')}>
+          <TouchableOpacity style={s.emptyBtn} onPress={() => router.push('/(onboarding)')}>
             <Text style={s.emptyBtnTxt}>Start Onboarding</Text>
           </TouchableOpacity>
         </View>

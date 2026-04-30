@@ -81,7 +81,7 @@ export default function CoachPage() {
             if (data === "[DONE]") break;
             try {
               const parsed = JSON.parse(data);
-              const delta = parsed.choices?.[0]?.delta?.content ?? "";
+              const delta = parsed.text ?? parsed.choices?.[0]?.delta?.content ?? "";
               if (delta) {
                 accumulated += delta;
                 // Update last message

@@ -1,3 +1,4 @@
+import React from 'react';
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import { Platform } from 'react-native';
@@ -8,6 +9,8 @@ Notifications.setNotificationHandler({
     shouldShowAlert: true,
     shouldPlaySound: false,
     shouldSetBadge: true,
+    shouldShowBanner: true,
+    shouldShowList: true,
   }),
 });
 
@@ -108,8 +111,9 @@ export async function cancelAllNotifications(): Promise<void> {
 export function useNotificationNavigation(
   onNavigate: (screen: string) => void
 ) {
-  Notifications.useLastNotificationResponse((response) => {
+  const response = Notifications.useLastNotificationResponse();
+  React.useEffect(() => {
     const screen = response?.notification?.request?.content?.data?.screen as string;
     if (screen) onNavigate(screen);
-  });
+  }, [response]);
 }

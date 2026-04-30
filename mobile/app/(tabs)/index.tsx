@@ -49,7 +49,7 @@ function BiomarkerMini({ b, goals, symptoms }: { b: Biomarker; goals: string[]; 
   const cfg = STATUS_CFG[b.status] ?? STATUS_CFG.optimal;
   const StatusIcon = cfg.icon;
   const ref = BIOMARKER_REFS[b.id];
-  const score = biomarkerPriorityScore(b, goals, symptoms);
+  const score = biomarkerPriorityScore(b, { goals, symptoms });
   const priority = score >= 15 ? 'high' : score >= 8 ? 'watch' : 'monitor';
   const priorityColor = priority === 'high' ? '#dc2626' : priority === 'watch' ? '#d97706' : '#16a34a';
 
@@ -105,7 +105,7 @@ export default function HomeScreen() {
 
   // Health score
   const score = useMemo(() => {
-    if (labPanel) return computeHealthScore(labPanel);
+    if (labPanel) return computeHealthScore(labPanel, intakeProfile);
     return null;
   }, [labPanel]);
 
@@ -115,7 +115,7 @@ export default function HomeScreen() {
     const goals    = intakeProfile?.goals    ?? [];
     const symptoms = intakeProfile?.symptoms ?? [];
     return [...labPanel.biomarkers]
-      .sort((a, b) => biomarkerPriorityScore(b, goals, symptoms) - biomarkerPriorityScore(a, goals, symptoms))
+      .sort((a, b) => biomarkerPriorityScore(b, intakeProfile) - biomarkerPriorityScore(a, intakeProfile))
       .slice(0, 6);
   }, [labPanel, intakeProfile]);
 
@@ -145,7 +145,7 @@ export default function HomeScreen() {
           <Text style={s.emptyBody}>
             Complete onboarding and connect your lab results to unlock your personalised health dashboard.
           </Text>
-          <TouchableOpacity style={s.emptyBtn} onPress={() => router.push('/onboarding')}>
+          <TouchableOpacity style={s.emptyBtn} onPress={() => router.push('/(onboarding)')}>
             <Zap color="#fff" size={16} />
             <Text style={s.emptyBtnTxt}>Get Started</Text>
           </TouchableOpacity>

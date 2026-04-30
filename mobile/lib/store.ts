@@ -83,7 +83,7 @@ export const useHealthStore = create<HealthStore>()(
 
       completeOnboarding: (profile: IntakeProfile, summaryMsg: string) => {
         // Use uploaded panel if patient uploaded during onboarding, else demo
-        const panel   = profile.parsedLabPanel ?? buildLabPanel(DEMO_LAB_VALUES, profile);
+        const panel   = profile.parsedLabPanel ?? buildLabPanel(DEMO_LAB_VALUES, profile, 'Demo Data');
         const actions = generateActionsFromPanel(panel, profile);
 
         const welcomeMsg: ChatMessage = {
@@ -170,7 +170,7 @@ export const useHealthStore = create<HealthStore>()(
           };
         }
         const { intakeProfile } = get();
-        const actions = generateActionsFromPanel(panel, intakeProfile ?? undefined);
+        const actions = generateActionsFromPanel(panel, intakeProfile ?? null);
         const completedIds = new Set(
           get().actions.filter(a => a.completed).map(a => a.id)
         );
@@ -183,7 +183,26 @@ export const useHealthStore = create<HealthStore>()(
 
       // ── Wearable data ───────────────────────────────────────────────────
       wearableData: null,
+      wearableProvider: null,
+      wearableConnected: false,
       setWearableData: (data: WearableData) => set({ wearableData: data }),
+      markWearableConnected: (provider: string) => set({ wearableProvider: provider, wearableConnected: true }),
+      syncWearable: async () => {
+        const { wearableProvider, patientId } = get();
+        if (!wearableProvider || !patientId) return;
+        try {
+          const res = await fetch(`${API_BASE}/api/wearables/${wearableProvider}/sync`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ patientId }),
+          });
+          if (!res.ok) return;
+          const data = await res.json();
+          if (data.wearableData) set({ wearableData: data.wearableData });
+        } catch {
+          // Fail silently
+        }
+      },
 
       // ── Actions ─────────────────────────────────────────────────────────
       actions: [],
@@ -198,7 +217,7 @@ export const useHealthStore = create<HealthStore>()(
       refreshActions: () => {
         const { labPanel, intakeProfile } = get();
         if (!labPanel) return;
-        const actions = generateActionsFromPanel(labPanel, intakeProfile ?? undefined);
+        const actions = generateActionsFromPanel(labPanel, intakeProfile ?? null);
         const completedIds = new Set(
           get().actions.filter(a => a.completed).map(a => a.id)
         );
