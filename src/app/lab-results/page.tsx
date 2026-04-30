@@ -64,7 +64,7 @@ export default function LabResultsPage() {
             disabled={generatingReport}
             className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl border border-purple-200 bg-purple-50 text-purple-700 font-semibold text-sm disabled:opacity-50"
           >
-            {generatingReport ? "Generating report..." : "📄 Download Clinical Report"}
+            {generatingReport ? "Generating report..." : "Download Clinical Report"}
           </button>
         )}
 
