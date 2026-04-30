@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useHealthStore } from "@/store/useHealthStore";
 import Header from "@/components/layout/Header";
 import LabUpload from "@/components/lab-results/LabUpload";
@@ -19,10 +19,13 @@ export default function LabResultsPage() {
   const [generatingReport, setGeneratingReport] = useState(false);
   const router = useRouter();
 
-  // Auto-switch to results view once labs are parsed (e.g. after upload flow)
+  // Only auto-switch to results when a NEW panel is uploaded (not on mount)
+  const mountedPanelId = useRef(labPanel?.id ?? null);
   useEffect(() => {
-    if (labPanel && view === "upload") setView("results");
-  }, [labPanel]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (labPanel && labPanel.id !== mountedPanelId.current) {
+      setView("results");
+    }
+  }, [labPanel]);
 
   async function downloadReport() {
     if (!labPanel) return;
