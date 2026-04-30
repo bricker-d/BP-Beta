@@ -66,7 +66,7 @@ export default function OnboardingPage() {
     };
     setIntakeProfile(profile);
     setUser({ name, avatarInitials: name.slice(0, 2).toUpperCase() });
-    router.push(choice === "upload" ? "/lab-results" : "/");
+    router.push(choice === "upload" ? "/lab-results?upload=1" : "/");
   }
 
   return (

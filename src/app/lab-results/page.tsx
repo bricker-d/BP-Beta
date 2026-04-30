@@ -1,19 +1,28 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useHealthStore } from "@/store/useHealthStore";
 import Header from "@/components/layout/Header";
 import LabUpload from "@/components/lab-results/LabUpload";
 import BiomarkerList from "@/components/lab-results/BiomarkerList";
 import BiomarkerTrends from "@/components/lab-results/BiomarkerTrends";
 import { formatDate, cn } from "@/lib/utils";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 export default function LabResultsPage() {
   const { labPanel, labHistory, actions, intakeProfile } = useHealthStore();
-  const [view, setView] = useState<"upload" | "results" | "trends">("results");
+  const searchParams = useSearchParams();
+  const forceUpload = searchParams.get("upload") === "1";
+  const [view, setView] = useState<"upload" | "results" | "trends">(
+    forceUpload || !labPanel ? "upload" : "results"
+  );
   const [generatingReport, setGeneratingReport] = useState(false);
   const router = useRouter();
+
+  // Auto-switch to results view once labs are parsed (e.g. after upload flow)
+  useEffect(() => {
+    if (labPanel && view === "upload") setView("results");
+  }, [labPanel]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function downloadReport() {
     if (!labPanel) return;
