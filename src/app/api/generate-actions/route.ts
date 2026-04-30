@@ -130,7 +130,7 @@ Return ONLY valid JSON array of 5 objects — no markdown:
     });
 
     const raw = response.content[0].type === "text" ? response.content[0].text : "[]";
-    const jsonMatch = raw.match(/\[\s\S]*\]/);
+    const jsonMatch = raw.match(/\[[\s\S]*\]/);
     if (!jsonMatch) return Response.json({ error: "Failed to generate actions" }, { status: 500 });
     const actions = JSON.parse(jsonMatch[0]);
     return Response.json({ actions, disclaimer: CLINICAL_DISCLAIMER, biomarkersAddressed: outOfRange.map(b => b.name) });

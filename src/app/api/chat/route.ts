@@ -236,7 +236,7 @@ When asked about their plan or what to do next, refer to these specific actions 
     }
 
     const stream = await getClient().messages.stream({
-      model: "claude-opus-4-5",
+      model: "claude-sonnet-4-6",
       max_tokens: 2048,
       system: systemPrompt,
       messages: messages.map((m: { role: string; content: string }) => ({
