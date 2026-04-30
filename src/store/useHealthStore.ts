@@ -3,6 +3,7 @@ import { persist, createJSONStorage } from "zustand/middleware";
 import { LabPanel, WearableData, HealthAction, ChatMessage, UserProfile } from "@/lib/types";
 
 interface IntakeProfile {
+  // Core
   name?: string;
   goals?: string[];
   age?: number;
@@ -10,9 +11,31 @@ interface IntakeProfile {
   heightFt?: number;
   heightIn?: number;
   weightLbs?: number;
+  // Why they're here
+  painPoint?: string;
+  timeHorizon?: string;
+  // Medical context
+  medications?: string[];
+  familyHistory?: string[];
+  // Habits baseline
+  sleepHours?: number;
+  exerciseDaysPerWeek?: number;
+  exerciseType?: string;
+  dietStyle?: string;
+  stressLevel?: number;
+  alcoholFrequency?: string;
+  currentSupplements?: string[];
+  // Symptoms
   symptoms?: string[];
   symptomsOther?: string;
+  // Accountability preferences
+  notificationStyle?: string;
+  checkInTime?: string;
+  eveningReminderTime?: string;
+  // Wearable
   wearableSource?: string;
+  // AI-generated summary (set after intake-summary API call)
+  intakeSummary?: string;
 }
 
 interface HealthStore {
@@ -74,6 +97,16 @@ export const useHealthStore = create<HealthStore>()(
               goals: state.intakeProfile?.goals,
               biologicalSex: state.intakeProfile?.biologicalSex,
               patientName: state.intakeProfile?.name || state.user.name,
+              habits: {
+                sleepHours:          state.intakeProfile?.sleepHours,
+                exerciseDaysPerWeek: state.intakeProfile?.exerciseDaysPerWeek,
+                exerciseType:        state.intakeProfile?.exerciseType,
+                dietStyle:           state.intakeProfile?.dietStyle,
+                stressLevel:         state.intakeProfile?.stressLevel,
+                alcoholFrequency:    state.intakeProfile?.alcoholFrequency,
+              },
+              medications: state.intakeProfile?.medications,
+              timeHorizon: state.intakeProfile?.timeHorizon,
             }),
           });
 

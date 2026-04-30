@@ -24,9 +24,22 @@ interface IntakeProfile {
   heightFt?: number;
   heightIn?: number;
   weightLbs?: number;
+  painPoint?: string;
+  timeHorizon?: string;
+  medications?: string[];
+  familyHistory?: string[];
+  sleepHours?: number;
+  exerciseDaysPerWeek?: number;
+  exerciseType?: string;
+  dietStyle?: string;
+  stressLevel?: number;
+  alcoholFrequency?: string;
+  currentSupplements?: string[];
   symptoms?: string[];
   symptomsOther?: string;
+  notificationStyle?: string;
   wearableSource?: string;
+  intakeSummary?: string;
 }
 
 // ── Biomarker reference data (mirrors mobile/lib/biomarkers.ts) ──────────────
@@ -74,29 +87,44 @@ Your role: interpret biomarker lab results and lifestyle data to deliver evidenc
 
   // ── 2. PATIENT PROFILE ────────────────────────────────────────────────────
   if (intakeProfile) {
-    const age    = intakeProfile.age    ? `${intakeProfile.age} years old` : "age not specified";
-    const sex    = intakeProfile.biologicalSex ?? "sex not specified";
-    const goals  = intakeProfile.goals?.join(", ") ?? "none specified";
-    const bmi    = computeBMI(intakeProfile);
-    const height = intakeProfile.heightFt
-      ? `${intakeProfile.heightFt}'${intakeProfile.heightIn ?? 0}"`
-      : "";
-    const weight  = intakeProfile.weightLbs ? `${intakeProfile.weightLbs} lbs` : "";
-    const symptoms = intakeProfile.symptoms
-      ?.filter(s => s !== "none")
-      .join(", ") ?? "none";
-    const symptomsExtra = intakeProfile.symptomsOther ?? "";
+    const age      = intakeProfile.age ? `${intakeProfile.age} years old` : "age not specified";
+    const sex      = intakeProfile.biologicalSex ?? "sex not specified";
+    const goals    = intakeProfile.goals?.join(", ") ?? "none specified";
+    const bmi      = computeBMI(intakeProfile);
+    const height   = intakeProfile.heightFt ? `${intakeProfile.heightFt}'${intakeProfile.heightIn ?? 0}"` : "";
+    const weight   = intakeProfile.weightLbs ? `${intakeProfile.weightLbs} lbs` : "";
+    const symptoms = intakeProfile.symptoms?.join(", ") ?? "none reported";
     const wearable = intakeProfile.wearableSource ?? "none";
+    const meds     = intakeProfile.medications?.join(", ") || "none";
+    const family   = intakeProfile.familyHistory?.join(", ") || "none noted";
+
+    const habitLines = [
+      intakeProfile.sleepHours        ? `Sleep: ${intakeProfile.sleepHours} hrs/night` : null,
+      intakeProfile.exerciseDaysPerWeek ? `Exercise: ${intakeProfile.exerciseDaysPerWeek} days/week${intakeProfile.exerciseType ? ` (${intakeProfile.exerciseType})` : ""}` : null,
+      intakeProfile.dietStyle         ? `Diet: ${intakeProfile.dietStyle}` : null,
+      intakeProfile.stressLevel       ? `Stress: ${intakeProfile.stressLevel}/5` : null,
+      intakeProfile.alcoholFrequency  ? `Alcohol: ${intakeProfile.alcoholFrequency}` : null,
+    ].filter(Boolean).join(" | ");
 
     prompt += `
 ## Patient Profile
 - Name: ${patientName}
 - Age/Sex: ${age}, ${sex}
-- Body: ${height} ${weight} ${bmi ? "— " + bmi : ""}
-- Health goals: ${goals}
-- Reported symptoms: ${symptoms}${symptomsExtra ? " (additional: " + symptomsExtra + ")" : ""}
+- Body: ${height} ${weight}${bmi ? " — " + bmi : ""}
+- Primary goal: ${goals}
+- Why they're here: ${intakeProfile.painPoint ?? "not specified"}
+- Time horizon: ${intakeProfile.timeHorizon ?? "not specified"}
+- Reported symptoms: ${symptoms}
+- Habits baseline: ${habitLines || "not provided"}
+- Medications: ${meds}
+- Family history: ${family}
 - Wearable device: ${wearable}
+- Coaching style preference: ${intakeProfile.notificationStyle ?? "direct"}
 `;
+
+    if (intakeProfile.intakeSummary) {
+      prompt += `- Initial assessment: "${intakeProfile.intakeSummary}"\n`;
+    }
   }
 
   // ── 3. LAB RESULTS — FULL CLINICAL CONTEXT ───────────────────────────────
