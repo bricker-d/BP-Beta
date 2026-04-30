@@ -49,6 +49,11 @@ export interface HealthAction {
   why: string;
   completed: boolean;
   targetBiomarkers: string[]; // biomarker IDs this action addresses
+  biomarkerTarget?: string;   // human-readable, e.g. "Testosterone: 516 → 600–900 ng/dL"
+  evidenceGrade?: string;
+  effectSize?: string;
+  timeToEffect?: string;
+  citations?: string[];
 }
 
 // ─── Chat ──────────────────────────────────────────────────────────────────────
