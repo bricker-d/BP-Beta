@@ -97,7 +97,7 @@ export default function DashboardPage() {
   const topAction = actions.find(a => !a.completed);
 
   return (
-    <div className="page-content min-h-screen" style={{ background: "var(--bg)" }}>
+    <div className="page-content page-enter min-h-screen" style={{ background: "var(--bg)" }}>
       <div className="px-5 pt-12 pb-6 space-y-5">
 
         {/* Header row */}

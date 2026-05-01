@@ -19,7 +19,7 @@ interface IntakeProfile {
   familyHistory?: string[];
   // Habits baseline
   sleepHours?: number;
-  exerciseDaysPerWeek?: number;
+  exerciseDaysPerWeek?: string;
   exerciseType?: string;
   dietStyle?: string;
   stressLevel?: number;

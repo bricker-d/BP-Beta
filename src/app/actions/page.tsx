@@ -9,7 +9,7 @@ export default function ActionsPage() {
   const completed = actions.filter((a) => a.completed).length;
 
   return (
-    <div className="page-content bg-background min-h-screen">
+    <div className="page-content page-enter bg-background min-h-screen">
       <Header />
 
       <div className="px-5 pt-5 space-y-4">

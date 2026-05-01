@@ -155,6 +155,7 @@ export default function OnboardingPage() {
   const [eveningTime,         setEveningTime]         = useState("7:00 pm");
 
   // AI summary
+  const [labChoice,           setLabChoice]           = useState<"upload" | "skip">("skip");
   const [summaryText,         setSummaryText]         = useState("");
   const [summaryLoading,      setSummaryLoading]      = useState(false);
 
@@ -226,7 +227,7 @@ export default function OnboardingPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: "var(--bg)" }}>
+    <div className="min-h-screen flex flex-col page-enter" style={{ background: "var(--bg)" }}>
 
       {/* Progress bar */}
       {step !== "welcome" && (
@@ -670,7 +671,7 @@ export default function OnboardingPage() {
               </p>
             </div>
             <div className="flex-1 flex flex-col gap-3">
-              <button onClick={() => next()} className="btn-primary" style={{ paddingTop: 16, paddingBottom: 16 }}>
+              <button onClick={() => { setLabChoice("upload"); next(); }} className="btn-primary" style={{ paddingTop: 16, paddingBottom: 16 }}>
                 Upload my labs
               </button>
               <div className="card px-4 py-4 space-y-3">
@@ -688,7 +689,7 @@ export default function OnboardingPage() {
                   </div>
                 ))}
               </div>
-              <button onClick={() => next()} className="btn-ghost">I will add labs later</button>
+              <button onClick={() => { setLabChoice("skip"); next(); }} className="btn-ghost">I will add labs later</button>
             </div>
           </div>
         )}
@@ -744,12 +745,14 @@ export default function OnboardingPage() {
             </div>
             {!summaryLoading && (
               <div className="space-y-3 pt-4">
-                <button className="btn-primary" onClick={() => finish("upload")}>
-                  Upload my labs <ChevronRight size={16} />
+                <button className="btn-primary" onClick={() => finish(labChoice)}>
+                  {labChoice === "upload" ? "Upload my labs" : "Go to my dashboard"} <ChevronRight size={16} />
                 </button>
-                <button className="btn-ghost" onClick={() => finish("skip")}>
-                  Go to dashboard first
-                </button>
+                {labChoice === "upload" && (
+                  <button className="btn-ghost" onClick={() => finish("skip")}>
+                    Skip for now
+                  </button>
+                )}
               </div>
             )}
           </div>
