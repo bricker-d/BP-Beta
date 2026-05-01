@@ -99,21 +99,21 @@ body {
 /* ── Page transitions ──────────────────────────────────────────────────────── */
 
 @keyframes page-in {
-  from { opacity: 0; transform: translateY(14px); }
+  from { opacity: 0; transform: translateY(10px); }
   to   { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes step-in {
-  from { opacity: 0; transform: translateX(18px); }
+  from { opacity: 0; transform: translateX(10px); }
   to   { opacity: 1; transform: translateX(0); }
 }
 
 .page-enter {
-  animation: page-in 0.28s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: page-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .step-enter {
-  animation: step-in 0.22s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: step-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 /* ── Legacy compat ─────────────────────────────────────────────────────────── */

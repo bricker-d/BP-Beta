@@ -64,6 +64,9 @@ interface HealthStore {
   isProcessingUpload: boolean;
   uploadProgress: number;
   setUploadState: (processing: boolean, progress?: number) => void;
+
+  tutorialDismissed: boolean;
+  dismissTutorial: () => void;
 }
 
 export const useHealthStore = create<HealthStore>()(
@@ -146,6 +149,9 @@ export const useHealthStore = create<HealthStore>()(
       uploadProgress: 0,
       setUploadState: (processing, progress = 0) =>
         set({ isProcessingUpload: processing, uploadProgress: progress }),
+
+      tutorialDismissed: false,
+      dismissTutorial: () => set({ tutorialDismissed: true }),
     }),
     {
       name: "bioprecision-web",
@@ -157,6 +163,7 @@ export const useHealthStore = create<HealthStore>()(
         labHistory: state.labHistory,
         actions: state.actions,
         messages: state.messages,
+        tutorialDismissed: state.tutorialDismissed,
       }),
     }
   )

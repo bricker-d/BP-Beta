@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   CheckCircle2, Circle, FlaskConical, MessageCircle,
-  Watch, ChevronRight, Loader2, AlertTriangle, TrendingUp, Zap,
+  Watch, ChevronRight, Loader2, AlertTriangle, TrendingUp, Zap, X, BookOpen,
 } from "lucide-react";
 
 function getGreeting(name?: string) {
@@ -78,7 +78,7 @@ function CompletionRings({ done, total }: { done: number; total: number }) {
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { intakeProfile, labPanel, actions, isGeneratingActions } = useHealthStore();
+  const { intakeProfile, labPanel, actions, isGeneratingActions, tutorialDismissed, dismissTutorial } = useHealthStore();
 
   // Redirect to onboarding if no name set
   useEffect(() => {
@@ -112,6 +112,36 @@ export default function DashboardPage() {
           </div>
           {score !== null && <ScoreRing score={score} />}
         </div>
+
+        {/* Tutorial card — shown until dismissed */}
+        {!tutorialDismissed && (
+          <div className="rounded-2xl px-4 py-4" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+            <div className="flex items-start justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <BookOpen size={14} color="var(--accent)" />
+                <span className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: "var(--accent)" }}>Get started</span>
+              </div>
+              <button onClick={dismissTutorial} className="w-6 h-6 flex items-center justify-center rounded-full" style={{ background: "var(--surface2)" }}>
+                <X size={12} color="var(--text3)" />
+              </button>
+            </div>
+            <div className="space-y-3">
+              {[
+                { n: "1", t: "Upload your labs",         s: "Tap Lab Results → Upload New. We parse every biomarker in seconds.", href: "/lab-results?upload=1" },
+                { n: "2", t: "Review your protocol",     s: "5 daily actions ranked by clinical impact — tap each to see the evidence.", href: "/actions" },
+                { n: "3", t: "Ask your coach anything",  s: "It knows your exact numbers. Ask why a marker is off or how to fix it.", href: "/coach" },
+              ].map(item => (
+                <Link key={item.n} href={item.href} onClick={dismissTutorial} className="flex items-start gap-3 active:opacity-60 transition-opacity">
+                  <span className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 text-[11px] font-bold" style={{ background: "var(--accent-lo)", color: "var(--accent)" }}>{item.n}</span>
+                  <div>
+                    <p className="text-[13px] font-semibold" style={{ color: "var(--text1)" }}>{item.t}</p>
+                    <p className="text-[12px] mt-0.5" style={{ color: "var(--text2)", lineHeight: 1.45 }}>{item.s}</p>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Alert strip */}
         {outOfRange.length > 0 && (
