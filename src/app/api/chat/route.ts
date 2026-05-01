@@ -2,6 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { LabPanel, WearableData } from "@/lib/types";
 import { saveChatMessage } from "@/lib/supabase";
 import { BIOMARKER_LIBRARY, CLINICAL_DISCLAIMER, formatCitation } from "@/lib/clinicalLibrary";
+import { pubmedSearchWithAbstracts, isEvidenceQuery, formatForPrompt, buildQuery } from "@/lib/pubmed";
 
 // Lazy client — only instantiated on first request so missing key gives a clear 503
 let _client: Anthropic | null = null;
@@ -261,6 +262,29 @@ ${pending.map((a: { title: string; targetBiomarkers: string[]; biomarkerTarget?:
 ${completed.length > 0 ? `\nCompleted today:\n${completed.map((a: { title: string }) => `- ✓ ${a.title}`).join("\n")}` : ""}
 
 When asked about their plan or what to do next, refer to these specific actions with clinical context.`;
+    }
+
+    // If the user is asking about evidence/studies, pre-fetch relevant PubMed papers
+    // and inject them into the system prompt before Claude responds
+    const lastUserMessage = messages[messages.length - 1];
+    if (lastUserMessage?.role === "user" && isEvidenceQuery(lastUserMessage.content)) {
+      try {
+        // Build search query from the user's message + any out-of-range biomarkers
+        const outOfRange = labPanel?.biomarkers.filter((b: { status: string }) => b.status !== "optimal") ?? [];
+        const topMarker  = outOfRange[0];
+        const searchTerm = topMarker
+          ? buildQuery(topMarker.name, lastUserMessage.content.slice(0, 80))
+          : lastUserMessage.content.slice(0, 100);
+
+        const papers = await Promise.race([
+          pubmedSearchWithAbstracts(searchTerm, 2),
+          new Promise<[]>(r => setTimeout(() => r([]), 5000)),
+        ]);
+
+        if (papers.length > 0) {
+          systemPrompt += `\n\n## Live PubMed Evidence (retrieved for this query)\nCite these studies naturally in your response.\n\n${formatForPrompt(papers)}`;
+        }
+      } catch { /* non-blocking — continue without live citations */ }
     }
 
     const stream = await getClient().messages.stream({

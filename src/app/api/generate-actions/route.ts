@@ -6,6 +6,7 @@ import {
   formatCitation,
   type ClinicalIntervention,
 } from "@/lib/clinicalLibrary";
+import { pubmedSearch, buildQuery, formatCitation as fmtPubMed } from "@/lib/pubmed";
 
 let _client: Anthropic | null = null;
 function getClient(): Anthropic {
@@ -132,8 +133,31 @@ Return ONLY valid JSON array of 5 objects — no markdown:
     const raw = response.content[0].type === "text" ? response.content[0].text : "[]";
     const jsonMatch = raw.match(/\[[\s\S]*\]/);
     if (!jsonMatch) return Response.json({ error: "Failed to generate actions" }, { status: 500 });
-    const actions = JSON.parse(jsonMatch[0]);
-    return Response.json({ actions, disclaimer: CLINICAL_DISCLAIMER, biomarkersAddressed: outOfRange.map(b => b.name) });
+    const actions: HealthAction[] = JSON.parse(jsonMatch[0]);
+
+    // Enrich each action with a live PubMed citation (parallel, 5s timeout per action)
+    const enriched = await Promise.all(
+      actions.map(async action => {
+        try {
+          const biomarkerName = action.targetBiomarkers?.[0] ?? "";
+          const query = buildQuery(biomarkerName, action.title);
+          const papers = await Promise.race([
+            pubmedSearch(query, 1),
+            new Promise<[]>(r => setTimeout(() => r([]), 5000)),
+          ]);
+          if (papers.length > 0) {
+            const liveCitation = fmtPubMed(papers[0]);
+            return {
+              ...action,
+              citations: [liveCitation, ...(action.citations ?? [])].slice(0, 3),
+            };
+          }
+        } catch { /* keep action as-is on failure */ }
+        return action;
+      })
+    );
+
+    return Response.json({ actions: enriched, disclaimer: CLINICAL_DISCLAIMER, biomarkersAddressed: outOfRange.map(b => b.name) });
 
   } catch (error) {
     console.error("[generate-actions] error:", error);
