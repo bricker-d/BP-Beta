@@ -87,7 +87,8 @@ export default function OnboardingPage() {
   const { setIntakeProfile, setUser, labPanel } = useHealthStore();
 
   const [step, setStep]     = useState<Step>("welcome");
-  const [showUpload, setShowUpload] = useState(false);
+  const [showUpload,    setShowUpload]    = useState(false);
+  const [showLabUpload, setShowLabUpload] = useState(false);
 
   // Form state
   const [painPoints,        setPainPoints]        = useState<string[]>([]);
@@ -103,7 +104,7 @@ export default function OnboardingPage() {
   const [familyHistory,     setFamilyHistory]     = useState<string[]>([]);
   const [sleepHours,        setSleepHours]        = useState<number | null>(null);
   const [exerciseDays,      setExerciseDays]      = useState("");
-  const [exerciseType,      setExerciseType]      = useState("");
+  const [exerciseTypes,     setExerciseTypes]     = useState<string[]>([]);
   const [dietStyle,         setDietStyle]         = useState("");
   const [stressLevel,       setStressLevel]       = useState<number | null>(null);
   const [alcoholFrequency,  setAlcoholFrequency]  = useState("");
@@ -120,13 +121,16 @@ export default function OnboardingPage() {
   const dataIdx  = DATA_STEPS.indexOf(step as never);
   const progress = dataIdx >= 0 ? (dataIdx + 1) / DATA_STEPS.length : step === "summary" ? 1 : 0;
 
-  // When labPanel is set after upload, navigate to home
-  const hadLabPanel = useRef(!!labPanel);
+  // When labPanel changes (new upload), navigate to home
+  const prevPanelId = useRef(labPanel?.id ?? null);
   useEffect(() => {
-    if (labPanel && !hadLabPanel.current && showUpload) {
+    const newId = labPanel?.id ?? null;
+    if (newId && newId !== prevPanelId.current && (showUpload || showLabUpload)) {
+      prevPanelId.current = newId;
       saveProfile();
       router.push("/");
     }
+    prevPanelId.current = newId;
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [labPanel]);
 
@@ -152,7 +156,7 @@ export default function OnboardingPage() {
       familyHistory:       familyHistory.filter(f => f !== "None known"),
       sleepHours:          sleepHours ?? undefined,
       exerciseDaysPerWeek: exerciseDays || undefined,
-      exerciseType:        exerciseType || undefined,
+      exerciseType:        exerciseTypes.length ? exerciseTypes.join(", ") : undefined,
       dietStyle:           dietStyle || undefined,
       stressLevel:         stressLevel ?? undefined,
       alcoholFrequency:    alcoholFrequency || undefined,
@@ -402,9 +406,9 @@ export default function OnboardingPage() {
                 </div>
               </HabitSection>
               {exerciseDays && exerciseDays !== "0" && (
-                <HabitSection label="Exercise type">
-                  <ChipGroup items={EXERCISE_TYPES} selected={exerciseType ? [exerciseType] : []}
-                    onToggle={t => setExerciseType(exerciseType === t ? "" : t)} />
+                <HabitSection label="Exercise type (select all that apply)">
+                  <ChipGroup items={EXERCISE_TYPES} selected={exerciseTypes}
+                    onToggle={t => toggle(exerciseTypes, t, setExerciseTypes)} />
                 </HabitSection>
               )}
               <HabitSection label="Diet style">
@@ -517,7 +521,7 @@ export default function OnboardingPage() {
         )}
 
         {/* ── LABS ─────────────────────────────────────────────────────── */}
-        {step === "labs" && (
+        {step === "labs" && !showLabUpload && (
           <div className="flex-1 flex flex-col gap-6 step-enter">
             <StepHeader n={8} title="Connect your lab results" sub="Upload a PDF from Quest, LabCorp, or your doctor." />
             <div className="flex-1 flex flex-col gap-3">
@@ -532,11 +536,27 @@ export default function OnboardingPage() {
                   </div>
                 ))}
               </div>
-              <button onClick={next} className="btn-primary" style={{ paddingTop: 16, paddingBottom: 16 }}>
+              <button onClick={() => setShowLabUpload(true)} className="btn-primary" style={{ paddingTop: 16, paddingBottom: 16 }}>
                 <Upload size={16} /> Upload my labs
               </button>
-              <button onClick={() => { next(); }} className="btn-ghost">I will add labs later</button>
+              <button onClick={next} className="btn-ghost">I will add labs later</button>
             </div>
+          </div>
+        )}
+
+        {step === "labs" && showLabUpload && (
+          <div className="flex-1 flex flex-col gap-5 step-enter">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-widest mb-2" style={{ color: "var(--accent)" }}>Step 8 of 8</p>
+              <h2 className="text-[26px] font-bold" style={{ color: "var(--text1)", letterSpacing: "-0.025em" }}>Upload your labs</h2>
+              <p className="text-[14px] mt-1.5" style={{ color: "var(--text2)" }}>PDF from Quest, LabCorp, Rupa, or your doctor. We'll parse it instantly.</p>
+            </div>
+            <div className="flex-1">
+              <LabUpload />
+            </div>
+            <button className="btn-ghost" onClick={next}>
+              Skip for now — I'll upload later
+            </button>
           </div>
         )}
 

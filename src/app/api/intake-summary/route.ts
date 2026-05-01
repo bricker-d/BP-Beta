@@ -69,20 +69,15 @@ Coaching style preference: ${notificationStyle ?? "direct"}
       max_tokens: 300,
       messages: [{
         role: "user",
-        content: `You are BioPrecision AI. A new patient just completed their health intake. Write a warm, clinically grounded personal assessment — 3 to 4 sentences only.
+        content: `Write 3 sentences from BioPrecision to ${firstName} after they just finished a health intake questionnaire.
 
-Rules:
-- Address them by first name in the first sentence
-- Acknowledge their primary concern or goal directly and honestly
-- Reference 1–2 specific habits or symptoms that stand out — make them feel seen
-- Close with one sentence about what their protocol will focus on first
-- Write in second person ("you"), warm but direct — like a knowledgeable friend, not a chatbot
-- No emojis, no bullet points, no markdown, no medical jargon
-- Do NOT mention lab results — they may not have uploaded any yet
-- Do NOT promise outcomes or use language that constitutes medical advice
-- Plain English only
+Sound like a real person — not an AI, not a doctor's office, not a wellness app. Think: a brilliant friend who happens to know a lot about medicine and actually read what they filled out.
 
-Patient profile:
+The tone is direct, warm, and specific. Reference something real from their answers — a symptom, a habit, a goal — not generic phrases. Do not say: "I understand", "It's clear that", "Based on your responses", "Thank you for sharing", "Your journey", "comprehensive", or anything that sounds like corporate wellness copy.
+
+Do not start with their name. Do not label anything "Assessment" or use any headers. Just three plain sentences, no punctuation gimmicks.
+
+What they shared:
 ${context}`,
       }],
     });
