@@ -8,6 +8,25 @@ import {
   CheckCircle2, Circle, FlaskConical, MessageCircle,
   Watch, ChevronRight, Loader2, AlertTriangle, TrendingUp, Zap, X, BookOpen,
 } from "lucide-react";
+import { Biomarker } from "@/lib/types";
+
+// ── Category definitions ──────────────────────────────────────────────────────
+
+const HEALTH_CATEGORIES = [
+  { label: "Metabolic",      color: "#F59E0B", ids: ["glucose","hba1c","fastingInsulin","uricAcid"] },
+  { label: "Cardiovascular", color: "#EF4444", ids: ["ldl","hdl","triglycerides","totalCholesterol","apoB","lpa","hscrp","homocysteine"] },
+  { label: "Hormonal",       color: "#8B5CF6", ids: ["testosterone","freeTesto","shbg","estradiol","dheas","cortisol","igf1","progesterone"] },
+  { label: "Vitality",       color: "#10B981", ids: ["vitaminD","vitaminB12","ferritin","magnesium","zinc","omega3Index","hemoglobin","folate"] },
+];
+
+function categoryScore(ids: string[], biomarkers: Biomarker[]): number | null {
+  const w: Record<string, number> = { optimal: 100, borderline: 55, elevated: 20, low: 20 };
+  const relevant = biomarkers.filter(b => ids.includes(b.id));
+  if (!relevant.length) return null;
+  return Math.round(relevant.reduce((s, b) => s + (w[b.status] ?? 50), 0) / relevant.length);
+}
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
 
 function getGreeting(name?: string) {
   const h = new Date().getHours();
@@ -20,6 +39,8 @@ function computeScore(biomarkers: { status: string }[]): number {
   const w: Record<string, number> = { optimal: 100, borderline: 55, elevated: 20, low: 20 };
   return Math.round(biomarkers.reduce((s, b) => s + (w[b.status] ?? 50), 0) / biomarkers.length);
 }
+
+// ── Sub-components ────────────────────────────────────────────────────────────
 
 function ScoreRing({ score }: { score: number }) {
   const r = 52, circ = 2 * Math.PI * r;
@@ -50,6 +71,58 @@ function ScoreRing({ score }: { score: number }) {
   );
 }
 
+function CategoryScores({ biomarkers }: { biomarkers: Biomarker[] }) {
+  const scores = HEALTH_CATEGORIES.map(cat => ({
+    ...cat,
+    score: categoryScore(cat.ids, biomarkers),
+  })).filter(c => c.score !== null);
+
+  if (!scores.length) return null;
+
+  return (
+    <div>
+      <p className="text-[11px] font-semibold uppercase tracking-wider mb-3" style={{ color: "var(--text3)" }}>
+        Health breakdown
+      </p>
+      <div className="grid grid-cols-2 gap-2">
+        {scores.map(cat => {
+          const s = cat.score!;
+          const statusColor = s >= 80 ? "#10b981" : s >= 60 ? "#f59e0b" : "#ef4444";
+          const r = 20, circ = 2 * Math.PI * r;
+          const offset = circ - (s / 100) * circ;
+          return (
+            <Link key={cat.label} href="/lab-results">
+              <div className="rounded-2xl px-3 py-3 flex items-center gap-3"
+                style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+                <div className="relative flex-shrink-0" style={{ width: 48, height: 48 }}>
+                  <svg width="48" height="48" viewBox="0 0 48 48" className="-rotate-90">
+                    <circle cx="24" cy="24" r={r} fill="none" stroke="var(--border)" strokeWidth="4" />
+                    <circle cx="24" cy="24" r={r} fill="none"
+                      stroke={cat.color} strokeWidth="4"
+                      strokeDasharray={circ} strokeDashoffset={offset}
+                      strokeLinecap="round"
+                      style={{ transition: "stroke-dashoffset 1s ease" }}
+                    />
+                  </svg>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <span className="mono text-[12px] font-bold" style={{ color: "var(--text1)" }}>{s}</span>
+                  </div>
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[12px] font-semibold truncate" style={{ color: "var(--text1)" }}>{cat.label}</p>
+                  <p className="text-[10px] font-medium" style={{ color: statusColor }}>
+                    {s >= 80 ? "Optimal" : s >= 60 ? "Needs work" : "Action needed"}
+                  </p>
+                </div>
+              </div>
+            </Link>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function CompletionRings({ done, total }: { done: number; total: number }) {
   if (!total) return null;
   const pct = done / total;
@@ -76,11 +149,12 @@ function CompletionRings({ done, total }: { done: number; total: number }) {
   );
 }
 
+// ── Page ──────────────────────────────────────────────────────────────────────
+
 export default function DashboardPage() {
   const router = useRouter();
   const { intakeProfile, labPanel, actions, isGeneratingActions, tutorialDismissed, dismissTutorial } = useHealthStore();
 
-  // Redirect to onboarding if no name set
   useEffect(() => {
     if (!intakeProfile?.name) {
       router.replace("/onboarding");
@@ -113,7 +187,12 @@ export default function DashboardPage() {
           {score !== null && <ScoreRing score={score} />}
         </div>
 
-        {/* Tutorial card — shown until dismissed */}
+        {/* Category health scores */}
+        {labPanel && labPanel.biomarkers.length > 0 && (
+          <CategoryScores biomarkers={labPanel.biomarkers} />
+        )}
+
+        {/* Tutorial card */}
         {!tutorialDismissed && (
           <div className="rounded-2xl px-4 py-4" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
             <div className="flex items-start justify-between mb-3">
@@ -183,7 +262,7 @@ export default function DashboardPage() {
           </Link>
         )}
 
-        {/* Today's #1 action — hero card */}
+        {/* Today's #1 action */}
         {(topAction || isGeneratingActions) && (
           <div
             className="rounded-2xl px-4 py-4"
@@ -267,7 +346,7 @@ export default function DashboardPage() {
           </div>
         </Link>
 
-        {/* Bottom row: Wearable + Labs */}
+        {/* Bottom row */}
         <div className="grid grid-cols-2 gap-3">
           <Link href="/connect">
             <div

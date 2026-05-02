@@ -39,7 +39,7 @@ export interface WearableData {
 
 // ─── Actions ───────────────────────────────────────────────────────────────────
 
-export type ActionCategory = "Movement" | "Nutrition" | "Exercise" | "Sleep" | "Supplement";
+export type ActionCategory = "Movement" | "Nutrition" | "Exercise" | "Sleep" | "Supplement" | "Lifestyle";
 
 export interface HealthAction {
   id: string;

@@ -3,97 +3,148 @@
 import { useMemo } from "react";
 import { LabPanel } from "@/lib/types";
 import { BIOMARKER_LIBRARY } from "@/lib/clinicalLibrary";
+import { TrendingUp, TrendingDown, Minus } from "lucide-react";
 
 interface BiomarkerTrendsProps {
   labHistory: LabPanel[];
 }
 
-interface TrendPoint {
-  date: string;
-  value: number;
-  status: string;
-}
-
+interface TrendPoint { date: string; value: number; status: string; }
 interface BiomarkerTrend {
-  id: string;
-  name: string;
-  unit: string;
-  optimalMin: number;
-  optimalMax: number;
+  id: string; name: string; unit: string;
+  optimalMin: number; optimalMax: number;
   points: TrendPoint[];
   latestStatus: string;
-  direction: "improving" | "worsening" | "stable" | "unknown";
+  direction: "improving" | "worsening" | "stable";
   change: number | null;
 }
 
-const STATUS_COLORS: Record<string, string> = {
-  optimal:    "#16a34a",
-  borderline: "#d97706",
-  elevated:   "#dc2626",
-  low:        "#2563eb",
+const STATUS_COLOR: Record<string, string> = {
+  optimal: "#059669", borderline: "#D97706", elevated: "#DC2626", low: "#DC2626",
 };
 
-function SparkLine({
-  points,
-  optimalMin,
-  optimalMax,
-  width = 120,
-  height = 40,
+function GradientSparkline({
+  points, optimalMin, optimalMax, lineColor, id,
 }: {
-  points: TrendPoint[];
-  optimalMin: number;
-  optimalMax: number;
-  width?: number;
-  height?: number;
+  points: TrendPoint[]; optimalMin: number; optimalMax: number; lineColor: string; id: string;
 }) {
   if (points.length < 2) return null;
 
-  const values = points.map(p => p.value);
-  const allValues = [...values, optimalMin, optimalMax];
-  const min = Math.min(...allValues) * 0.85;
-  const max = Math.max(...allValues) * 1.15;
-  const range = max - min || 1;
+  const W = 130, H = 52, PAD = 6;
+  const values  = points.map(p => p.value);
+  const allVals = [...values, optimalMin, optimalMax];
+  const lo  = Math.min(...allVals) * 0.88;
+  const hi  = Math.max(...allVals) * 1.12;
+  const rng = hi - lo || 1;
+  const w   = W - PAD * 2;
+  const h   = H - PAD * 2;
 
-  const pad = 4;
-  const w = width - pad * 2;
-  const h = height - pad * 2;
+  const px = (i: number) => PAD + (i / (points.length - 1)) * w;
+  const py = (v: number) => PAD + (1 - (v - lo) / rng) * h;
 
-  function x(i: number) { return pad + (i / (points.length - 1)) * w; }
-  function y(v: number) { return pad + (1 - (v - min) / range) * h; }
+  const optY1 = py(optimalMax);
+  const optY2 = py(optimalMin);
 
-  // Optimal zone band
-  const optY1 = y(optimalMax);
-  const optY2 = y(optimalMin);
+  const linePath = points.map((p, i) => `${i === 0 ? "M" : "L"}${px(i).toFixed(1)},${py(p.value).toFixed(1)}`).join(" ");
+  // Area fill: close path to bottom
+  const areaPath = linePath + ` L${px(points.length - 1).toFixed(1)},${H} L${PAD},${H} Z`;
 
-  // Polyline path
-  const linePath = points.map((p, i) => `${i === 0 ? "M" : "L"}${x(i).toFixed(1)},${y(p.value).toFixed(1)}`).join(" ");
+  const gradId = `grad-${id}`;
 
   return (
-    <svg width={width} height={height} style={{ overflow: "visible" }}>
+    <svg width={W} height={H} style={{ overflow: "visible", flexShrink: 0 }}>
+      <defs>
+        <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={lineColor} stopOpacity="0.25" />
+          <stop offset="100%" stopColor={lineColor} stopOpacity="0.02" />
+        </linearGradient>
+      </defs>
+
       {/* Optimal zone */}
       <rect
-        x={pad}
-        y={Math.min(optY1, optY2)}
-        width={w}
-        height={Math.abs(optY2 - optY1)}
-        fill="#dcfce7"
-        opacity={0.6}
+        x={PAD} y={Math.min(optY1, optY2)}
+        width={w} height={Math.abs(optY2 - optY1)}
+        fill="rgba(5,150,105,0.1)" rx="2"
       />
-      {/* Trend line */}
-      <path d={linePath} stroke="#9333ea" strokeWidth={2} fill="none" strokeLinejoin="round" />
-      {/* Data points */}
+
+      {/* Area fill */}
+      <path d={areaPath} fill={`url(#${gradId})`} />
+
+      {/* Line */}
+      <path d={linePath} stroke={lineColor} strokeWidth="2.5" fill="none" strokeLinejoin="round" strokeLinecap="round" />
+
+      {/* Dots */}
       {points.map((p, i) => (
         <circle
-          key={i}
-          cx={x(i)}
-          cy={y(p.value)}
-          r={3}
-          fill={STATUS_COLORS[p.status] ?? "#9333ea"}
-          stroke="white"
-          strokeWidth={1}
+          key={i} cx={px(i)} cy={py(p.value)} r={3.5}
+          fill={STATUS_COLOR[p.status] ?? lineColor}
+          stroke="var(--surface)" strokeWidth="2"
         />
       ))}
     </svg>
+  );
+}
+
+function TrendCard({ t }: { t: BiomarkerTrend }) {
+  const latest = t.points[t.points.length - 1];
+  const statusColor = STATUS_COLOR[t.latestStatus] ?? "var(--text3)";
+  const lineColor = t.direction === "improving" ? "#059669" : t.direction === "worsening" ? "#DC2626" : "var(--accent)";
+
+  const DirIcon = t.direction === "improving" ? TrendingUp : t.direction === "worsening" ? TrendingDown : Minus;
+  const dirColor = t.direction === "improving" ? "#059669" : t.direction === "worsening" ? "#DC2626" : "var(--text3)";
+  const dirLabel = t.direction === "improving" ? "Improving" : t.direction === "worsening" ? "Needs attention" : "Stable";
+
+  const changeStr = t.change !== null
+    ? `${t.change > 0 ? "+" : ""}${t.change} ${t.unit} from first panel`
+    : "";
+
+  return (
+    <div className="rounded-2xl px-4 py-4" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap mb-1">
+            <p className="text-[14px] font-semibold" style={{ color: "var(--text1)" }}>{t.name}</p>
+            <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full"
+              style={{ background: statusColor + "18", color: statusColor }}>
+              {t.latestStatus}
+            </span>
+          </div>
+          <div className="flex items-baseline gap-1.5">
+            <span className="mono text-[22px] font-bold" style={{ color: statusColor }}>{latest.value}</span>
+            <span className="text-[12px]" style={{ color: "var(--text3)" }}>{t.unit}</span>
+          </div>
+          <div className="flex items-center gap-1.5 mt-1.5">
+            <DirIcon size={12} color={dirColor} />
+            <span className="text-[12px] font-semibold" style={{ color: dirColor }}>{dirLabel}</span>
+          </div>
+          {changeStr && (
+            <p className="text-[11px] mt-0.5" style={{ color: "var(--text3)" }}>{changeStr}</p>
+          )}
+          <p className="text-[11px] mt-1" style={{ color: "var(--text3)" }}>
+            Optimal: {t.optimalMin}–{t.optimalMax} {t.unit}
+          </p>
+        </div>
+
+        <GradientSparkline
+          points={t.points} optimalMin={t.optimalMin} optimalMax={t.optimalMax}
+          lineColor={lineColor} id={t.id}
+        />
+      </div>
+
+      {/* Date labels */}
+      <div className="flex justify-between mt-3 pt-3" style={{ borderTop: "1px solid var(--border)" }}>
+        {t.points.map((p, i) => (
+          <div key={i} className="text-center">
+            <p className="mono text-[11px] font-semibold" style={{ color: STATUS_COLOR[p.status] ?? "var(--text2)" }}>
+              {p.value}
+            </p>
+            <p className="text-[10px]" style={{ color: "var(--text3)" }}>
+              {p.date ? new Date(p.date).toLocaleDateString("en-US", { month: "short", year: "2-digit" }) : `#${i + 1}`}
+            </p>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -101,62 +152,40 @@ export default function BiomarkerTrends({ labHistory }: BiomarkerTrendsProps) {
   const trends = useMemo<BiomarkerTrend[]>(() => {
     if (labHistory.length < 2) return [];
 
-    // Collect all unique biomarker IDs across all panels
-    const biomarkerIds = new Set<string>();
-    labHistory.forEach(panel => panel.biomarkers.forEach(b => biomarkerIds.add(b.id)));
+    const ids = new Set<string>();
+    labHistory.forEach(p => p.biomarkers.forEach(b => ids.add(b.id)));
 
     const result: BiomarkerTrend[] = [];
 
-    for (const id of biomarkerIds) {
+    for (const id of ids) {
       const points: TrendPoint[] = [];
-
       for (const panel of labHistory) {
         const b = panel.biomarkers.find(b => b.id === id);
-        if (!b) continue;
-        points.push({
-          date: panel.date ?? "",
-          value: b.value,
-          status: b.status,
-        });
+        if (b) points.push({ date: panel.date ?? "", value: b.value, status: b.status });
       }
-
       if (points.length < 2) continue;
 
       const meta = BIOMARKER_LIBRARY[id];
       const optimalMin = meta?.optimalMin ?? 0;
       const optimalMax = meta?.optimalMax ?? 0;
       const name = meta?.name ?? id;
-      const unit = points[0] ? labHistory[0]?.biomarkers.find(b => b.id === id)?.unit ?? "" : "";
+      const unit = labHistory[0]?.biomarkers.find(b => b.id === id)?.unit ?? "";
 
       const first = points[0].value;
-      const last = points[points.length - 1].value;
+      const last  = points[points.length - 1].value;
       const change = parseFloat((last - first).toFixed(2));
-
-      // Direction: is the latest value closer to optimal than the first?
       const optMid = (optimalMin + optimalMax) / 2;
-      const firstDist = Math.abs(first - optMid);
-      const lastDist = Math.abs(last - optMid);
       const direction: BiomarkerTrend["direction"] =
-        Math.abs(change) < 0.5 ? "stable" :
-        lastDist < firstDist ? "improving" : "worsening";
+        Math.abs(change) < 0.5 ? "stable"
+        : Math.abs(last - optMid) < Math.abs(first - optMid) ? "improving"
+        : "worsening";
 
-      result.push({
-        id,
-        name,
-        unit,
-        optimalMin,
-        optimalMax,
-        points,
-        latestStatus: points[points.length - 1].status,
-        direction,
-        change,
-      });
+      result.push({ id, name, unit, optimalMin, optimalMax, points, latestStatus: points[points.length - 1].status, direction, change });
     }
 
-    // Sort: worsening first, then improving, then stable
     return result.sort((a, b) => {
-      const order = { worsening: 0, stable: 1, improving: 2, unknown: 3 };
-      return order[a.direction] - order[b.direction];
+      const o = { worsening: 0, stable: 1, improving: 2 };
+      return o[a.direction] - o[b.direction];
     });
   }, [labHistory]);
 
@@ -166,112 +195,55 @@ export default function BiomarkerTrends({ labHistory }: BiomarkerTrendsProps) {
   const improving = trends.filter(t => t.direction === "improving");
   const stable    = trends.filter(t => t.direction === "stable");
 
-  function TrendCard({ trend }: { trend: BiomarkerTrend }) {
-    const latest = trend.points[trend.points.length - 1];
-    const changeStr = trend.change === null ? "" :
-      (trend.change > 0 ? "+" : "") + trend.change + " " + trend.unit;
-    const dirIcon = trend.direction === "improving" ? "↑ Improving" :
-      trend.direction === "worsening" ? "↓ Needs attention" : "→ Stable";
-    const dirColor = trend.direction === "improving" ? "#16a34a" :
-      trend.direction === "worsening" ? "#dc2626" : "#6b7280";
-
-    return (
-      <div className="bg-white rounded-2xl p-4 shadow-card">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <p className="text-[14px] font-bold text-text-primary">{trend.name}</p>
-              <span
-                className="text-[11px] font-semibold px-2 py-0.5 rounded-full"
-                style={{
-                  background: STATUS_COLORS[trend.latestStatus] + "20",
-                  color: STATUS_COLORS[trend.latestStatus],
-                }}
-              >
-                {trend.latestStatus}
-              </span>
-            </div>
-            <p className="text-[22px] font-extrabold text-text-primary mt-0.5">
-              {latest.value}
-              <span className="text-[13px] font-normal text-text-muted ml-1">{trend.unit}</span>
-            </p>
-            <div className="flex items-center gap-3 mt-1">
-              <span className="text-[12px] font-semibold" style={{ color: dirColor }}>
-                {dirIcon}
-              </span>
-              {changeStr && (
-                <span className="text-[12px] text-text-muted">{changeStr} from first panel</span>
-              )}
-            </div>
-            <p className="text-[11px] text-text-muted mt-1">
-              Optimal: {trend.optimalMin}–{trend.optimalMax} {trend.unit}
-            </p>
-          </div>
-          <SparkLine
-            points={trend.points}
-            optimalMin={trend.optimalMin}
-            optimalMax={trend.optimalMax}
-          />
-        </div>
-        {trend.points.length >= 2 && (
-          <div className="flex gap-2 mt-3 overflow-x-auto">
-            {trend.points.map((p, i) => (
-              <div key={i} className="flex-shrink-0 text-center">
-                <div
-                  className="text-[11px] font-semibold"
-                  style={{ color: STATUS_COLORS[p.status] }}
-                >
-                  {p.value}
-                </div>
-                <div className="text-[10px] text-text-muted">
-                  {p.date ? new Date(p.date).toLocaleDateString("en-US", { month: "short", year: "2-digit" }) : `Panel ${i + 1}`}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-[18px] font-extrabold text-text-primary mb-1">Biomarker Trends</h2>
-        <p className="text-[13px] text-text-secondary">
-          Tracking {trends.length} biomarkers across {labHistory.length} panels
+        <h2 className="text-[18px] font-bold" style={{ color: "var(--text1)", letterSpacing: "-0.02em" }}>
+          Biomarker Trends
+        </h2>
+        <p className="text-[13px] mt-0.5" style={{ color: "var(--text2)" }}>
+          {trends.length} markers tracked across {labHistory.length} panels
         </p>
       </div>
 
       {worsening.length > 0 && (
         <div>
-          <p className="text-[13px] font-semibold text-red-600 mb-3">
-            ⚠️ Trending the wrong way ({worsening.length})
-          </p>
+          <div className="flex items-center gap-2 mb-3">
+            <span className="w-2 h-2 rounded-full" style={{ background: "#DC2626" }} />
+            <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: "#DC2626" }}>
+              Trending wrong way ({worsening.length})
+            </p>
+          </div>
           <div className="space-y-3">
-            {worsening.map(t => <TrendCard key={t.id} trend={t} />)}
+            {worsening.map(t => <TrendCard key={t.id} t={t} />)}
           </div>
         </div>
       )}
 
       {improving.length > 0 && (
         <div>
-          <p className="text-[13px] font-semibold text-green-600 mb-3">
-            ✓ Improving ({improving.length})
-          </p>
+          <div className="flex items-center gap-2 mb-3">
+            <span className="w-2 h-2 rounded-full" style={{ background: "#059669" }} />
+            <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: "#059669" }}>
+              Improving ({improving.length})
+            </p>
+          </div>
           <div className="space-y-3">
-            {improving.map(t => <TrendCard key={t.id} trend={t} />)}
+            {improving.map(t => <TrendCard key={t.id} t={t} />)}
           </div>
         </div>
       )}
 
       {stable.length > 0 && (
         <div>
-          <p className="text-[13px] font-semibold text-text-muted mb-3">
-            Stable ({stable.length})
-          </p>
+          <div className="flex items-center gap-2 mb-3">
+            <span className="w-2 h-2 rounded-full" style={{ background: "var(--text3)" }} />
+            <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: "var(--text3)" }}>
+              Stable ({stable.length})
+            </p>
+          </div>
           <div className="space-y-3">
-            {stable.map(t => <TrendCard key={t.id} trend={t} />)}
+            {stable.map(t => <TrendCard key={t.id} t={t} />)}
           </div>
         </div>
       )}
