@@ -9,6 +9,7 @@ import {
   Watch, ChevronRight, Loader2, AlertTriangle, TrendingUp, Zap, X, BookOpen,
 } from "lucide-react";
 import { Biomarker } from "@/lib/types";
+import NotificationBanner from "@/components/notifications/NotificationBanner";
 
 // ── Category definitions ──────────────────────────────────────────────────────
 
@@ -191,6 +192,9 @@ export default function DashboardPage() {
         {labPanel && labPanel.biomarkers.length > 0 && (
           <CategoryScores biomarkers={labPanel.biomarkers} />
         )}
+
+        {/* Notification banner — shown after first protocol is generated */}
+        {actions.length > 0 && <NotificationBanner />}
 
         {/* Tutorial card */}
         {!tutorialDismissed && (
