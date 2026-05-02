@@ -67,6 +67,9 @@ interface HealthStore {
 
   tutorialDismissed: boolean;
   dismissTutorial: () => void;
+
+  streak: number;
+  lastCompletedDate: string | null;
 }
 
 export const useHealthStore = create<HealthStore>()(
@@ -134,11 +137,21 @@ export const useHealthStore = create<HealthStore>()(
       setActions: (actions) => set({ actions }),
       isGeneratingActions: false,
       toggleAction: (id) =>
-        set((state) => ({
-          actions: state.actions.map((a) =>
+        set((state) => {
+          const updated = state.actions.map((a) =>
             a.id === id ? { ...a, completed: !a.completed } : a
-          ),
-        })),
+          );
+          const allDone = updated.length > 0 && updated.every(a => a.completed);
+          const today = new Date().toISOString().split("T")[0];
+          let streak = state.streak;
+          let lastCompletedDate = state.lastCompletedDate;
+          if (allDone && today !== lastCompletedDate) {
+            const yesterday = new Date(Date.now() - 86400000).toISOString().split("T")[0];
+            streak = lastCompletedDate === yesterday ? streak + 1 : 1;
+            lastCompletedDate = today;
+          }
+          return { actions: updated, streak, lastCompletedDate };
+        }),
 
       messages: [],
       addMessage: (msg) =>
@@ -152,6 +165,9 @@ export const useHealthStore = create<HealthStore>()(
 
       tutorialDismissed: false,
       dismissTutorial: () => set({ tutorialDismissed: true }),
+
+      streak: 0,
+      lastCompletedDate: null,
     }),
     {
       name: "bioprecision-web",
@@ -164,6 +180,8 @@ export const useHealthStore = create<HealthStore>()(
         actions: state.actions,
         messages: state.messages,
         tutorialDismissed: state.tutorialDismissed,
+        streak: state.streak,
+        lastCompletedDate: state.lastCompletedDate,
       }),
     }
   )

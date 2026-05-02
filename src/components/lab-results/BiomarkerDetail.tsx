@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { X, TrendingUp, Clock, BookOpen } from "lucide-react";
 import { Biomarker } from "@/lib/types";
 import { BIOMARKER_LIBRARY } from "@/lib/clinicalLibrary";
@@ -18,6 +19,7 @@ const STATUS = {
 };
 
 export default function BiomarkerDetail({ biomarker, onClose }: Props) {
+  const [mounted, setMounted] = useState(false);
   const meta   = BIOMARKER_LIBRARY[biomarker.id];
   const status = STATUS[biomarker.status] ?? STATUS.borderline;
 
@@ -28,26 +30,31 @@ export default function BiomarkerDetail({ biomarker, onClose }: Props) {
   const oMin = ((biomarker.optimalMin - lo) / (hi - lo)) * 100;
   const oMax = ((biomarker.optimalMax - lo) / (hi - lo)) * 100;
 
-  // Prevent body scroll while sheet is open
+  // Mount guard for SSR + prevent body scroll
   useEffect(() => {
+    setMounted(true);
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => { document.body.style.overflow = prev; };
   }, []);
 
-  return (
+  if (!mounted) return null;
+
+  const sheet = (
     <>
-      {/* Backdrop */}
+      {/* Backdrop — renders at document body level to bypass overflow:hidden containers */}
       <div
-        className="fixed inset-0 z-40"
-        style={{ background: "rgba(0,0,0,0.3)", backdropFilter: "blur(2px)" }}
+        style={{ position: "fixed", inset: 0, zIndex: 9998, background: "rgba(0,0,0,0.35)", backdropFilter: "blur(3px)", WebkitBackdropFilter: "blur(3px)" }}
         onClick={onClose}
       />
 
       {/* Sheet */}
       <div
-        className="fixed z-50 bottom-0 left-1/2"
         style={{
+          position: "fixed",
+          zIndex: 9999,
+          bottom: 0,
+          left: "50%",
           width: "100%",
           maxWidth: 430,
           transform: "translateX(-50%)",
@@ -56,6 +63,7 @@ export default function BiomarkerDetail({ biomarker, onClose }: Props) {
           borderRadius: "20px 20px 0 0",
           display: "flex",
           flexDirection: "column",
+          boxShadow: "0 -4px 40px rgba(0,0,0,0.15)",
         }}
       >
         {/* Drag handle */}
@@ -209,6 +217,8 @@ export default function BiomarkerDetail({ biomarker, onClose }: Props) {
       </div>
     </>
   );
+
+  return createPortal(sheet, document.body);
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
