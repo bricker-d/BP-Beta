@@ -3,14 +3,44 @@
 import { useHealthStore } from "@/store/useHealthStore";
 import Header from "@/components/layout/Header";
 import ActionCard from "@/components/actions/ActionCard";
-import { Loader2, Flame } from "lucide-react";
+import CompletionCalendar from "@/components/actions/CompletionCalendar";
+import { Loader2, Flame, Target } from "lucide-react";
+
+// Maps goals to plain-english biomarker targets for the explanation card
+const GOAL_TARGETS: Record<string, string> = {
+  energy:           "ferritin, B12, vitamin D, thyroid",
+  longevity:        "hsCRP, homocysteine, ApoB, glucose",
+  weight_loss:      "fasting insulin, glucose, HbA1c, cortisol",
+  muscle_gain:      "testosterone, IGF-1, vitamin D, zinc",
+  heart_health:     "ApoB, LDL, hsCRP, homocysteine, omega-3",
+  hormone_balance:  "testosterone, DHEA-S, cortisol, SHBG",
+  mental_clarity:   "omega-3, B12, vitamin D, ferritin, TSH",
+  sleep:            "cortisol, magnesium, vitamin D, ferritin",
+};
+
+const GOAL_LABELS: Record<string, string> = {
+  energy:           "more energy",
+  longevity:        "longevity",
+  weight_loss:      "fat loss",
+  muscle_gain:      "muscle & strength",
+  heart_health:     "heart health",
+  hormone_balance:  "hormone balance",
+  mental_clarity:   "mental clarity",
+  sleep:            "better sleep",
+};
 
 export default function ActionsPage() {
-  const { actions, toggleAction, isGeneratingActions, streak } = useHealthStore();
+  const { actions, toggleAction, isGeneratingActions, streak, completionHistory, intakeProfile } = useHealthStore();
   const completed = actions.filter(a => a.completed).length;
   const total     = actions.length;
   const pct       = total ? (completed / total) * 100 : 0;
   const allDone   = total > 0 && completed === total;
+
+  // Build goal explanation
+  const goals = intakeProfile?.goals ?? [];
+  const primaryGoal = goals[0];
+  const goalLabel   = primaryGoal ? GOAL_LABELS[primaryGoal] : null;
+  const targetList  = primaryGoal ? GOAL_TARGETS[primaryGoal] : null;
 
   return (
     <div className="page-content page-enter min-h-screen" style={{ background: "var(--bg)" }}>
@@ -36,6 +66,20 @@ export default function ActionsPage() {
             </div>
           )}
         </div>
+
+        {/* Goal → protocol explanation */}
+        {goalLabel && targetList && total > 0 && !isGeneratingActions && (
+          <div className="rounded-2xl px-4 py-3 flex items-start gap-3"
+            style={{ background: "var(--accent-lo)", border: "1px solid var(--accent-mid)" }}>
+            <Target size={14} color="var(--accent)" className="mt-0.5 flex-shrink-0" />
+            <p className="text-[12px] leading-relaxed" style={{ color: "var(--text2)" }}>
+              <span className="font-semibold" style={{ color: "var(--text1)" }}>
+                Because you want {goalLabel}
+              </span>
+              {" "}— your protocol targets {targetList}. Each action below moves one of these markers.
+            </p>
+          </div>
+        )}
 
         {/* Progress bar */}
         {total > 0 && (
@@ -116,6 +160,11 @@ export default function ActionsPage() {
               Upload your lab results to generate your 5 daily actions
             </p>
           </div>
+        )}
+
+        {/* Completion calendar */}
+        {completionHistory.length > 0 && (
+          <CompletionCalendar history={completionHistory} streak={streak} />
         )}
 
         {/* Disclaimer */}

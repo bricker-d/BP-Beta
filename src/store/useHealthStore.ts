@@ -38,6 +38,12 @@ interface IntakeProfile {
   intakeSummary?: string;
 }
 
+export interface DayLog {
+  date: string;       // ISO date "2025-05-01"
+  completed: number;
+  total: number;
+}
+
 interface HealthStore {
   user: UserProfile;
   setUser: (user: UserProfile) => void;
@@ -70,11 +76,16 @@ interface HealthStore {
 
   streak: number;
   lastCompletedDate: string | null;
+  completionHistory: DayLog[];
+
+  deviceId: string;
 }
 
 export const useHealthStore = create<HealthStore>()(
   persist(
     (set, get) => ({
+      deviceId: typeof crypto !== "undefined" ? crypto.randomUUID() : Math.random().toString(36).slice(2),
+
       user: { name: "", avatarInitials: "" },
       setUser: (user) => set({ user }),
 
@@ -141,8 +152,11 @@ export const useHealthStore = create<HealthStore>()(
           const updated = state.actions.map((a) =>
             a.id === id ? { ...a, completed: !a.completed } : a
           );
-          const allDone = updated.length > 0 && updated.every(a => a.completed);
+          const completedCount = updated.filter(a => a.completed).length;
+          const allDone = updated.length > 0 && completedCount === updated.length;
           const today = new Date().toISOString().split("T")[0];
+
+          // Streak
           let streak = state.streak;
           let lastCompletedDate = state.lastCompletedDate;
           if (allDone && today !== lastCompletedDate) {
@@ -150,8 +164,16 @@ export const useHealthStore = create<HealthStore>()(
             streak = lastCompletedDate === yesterday ? streak + 1 : 1;
             lastCompletedDate = today;
           }
-          return { actions: updated, streak, lastCompletedDate };
+
+          // Completion history — upsert today's record
+          const dayLog: DayLog = { date: today, completed: completedCount, total: updated.length };
+          const history = state.completionHistory.filter(d => d.date !== today);
+          const completionHistory = [...history, dayLog].slice(-90);
+
+          return { actions: updated, streak, lastCompletedDate, completionHistory };
         }),
+
+      completionHistory: [],
 
       messages: [],
       addMessage: (msg) =>
@@ -173,6 +195,7 @@ export const useHealthStore = create<HealthStore>()(
       name: "bioprecision-web",
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({
+        deviceId: state.deviceId,
         user: state.user,
         intakeProfile: state.intakeProfile,
         labPanel: state.labPanel,
@@ -182,6 +205,7 @@ export const useHealthStore = create<HealthStore>()(
         tutorialDismissed: state.tutorialDismissed,
         streak: state.streak,
         lastCompletedDate: state.lastCompletedDate,
+        completionHistory: state.completionHistory,
       }),
     }
   )

@@ -1,251 +1,321 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { Upload, FileText, FileSpreadsheet, X, CheckCircle, Loader2 } from "lucide-react";
+import { Upload, FileText, FileSpreadsheet, X, CheckCircle, Loader2, AlertCircle, Pencil, Check } from "lucide-react";
 import { useHealthStore } from "@/store/useHealthStore";
-import { cn } from "@/lib/utils";
+import { LabPanel, Biomarker } from "@/lib/types";
+import { getBiomarkerStatus } from "@/lib/biomarkers";
 
-type UploadState = "idle" | "dragging" | "uploading" | "parsing" | "success" | "error";
+type UploadState = "idle" | "dragging" | "uploading" | "parsing" | "confirming" | "success" | "error";
 
-const LAB_SOURCES = [
-  "Quest Diagnostics",
-  "LabCorp",
-  "Rupa Health",
-  "Function Health",
-  "Ulta Lab Tests",
-  "Other",
-];
+const LAB_SOURCES = ["Quest Diagnostics", "LabCorp", "Rupa Health", "Function Health", "Ulta Lab Tests", "Other"];
 
-interface ParsedFile {
-  name: string;
-  size: string;
-  type: "pdf" | "excel" | "csv";
+const CATEGORY_ORDER = ["metabolic", "lipid", "inflammatory", "hormone", "thyroid", "vitamin", "cbc", "kidney", "liver", "nutrition"];
+const CATEGORY_LABELS: Record<string, string> = {
+  metabolic: "Metabolic", lipid: "Lipids", inflammatory: "Inflammation",
+  hormone: "Hormones", thyroid: "Thyroid", vitamin: "Vitamins & Minerals",
+  cbc: "Blood (CBC)", kidney: "Kidney", liver: "Liver", nutrition: "Nutrition",
+};
+
+const STATUS_STYLES = {
+  optimal:    { color: "#059669", bg: "rgba(5,150,105,0.08)",   label: "Optimal"    },
+  elevated:   { color: "#DC2626", bg: "rgba(220,38,38,0.08)",   label: "Elevated"   },
+  low:        { color: "#DC2626", bg: "rgba(220,38,38,0.08)",   label: "Low"        },
+  borderline: { color: "#D97706", bg: "rgba(217,119,6,0.08)",   label: "Borderline" },
+};
+
+// ── Editable biomarker row ────────────────────────────────────────────────────
+
+function BiomarkerRow({ b, onChange }: {
+  b: Biomarker;
+  onChange: (id: string, value: number) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(String(b.value));
+  const st = STATUS_STYLES[b.status] ?? STATUS_STYLES.borderline;
+
+  function commit() {
+    const num = parseFloat(draft);
+    if (!isNaN(num) && num > 0) onChange(b.id, num);
+    setEditing(false);
+  }
+
+  return (
+    <div className="flex items-center gap-3 py-2.5" style={{ borderBottom: "1px solid var(--border)" }}>
+      <div className="flex-1 min-w-0">
+        <p className="text-[13px] font-medium truncate" style={{ color: "var(--text1)" }}>{b.name}</p>
+        <p className="text-[11px]" style={{ color: "var(--text3)" }}>
+          Optimal: {b.optimalMin}–{b.optimalMax} {b.unit}
+        </p>
+      </div>
+
+      {editing ? (
+        <div className="flex items-center gap-1.5">
+          <input
+            autoFocus
+            type="number"
+            value={draft}
+            onChange={e => setDraft(e.target.value)}
+            onBlur={commit}
+            onKeyDown={e => e.key === "Enter" && commit()}
+            className="w-20 text-right text-[14px] font-semibold rounded-lg px-2 py-1"
+            style={{ border: "1.5px solid var(--accent)", outline: "none", background: "var(--surface)", color: "var(--text1)" }}
+          />
+          <span className="text-[11px]" style={{ color: "var(--text3)" }}>{b.unit}</span>
+          <button onClick={commit} style={{ color: "var(--green)" }}>
+            <Check size={14} />
+          </button>
+        </div>
+      ) : (
+        <div className="flex items-center gap-2">
+          <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full"
+            style={{ background: st.bg, color: st.color }}>
+            {st.label}
+          </span>
+          <button
+            onClick={() => setEditing(true)}
+            className="flex items-center gap-1 text-[13px] font-semibold"
+            style={{ color: "var(--text1)", minWidth: 52, textAlign: "right" }}
+          >
+            {b.value}
+            <Pencil size={10} color="var(--text3)" />
+          </button>
+          <span className="text-[11px]" style={{ color: "var(--text3)", minWidth: 32 }}>{b.unit}</span>
+        </div>
+      )}
+    </div>
+  );
 }
 
+// ── Main component ─────────────────────────────────────────────────────────────
+
 export default function LabUpload() {
-  const [state, setState] = useState<UploadState>("idle");
-  const [file, setFile] = useState<ParsedFile | null>(null);
-  const [source, setSource] = useState("Quest Diagnostics");
-  const [errorMsg, setErrorMsg] = useState("");
+  const [state, setState]         = useState<UploadState>("idle");
+  const [source, setSource]       = useState("Quest Diagnostics");
+  const [fileName, setFileName]   = useState("");
+  const [errorMsg, setErrorMsg]   = useState("");
+  const [pendingPanel, setPending] = useState<LabPanel | null>(null);
+  const [editedBiomarkers, setEdited] = useState<Biomarker[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { setLabPanel } = useHealthStore();
-
-  function formatFileSize(bytes: number): string {
-    if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-  }
-
-  function getFileType(name: string): "pdf" | "excel" | "csv" {
-    const ext = name.split(".").pop()?.toLowerCase();
-    if (ext === "pdf") return "pdf";
-    if (ext === "csv") return "csv";
-    return "excel";
-  }
 
   async function handleFile(rawFile: File) {
     const allowed = ["application/pdf", "text/csv",
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       "application/vnd.ms-excel"];
-
     if (!allowed.includes(rawFile.type) && !rawFile.name.endsWith(".csv")) {
       setErrorMsg("Please upload a PDF, Excel (.xlsx), or CSV file.");
-      setState("error");
-      return;
+      setState("error"); return;
     }
 
-    setFile({
-      name: rawFile.name,
-      size: formatFileSize(rawFile.size),
-      type: getFileType(rawFile.name),
-    });
-
+    setFileName(rawFile.name);
     setState("uploading");
-
-    // Simulate upload progress
-    await new Promise((r) => setTimeout(r, 800));
+    await new Promise(r => setTimeout(r, 600));
     setState("parsing");
 
     try {
-      const formData = new FormData();
-      formData.append("file", rawFile);
-      formData.append("source", source);
-
-      const res = await fetch("/api/parse-labs", {
-        method: "POST",
-        body: formData,
-      });
-
+      const fd = new FormData();
+      fd.append("file", rawFile);
+      fd.append("source", source);
+      const res = await fetch("/api/parse-labs", { method: "POST", body: fd });
       if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error ?? "Parsing failed"); }
+      const { panel } = await res.json() as { panel: LabPanel };
 
-      const { panel } = await res.json();
-      setLabPanel(panel);
-      setState("success");
+      if (!panel?.biomarkers?.length) throw new Error("No biomarkers detected. Check that the file contains lab values.");
+
+      setPending(panel);
+      setEdited(panel.biomarkers);
+      setState("confirming");
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Parsing failed";
-      setErrorMsg(msg);
+      setErrorMsg(err instanceof Error ? err.message : "Parsing failed");
       setState("error");
     }
   }
 
-  function handleDrop(e: React.DragEvent) {
-    e.preventDefault();
-    setState("idle");
-    const dropped = e.dataTransfer.files[0];
-    if (dropped) handleFile(dropped);
+  function handleValueChange(id: string, newValue: number) {
+    setEdited(prev => prev.map(b =>
+      b.id === id
+        ? { ...b, value: newValue, status: getBiomarkerStatus(newValue, b.optimalMin, b.optimalMax) }
+        : b
+    ));
   }
 
-  function handleInputChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const selected = e.target.files?.[0];
-    if (selected) handleFile(selected);
+  function confirm() {
+    if (!pendingPanel) return;
+    const confirmed: LabPanel = { ...pendingPanel, biomarkers: editedBiomarkers };
+    setLabPanel(confirmed);
+    setState("success");
   }
 
   function reset() {
-    setState("idle");
-    setFile(null);
-    setErrorMsg("");
+    setState("idle"); setFileName(""); setErrorMsg(""); setPending(null); setEdited([]);
     if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
-  const FileIcon = file?.type === "pdf" ? FileText : FileSpreadsheet;
+  // Group biomarkers by category for the confirmation screen
+  const grouped = CATEGORY_ORDER.map(cat => ({
+    cat,
+    markers: editedBiomarkers.filter(b => b.category === cat),
+  })).filter(g => g.markers.length > 0);
+  // Catch uncategorized
+  const knownCats = new Set(CATEGORY_ORDER);
+  const other = editedBiomarkers.filter(b => !knownCats.has(b.category));
+  if (other.length) grouped.push({ cat: "other", markers: other });
 
-  return (
+  const outCount = editedBiomarkers.filter(b => b.status !== "optimal").length;
+
+  // ── Idle / error ─────────────────────────────────────────────────────────────
+  if (state === "idle" || state === "dragging" || state === "error") return (
     <div className="space-y-4">
-      {/* Source selector */}
       <div>
-        <label className="text-[13px] font-semibold text-text-secondary block mb-2">
-          Lab Provider
-        </label>
+        <p className="text-[12px] font-semibold uppercase tracking-wider mb-2" style={{ color: "var(--text2)" }}>
+          Lab provider
+        </p>
         <div className="flex gap-2 flex-wrap">
-          {LAB_SOURCES.map((s) => (
-            <button
-              key={s}
-              onClick={() => setSource(s)}
-              className={cn(
-                "px-3 py-1.5 rounded-full text-[12px] font-medium border transition-all",
-                source === s
-                  ? "border-purple-500 bg-purple-50 text-purple-600"
-                  : "border-gray-200 text-text-secondary bg-white"
-              )}
-            >
+          {LAB_SOURCES.map(s => (
+            <button key={s} onClick={() => setSource(s)}
+              className="px-3 py-1.5 rounded-full text-[12px] font-medium transition-all"
+              style={{
+                background: source === s ? "var(--accent-lo)" : "var(--surface)",
+                border: `1.5px solid ${source === s ? "var(--accent)" : "var(--border)"}`,
+                color: source === s ? "var(--accent)" : "var(--text2)",
+              }}>
               {s}
             </button>
           ))}
         </div>
       </div>
 
-      {/* Drop zone */}
-      {state === "idle" || state === "dragging" || state === "error" ? (
-        <div
-          onDragOver={(e) => { e.preventDefault(); setState("dragging"); }}
-          onDragLeave={() => setState("idle")}
-          onDrop={handleDrop}
-          onClick={() => fileInputRef.current?.click()}
-          className={cn(
-            "relative rounded-2xl border-2 border-dashed transition-all cursor-pointer p-8 flex flex-col items-center gap-3",
-            state === "dragging"
-              ? "border-purple-400 bg-purple-50"
-              : state === "error"
-              ? "border-red-300 bg-red-50"
-              : "border-gray-200 bg-[#F7F5FF] hover:border-purple-300 hover:bg-purple-50"
-          )}
-        >
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".pdf,.xlsx,.xls,.csv"
-            onChange={handleInputChange}
-            className="hidden"
-          />
-
-          <div className="w-14 h-14 rounded-2xl bg-purple-100 flex items-center justify-center">
-            <Upload size={24} className="text-purple-500" />
+      <div
+        onDragOver={e => { e.preventDefault(); setState("dragging"); }}
+        onDragLeave={() => setState("idle")}
+        onDrop={e => { e.preventDefault(); setState("idle"); const f = e.dataTransfer.files[0]; if (f) handleFile(f); }}
+        onClick={() => fileInputRef.current?.click()}
+        className="rounded-2xl border-2 border-dashed p-8 flex flex-col items-center gap-3 cursor-pointer transition-all"
+        style={{
+          borderColor: state === "dragging" ? "var(--accent)" : state === "error" ? "var(--red)" : "var(--border)",
+          background: state === "dragging" ? "var(--accent-lo)" : state === "error" ? "rgba(220,38,38,0.04)" : "var(--surface)",
+        }}
+      >
+        <input ref={fileInputRef} type="file" accept=".pdf,.xlsx,.xls,.csv" onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); }} className="hidden" />
+        <div className="w-14 h-14 rounded-2xl flex items-center justify-center" style={{ background: "var(--accent-lo)" }}>
+          <Upload size={24} color="var(--accent)" />
+        </div>
+        <div className="text-center">
+          <p className="text-[15px] font-semibold" style={{ color: "var(--text1)" }}>
+            {state === "dragging" ? "Drop it here" : "Upload Lab Report"}
+          </p>
+          <p className="text-[13px] mt-1" style={{ color: "var(--text2)" }}>PDF, Excel, or CSV from Quest, LabCorp, Rupa & more</p>
+          <p className="text-[12px] mt-1.5" style={{ color: "var(--text3)" }}>Tap to browse or drag and drop</p>
+        </div>
+        {state === "error" && (
+          <div className="flex items-center gap-2 mt-1">
+            <AlertCircle size={14} color="var(--red)" />
+            <p className="text-[13px] font-medium" style={{ color: "var(--red)" }}>{errorMsg}</p>
           </div>
+        )}
+      </div>
+      <div className="flex gap-4 text-[11px]" style={{ color: "var(--text3)" }}>
+        <div className="flex items-center gap-1"><FileText size={11} /><span>PDF reports</span></div>
+        <div className="flex items-center gap-1"><FileSpreadsheet size={11} /><span>Excel / CSV</span></div>
+      </div>
+    </div>
+  );
 
-          <div className="text-center">
-            <p className="text-[15px] font-semibold text-text-primary">
-              {state === "dragging" ? "Drop your file here" : "Upload Lab Report"}
+  // ── Uploading / parsing ───────────────────────────────────────────────────────
+  if (state === "uploading" || state === "parsing") return (
+    <div className="rounded-2xl px-4 py-5" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+      <div className="flex items-center gap-3 mb-4">
+        <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: "var(--accent-lo)" }}>
+          <FileText size={18} color="var(--accent)" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-[14px] font-semibold truncate" style={{ color: "var(--text1)" }}>{fileName}</p>
+          <p className="text-[12px]" style={{ color: "var(--text3)" }}>{source}</p>
+        </div>
+        <Loader2 size={18} color="var(--accent)" className="animate-spin flex-shrink-0" />
+      </div>
+      <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "var(--border)" }}>
+        <div className="h-full rounded-full transition-all duration-1000"
+          style={{ width: state === "uploading" ? "35%" : "80%", background: "var(--accent)" }} />
+      </div>
+      <p className="text-[12px] mt-2" style={{ color: "var(--text3)" }}>
+        {state === "uploading" ? "Reading file..." : "AI extracting biomarkers — identifying glucose, lipids, hormones, vitamins..."}
+      </p>
+    </div>
+  );
+
+  // ── Confirming ────────────────────────────────────────────────────────────────
+  if (state === "confirming") return (
+    <div className="space-y-4 step-enter">
+      {/* Header */}
+      <div className="rounded-2xl px-4 py-4" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: "rgba(5,150,105,0.1)" }}>
+            <CheckCircle size={18} color="var(--green)" />
+          </div>
+          <div className="flex-1">
+            <p className="text-[14px] font-semibold" style={{ color: "var(--text1)" }}>
+              {editedBiomarkers.length} biomarkers detected
             </p>
-            <p className="text-[13px] text-text-secondary mt-1">
-              PDF, Excel, or CSV from Quest, Rupa, LabCorp & more
-            </p>
-            <p className="text-[12px] text-text-muted mt-2">
-              Tap to browse or drag and drop
+            <p className="text-[12px]" style={{ color: "var(--text2)" }}>
+              {fileName} · {outCount > 0 ? `${outCount} out of range` : "all in optimal range"}
             </p>
           </div>
+          <button onClick={reset}>
+            <X size={16} color="var(--text3)" />
+          </button>
+        </div>
+      </div>
 
-          {state === "error" && (
-            <p className="text-[13px] text-red-500 font-medium">{errorMsg}</p>
-          )}
-        </div>
-      ) : state === "uploading" || state === "parsing" ? (
-        /* Processing state */
-        <div className="rounded-2xl bg-white border border-gray-100 shadow-card p-5">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center">
-              <FileIcon size={20} className="text-purple-500" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-[14px] font-semibold text-text-primary truncate">
-                {file?.name}
-              </p>
-              <p className="text-[12px] text-text-muted">{file?.size}</p>
-            </div>
-            <Loader2 size={18} className="text-purple-500 animate-spin flex-shrink-0" />
-          </div>
+      {/* Instruction */}
+      <div className="flex items-start gap-2.5 px-1">
+        <Pencil size={13} color="var(--accent)" className="mt-0.5 flex-shrink-0" />
+        <p className="text-[12px]" style={{ color: "var(--text2)", lineHeight: 1.5 }}>
+          Review the values below. Tap any number to correct it if it doesn&apos;t match your report.
+        </p>
+      </div>
 
-          <div className="space-y-2">
-            <div className="flex justify-between text-[12px] font-medium">
-              <span className="text-text-secondary">
-                {state === "uploading" ? "Uploading..." : "AI extracting biomarkers..."}
-              </span>
-            </div>
-            <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
-              <div
-                className="h-full gradient-btn rounded-full transition-all duration-1000"
-                style={{ width: state === "uploading" ? "40%" : "80%" }}
-              />
-            </div>
-            {state === "parsing" && (
-              <p className="text-[11px] text-text-muted">
-                Identifying glucose, lipids, hormones, vitamins...
+      {/* Biomarker list grouped by category */}
+      <div className="rounded-2xl overflow-hidden" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+        {grouped.map(({ cat, markers }, gi) => (
+          <div key={cat}>
+            {gi > 0 && <div style={{ height: 1, background: "var(--border)" }} />}
+            <div className="px-4 pt-3 pb-1">
+              <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: "var(--text3)" }}>
+                {CATEGORY_LABELS[cat] ?? cat}
               </p>
-            )}
-          </div>
-        </div>
-      ) : (
-        /* Success state */
-        <div className="rounded-2xl bg-white border border-green-100 shadow-card p-5">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-green-50 flex items-center justify-center">
-              <CheckCircle size={20} className="text-green-500" />
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-[14px] font-semibold text-text-primary">
-                Lab results extracted
-              </p>
-              <p className="text-[12px] text-text-muted">{file?.name} · {source}</p>
+            <div className="px-4">
+              {markers.map(b => (
+                <BiomarkerRow key={b.id} b={b} onChange={handleValueChange} />
+              ))}
             </div>
-            <button onClick={reset} className="text-text-muted active:text-text-secondary">
-              <X size={16} />
-            </button>
           </div>
-        </div>
-      )}
+        ))}
+      </div>
 
-      {/* Format info */}
-      {(state === "idle" || state === "error") && (
-        <div className="flex gap-3 text-[11px] text-text-muted">
-          <div className="flex items-center gap-1">
-            <FileText size={12} />
-            <span>PDF reports</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <FileSpreadsheet size={12} />
-            <span>Excel / CSV exports</span>
-          </div>
+      {/* Confirm */}
+      <button className="btn-primary" onClick={confirm}>
+        <CheckCircle size={16} /> Looks correct — build my protocol
+      </button>
+      <button className="btn-ghost" onClick={reset}>Upload a different file</button>
+    </div>
+  );
+
+  // ── Success ───────────────────────────────────────────────────────────────────
+  return (
+    <div className="rounded-2xl px-4 py-4" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: "rgba(5,150,105,0.1)" }}>
+          <CheckCircle size={18} color="var(--green)" />
         </div>
-      )}
+        <div className="flex-1">
+          <p className="text-[14px] font-semibold" style={{ color: "var(--text1)" }}>Lab results saved</p>
+          <p className="text-[12px]" style={{ color: "var(--text2)" }}>{fileName} · {source}</p>
+        </div>
+        <button onClick={reset}><X size={16} color="var(--text3)" /></button>
+      </div>
     </div>
   );
 }
