@@ -29,7 +29,7 @@ Schema for each item:
 FUNCTIONAL MEDICINE OPTIMAL RANGES (use these — stricter than conventional lab ranges):
 METABOLIC:
 - glucose → id=glucose, 70–85 mg/dL
-- hba1c → id=hba1c, 4.8–5.4 %
+- hba1c → id=hba1c, 4.3–5.4 %
 - fastingInsulin → id=fastingInsulin, 2–6 µIU/mL
 - uricAcid → id=uricAcid, 2.5–5.5 mg/dL
 
@@ -52,7 +52,7 @@ INFLAMMATORY:
 
 HORMONES (male defaults — adjust if female):
 - testosterone → id=testosterone, 600–900 ng/dL (female: 50–150)
-- freeTesto → id=freeTesto, 15–35 pg/mL (female: 1–8.5)
+- freeTesto → id=freeTesto, 100–150 pg/mL (female: 1–8.5 pg/mL) — NOTE: if value is in ng/dL, multiply by 10 to convert; dialysis method typically reports in pg/mL
 - shbg → id=shbg, 20–60 nmol/L
 - estradiol → id=estradiol, 20–40 pg/mL (female: 50–200)
 - progesterone → id=progesterone, 1–3 ng/mL (female: 5–25)
@@ -118,7 +118,12 @@ OTHER:
 
 For any biomarker NOT in this list: assign a sensible id, infer category, and use the lab's own reference range ±10% for the optimal range (conventional labs use disease thresholds, not optimal targets).
 
-CRITICAL: Extract EVERY biomarker present in the document — do not skip any values. Return valid JSON array only.`;
+CRITICAL RULES:
+1. Extract EVERY biomarker present — do not skip any values.
+2. The "value" field must ALWAYS be a plain number. If the report shows "<0.2", use 0.2. If it shows ">120", use 120. Strip all operators.
+3. Return valid JSON array only — no markdown, no code fences, no explanation.
+4. For sex-specific ranges (testosterone, creatinine, hemoglobin, etc.) use MALE ranges unless the report indicates female patient.
+5. If a biomarker panel is listed but no numeric value is shown (e.g. a header row only), skip it.`;
 
 export async function POST(req: Request) {
   try {
