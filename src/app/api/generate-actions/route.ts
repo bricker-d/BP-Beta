@@ -200,65 +200,72 @@ export async function POST(req: Request) {
       habits.alcoholFrequency   ? `Alcohol: ${habits.alcoholFrequency}` : null,
     ].filter(Boolean).join(" | ") : "";
 
-    const candidateContext = candidates
+    // Sort and slice candidates — Claude will select from these by index
+    const rankedCandidates = candidates
       .sort((a, b) => (b.goalRelevance - a.goalRelevance) || (a.priority - b.priority))
-      .slice(0, 25)
-      .map((c, i) => {
-        const cite = c.intervention.citations[0];
-        return `[${i + 1}] ${c.biomarkerName} (${c.biomarkerValue} ${c.biomarkerUnit}) | GoalRelevance:${c.goalRelevance} | ${c.intervention.title} | Grade ${c.intervention.evidenceGrade} | Effect: ${c.intervention.effectSize} | Time: ${c.intervention.timeToEffect} | Mechanism: ${c.intervention.mechanism.slice(0, 150)} | Citation: ${cite ? formatCitation(cite) : "N/A"}`;
-      })
-      .join("\n");
+      .slice(0, 20);
+
+    // Build full candidate context — untruncated so Claude has all the evidence
+    const candidateContext = rankedCandidates.map((c, i) => {
+      const cite = c.intervention.citations[0];
+      return [
+        `[${i + 1}] BIOMARKER: ${c.biomarkerName} — ${c.biomarkerValue} ${c.biomarkerUnit} (optimal: ${c.optimalRange}) [${c.biomarkerStatus.toUpperCase()}] GoalRelevance:${c.goalRelevance}`,
+        `    INTERVENTION: ${c.intervention.title}`,
+        `    CATEGORY: ${c.intervention.category} | GRADE: ${c.intervention.evidenceGrade}`,
+        `    DOSE: ${c.intervention.description}`,
+        `    MECHANISM: ${c.intervention.mechanism}`,
+        `    EFFECT SIZE: ${c.intervention.effectSize}`,
+        `    TIME TO EFFECT: ${c.intervention.timeToEffect}`,
+        `    CITATION: ${cite ? formatCitation(cite) : "N/A"}`,
+        `    FINDING: ${cite?.finding ?? ""}`,
+        c.intervention.contraindications ? `    CONTRAINDICATIONS: ${c.intervention.contraindications}` : "",
+      ].filter(Boolean).join("\n");
+    }).join("\n\n");
 
     const timeNote = TIME_HORIZON_NOTES[timeHorizon ?? ""] ?? "";
     const goalList = (goals ?? []).join(", ") || "general health";
     const priorityNote = priorityBiomarkers.length > 0
-      ? `\nGOAL-ALIGNED PRIORITY BIOMARKERS (ranked by relevance to stated goals):\n${priorityBiomarkers.slice(0, 10).map((id, i) => `  ${i + 1}. ${id}`).join("\n")}\nStrongly weight candidates targeting these biomarkers.`
+      ? `\nGOAL-ALIGNED PRIORITY BIOMARKERS: ${priorityBiomarkers.slice(0, 8).join(", ")}\nThe first 2 selected actions MUST target these biomarkers.`
       : "";
 
+    // Claude's job: SELECT by index and write personalized title + description only.
+    // All clinical claims (mechanism, citations, dosing, effect size) come from the library above.
     const response = await getClient().messages.create({
       model: "claude-sonnet-4-6",
-      max_tokens: 3000,
+      max_tokens: 2000,
       messages: [{
         role: "user",
-        content: `You are the BioPrecision clinical action ranking agent. Select exactly 5 evidence-based interventions that will have the highest impact on this patient's specific goals and biomarker profile.
+        content: `You are the BioPrecision clinical action selector. Your ONLY job is to:
+1. Select the 5 best interventions from the numbered list below for this specific patient
+2. Write a personalized title and one-sentence description for each using their actual biomarker values
 
-PATIENT: ${patientName ?? "Patient"} | Sex: ${biologicalSex ?? "not specified"} | Goals: ${goalList}
-Why they're here: ${painPoint ?? "general optimization"}
-Time horizon: ${timeHorizon ?? "not specified"}${timeNote ? `\nTime horizon guidance: ${timeNote}` : ""}
-Habits: ${habitContext || "not provided"}
+CRITICAL: Do NOT add clinical claims, dosing, mechanisms, or citations beyond what is provided in the candidate list. The system will populate those fields from the library. You write ONLY the title and description.
+
+PATIENT: ${patientName ?? "Patient"} | ${biologicalSex ?? ""} | Goals: ${goalList}
+Situation: ${painPoint ?? "general optimization"} | Time horizon: ${timeHorizon ?? "standard"}${timeNote ? ` (${timeNote})` : ""}
+Current habits: ${habitContext || "not provided"}
 Medications: ${(medications ?? []).join(", ") || "none"}
 ${priorityNote}
 
-OUT-OF-RANGE BIOMARKERS (markers labeled GOAL PRIORITY must be addressed first):
+OUT-OF-RANGE BIOMARKERS:
 ${labContext}
 ${wearableContext}
 
-CANDIDATE INTERVENTIONS (select exactly 5):
+CANDIDATE INTERVENTIONS — select 5 by their [number]:
 ${candidateContext}
 
 SELECTION RULES:
-1. Exactly 5 interventions. The first 2 MUST target Goal Priority biomarkers if any exist.
-2. Prefer Grade A evidence. Never select two interventions addressing the same biomarker.
-3. Balance categories: avoid all 5 being the same category (e.g., all Supplements).
-4. Personalize description to use patient's actual value and state the specific benefit.
-5. The "why" field must cite the biological mechanism AND a specific study/finding.
-6. If a medication is listed, flag contraindications explicitly in the description.
-7. Include specific dosing or protocol in the description (not just "take fish oil" — "4g/day EPA+DHA").
+1. Select exactly 5. If GOAL-ALIGNED PRIORITY biomarkers exist, first 2 selections MUST address them.
+2. Prefer Grade A evidence. Do not select two interventions for the same biomarker.
+3. Balance categories — avoid selecting all Supplements or all Exercise.
+4. If a medication conflicts with a contraindication, skip that intervention.
+5. Prefer interventions with shorter time-to-effect if time horizon is 90d.
 
-Return ONLY a valid JSON array of 5 objects — no markdown, no explanation:
+Return ONLY valid JSON — no markdown, no explanation:
 [{
-  "id": "action-1",
-  "title": "specific actionable title",
-  "description": "personalized description with patient's actual value, specific protocol/dosing",
-  "category": "Movement|Nutrition|Exercise|Sleep|Supplement|Lifestyle",
-  "why": "mechanism (2-3 sentences) + specific study finding with year",
-  "completed": false,
-  "targetBiomarkers": ["biomarker-id"],
-  "biomarkerTarget": "MarkerName: current → optimal range",
-  "evidenceGrade": "A|B|C",
-  "citations": ["formatted citation string"],
-  "effectSize": "quantified expected change",
-  "timeToEffect": "realistic timeline"
+  "candidateIndex": <number from list>,
+  "title": "action title personalized with patient's actual value (e.g. 'Raise testosterone from 516 → 600+ ng/dL with resistance training')",
+  "description": "one sentence: what to do, personalized to this patient's specific situation"
 }]`,
       }],
     });
@@ -266,25 +273,57 @@ Return ONLY a valid JSON array of 5 objects — no markdown, no explanation:
     const raw = response.content[0].type === "text" ? response.content[0].text : "[]";
     const jsonMatch = raw.match(/\[[\s\S]*\]/);
     if (!jsonMatch) return Response.json({ error: "Failed to generate actions" }, { status: 500 });
-    const actions: HealthAction[] = JSON.parse(jsonMatch[0]);
 
-    // Enrich with live PubMed citations (parallel, 5s timeout each)
+    // Parse Claude's selections and merge with library data — all clinical facts from library
+    interface Selection { candidateIndex: number; title: string; description: string; }
+    const selections: Selection[] = JSON.parse(jsonMatch[0]);
+
+    const actions: HealthAction[] = selections
+      .filter(s => s.candidateIndex >= 1 && s.candidateIndex <= rankedCandidates.length)
+      .slice(0, 5)
+      .map((s, i) => {
+        const c = rankedCandidates[s.candidateIndex - 1];
+        const iv = c.intervention;
+        return {
+          id: `action-${i + 1}`,
+          title: s.title,
+          description: s.description,
+          category: iv.category,
+          // why comes entirely from library — no Claude generation
+          why: `${iv.mechanism} ${iv.citations[0]?.finding ?? ""}`.trim(),
+          completed: false,
+          targetBiomarkers: iv.targetBiomarkers,
+          biomarkerTarget: `${c.biomarkerName}: ${c.biomarkerValue} ${c.biomarkerUnit} → ${c.optimalRange}`,
+          evidenceGrade: iv.evidenceGrade,
+          effectSize: iv.effectSize,
+          timeToEffect: iv.timeToEffect,
+          citations: iv.citations.map(formatCitation),
+        };
+      });
+
+    // Augment citations with live PubMed verification (parallel, 4s timeout, non-blocking)
+    // PubMed is used to ADD a second verified citation — never replaces the library citation
     const enriched = await Promise.all(
-      actions.map(async action => {
+      actions.map(async (action) => {
         try {
-          const biomarkerName = action.targetBiomarkers?.[0] ?? "";
-          const query = buildQuery(biomarkerName, action.title);
+          const c = rankedCandidates.find(rc =>
+            rc.intervention.targetBiomarkers.some(id => action.targetBiomarkers?.includes(id))
+          );
+          if (!c) return action;
+          const query = buildQuery(c.biomarkerName, c.intervention.title);
           const papers = await Promise.race([
             pubmedSearch(query, 1),
-            new Promise<[]>(r => setTimeout(() => r([]), 5000)),
+            new Promise<[]>(r => setTimeout(() => r([]), 4000)),
           ]);
           if (papers.length > 0) {
-            return {
-              ...action,
-              citations: [fmtPubMed(papers[0]), ...(action.citations ?? [])].slice(0, 3),
-            };
+            const pubmedCite = fmtPubMed(papers[0]);
+            // Only add if different from library citation
+            const existing = action.citations ?? [];
+            if (!existing.some(c => c.includes(papers[0].pmid))) {
+              return { ...action, citations: [...existing, pubmedCite].slice(0, 3) };
+            }
           }
-        } catch { /* keep action as-is on failure */ }
+        } catch { /* keep action as-is */ }
         return action;
       })
     );
