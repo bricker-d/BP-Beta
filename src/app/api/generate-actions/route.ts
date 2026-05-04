@@ -240,12 +240,26 @@ ${labContext}
 CANDIDATE INTERVENTIONS — select by [number]:
 ${candidateContext}
 
+TITLE RULES — this is the most important part:
+- Pretend you are texting a busy person who has never heard of their lab results
+- The title is the ONLY thing they read. Make it a simple instruction they can do today
+- MAX 7 words. No numbers unless it's a dose. No lab names. No clinical terms
+- BAD: "Optimize testosterone via resistance training protocol"
+- BAD: "Increase testosterone from 516 toward optimal range"
+- BAD: "Resistance Training Protocol for Testosterone"
+- GOOD: "Lift weights three times this week"
+- BAD: "Supplement with magnesium glycinate 400mg for insulin"
+- GOOD: "Take magnesium before bed tonight"
+- BAD: "Engage in post-meal ambulation to improve glucose"
+- GOOD: "Walk 10 minutes after each meal"
+- The intervention title in the candidate list is for YOUR reference only — never copy it
+
 Return ONLY valid JSON, no markdown:
 [{
   "candidateIndex": <number>,
-  "title": "ultra-simple action — 5 to 8 words max, sounds like a friendly reminder",
-  "description": "one sentence with the specific dose or timing",
-  "plainWhy": "2-3 plain sentences — what this does in the body and why it helps. No jargon, no Latin, no abbreviations."
+  "title": "simple instruction, max 7 words, no jargon, no lab values",
+  "description": "one sentence — the specific dose, timing, or how-to in plain words",
+  "plainWhy": "2-3 sentences. What happens in the body and why it helps. Write it like you're explaining to someone with zero medical background. No Latin, no abbreviations, no clinical terms."
 }]`,
       }],
     });
