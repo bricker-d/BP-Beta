@@ -145,37 +145,12 @@ export async function POST(req: Request) {
       }
     }
 
-    // Wearable step action
-    if (wearableData?.dailySteps && wearableData.dailySteps < 7000) {
-      candidates.push({
-        intervention: {
-          title: "Reach 8,000 steps today",
-          description: `You're averaging ${wearableData.dailySteps.toLocaleString()} steps. Add a 20-min walk.`,
-          category: "Movement",
-          mechanism: "8,000 steps/day is associated with significantly lower all-cause mortality (−51% vs. <4,000 steps). Each additional 1,000 steps reduces mortality risk by ~15%. The mechanism involves improved insulin sensitivity, reduced visceral adiposity, and anti-inflammatory effects.",
-          effectSize: "Significant mortality risk reduction at 8,000+ steps/day",
-          timeToEffect: "Cumulative; immediate metabolic and cardiovascular effects",
-          evidenceGrade: "A",
-          citations: [{ authors: "Saint-Maurice PF, et al.", year: 2020, title: "Association of Daily Step Count and Step Intensity With Mortality Among US Adults", journal: "JAMA", pmid: "32207799", finding: "8,000–12,000 steps/day was associated with significantly lower all-cause mortality vs. 4,000 steps/day." }],
-          targetBiomarkers: ["glucose", "triglycerides", "hscrp"],
-        },
-        biomarkerId: "wearable", biomarkerName: "Daily Activity",
-        biomarkerValue: wearableData.dailySteps, biomarkerUnit: "steps",
-        biomarkerStatus: "low", optimalRange: "8,000+ steps",
-        priority: 2, goalRelevance: 1,
-      });
-    }
+    // Note: wearable step goals are not added here — actions must be grounded in lab biomarkers only
 
     if (candidates.length === 0) {
       return Response.json({
-        actions: [{
-          id: "maintain-1",
-          title: "Maintain your current lifestyle — all markers are optimal",
-          description: "Your lab results show excellent metabolic health. Consistency is the most underrated intervention.",
-          category: "Lifestyle", why: "Consistency produces optimal biomarker results. Your current habits are working.", completed: false,
-          targetBiomarkers: [], biomarkerTarget: "All markers optimal", evidenceGrade: "A",
-          citations: [], effectSize: "Maintenance", timeToEffect: "Ongoing",
-        }],
+        actions: [],
+        allOptimal: true,
         disclaimer: CLINICAL_DISCLAIMER,
       });
     }
@@ -228,44 +203,39 @@ export async function POST(req: Request) {
       ? `\nGOAL-ALIGNED PRIORITY BIOMARKERS: ${priorityBiomarkers.slice(0, 8).join(", ")}\nThe first 2 selected actions MUST target these biomarkers.`
       : "";
 
-    // Claude's job: SELECT by index and write personalized title + description only.
-    // All clinical claims (mechanism, citations, dosing, effect size) come from the library above.
+    // Claude's job: SELECT by index, write plain-English title + description + why.
+    // All clinical facts (citations, dosing, effect size, grade) come from the library — never from Claude.
     const response = await getClient().messages.create({
       model: "claude-sonnet-4-6",
       max_tokens: 2000,
       messages: [{
         role: "user",
-        content: `You are the BioPrecision clinical action selector. Your ONLY job is to:
-1. Select the 5 best interventions from the numbered list below for this specific patient
-2. Write a personalized title and one-sentence description for each using their actual biomarker values
+        content: `You are a clinical protocol builder. Your job is to select interventions from the list below that are directly supported by this patient's lab results, and explain them in plain language a non-physician can understand.
 
-CRITICAL: Do NOT add clinical claims, dosing, mechanisms, or citations beyond what is provided in the candidate list. The system will populate those fields from the library. You write ONLY the title and description.
+RULES — read carefully:
+1. Only select interventions that directly address a marker that is out of range in this panel. Do not add anything not tied to an actual lab finding.
+2. Return ONLY as many actions as are genuinely supported. If 2 markers are out of range, return 2 actions. Do not pad to reach a number.
+3. No jargon. Write as if explaining to a smart friend. No Latin, no receptor names, no pathway abbreviations.
+4. Prefer Grade A evidence. Do not select two interventions for the same biomarker.
+5. If a medication conflicts with a contraindication, skip that intervention entirely.
+6. If goal-priority biomarkers are listed, address those first.
 
 PATIENT: ${patientName ?? "Patient"} | ${biologicalSex ?? ""} | Goals: ${goalList}
-Situation: ${painPoint ?? "general optimization"} | Time horizon: ${timeHorizon ?? "standard"}${timeNote ? ` (${timeNote})` : ""}
-Current habits: ${habitContext || "not provided"}
 Medications: ${(medications ?? []).join(", ") || "none"}
 ${priorityNote}
 
-OUT-OF-RANGE BIOMARKERS:
+OUT-OF-RANGE LAB MARKERS (only these should generate actions):
 ${labContext}
-${wearableContext}
 
-CANDIDATE INTERVENTIONS — select 5 by their [number]:
+CANDIDATE INTERVENTIONS — select by [number], only what the data supports:
 ${candidateContext}
 
-SELECTION RULES:
-1. Select exactly 5. If GOAL-ALIGNED PRIORITY biomarkers exist, first 2 selections MUST address them.
-2. Prefer Grade A evidence. Do not select two interventions for the same biomarker.
-3. Balance categories — avoid selecting all Supplements or all Exercise.
-4. If a medication conflicts with a contraindication, skip that intervention.
-5. Prefer interventions with shorter time-to-effect if time horizon is 90d.
-
-Return ONLY valid JSON — no markdown, no explanation:
+Return ONLY valid JSON, no markdown:
 [{
-  "candidateIndex": <number from list>,
-  "title": "action title personalized with patient's actual value (e.g. 'Raise testosterone from 516 → 600+ ng/dL with resistance training')",
-  "description": "one sentence: what to do, personalized to this patient's specific situation"
+  "candidateIndex": <number>,
+  "title": "plain action title with patient's actual value (e.g. 'Build testosterone from 516 toward 600+ ng/dL')",
+  "description": "one sentence — what to do specifically, no jargon",
+  "plainWhy": "2-3 sentences explaining why this works in plain English — no receptor names, no Latin terms, no abbreviations. Explain what the body does and why this intervention helps."
 }]`,
       }],
     });
@@ -275,12 +245,11 @@ Return ONLY valid JSON — no markdown, no explanation:
     if (!jsonMatch) return Response.json({ error: "Failed to generate actions" }, { status: 500 });
 
     // Parse Claude's selections and merge with library data — all clinical facts from library
-    interface Selection { candidateIndex: number; title: string; description: string; }
+    interface Selection { candidateIndex: number; title: string; description: string; plainWhy: string; }
     const selections: Selection[] = JSON.parse(jsonMatch[0]);
 
     const actions: HealthAction[] = selections
       .filter(s => s.candidateIndex >= 1 && s.candidateIndex <= rankedCandidates.length)
-      .slice(0, 5)
       .map((s, i) => {
         const c = rankedCandidates[s.candidateIndex - 1];
         const iv = c.intervention;
@@ -289,8 +258,8 @@ Return ONLY valid JSON — no markdown, no explanation:
           title: s.title,
           description: s.description,
           category: iv.category,
-          // why comes entirely from library — no Claude generation
-          why: `${iv.mechanism} ${iv.citations[0]?.finding ?? ""}`.trim(),
+          // why = Claude's plain-English translation; falls back to library finding if blank
+          why: s.plainWhy?.trim() || iv.citations[0]?.finding || iv.mechanism,
           completed: false,
           targetBiomarkers: iv.targetBiomarkers,
           biomarkerTarget: `${c.biomarkerName}: ${c.biomarkerValue} ${c.biomarkerUnit} → ${c.optimalRange}`,

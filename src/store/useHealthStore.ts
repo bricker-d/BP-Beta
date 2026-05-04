@@ -62,6 +62,7 @@ interface HealthStore {
   setActions: (actions: HealthAction[]) => void;
   toggleAction: (id: string) => void;
   isGeneratingActions: boolean;
+  allOptimal: boolean;
 
   messages: ChatMessage[];
   addMessage: (msg: ChatMessage) => void;
@@ -128,9 +129,9 @@ export const useHealthStore = create<HealthStore>()(
           });
 
           if (res.ok) {
-            const { actions } = await res.json();
-            if (actions && Array.isArray(actions)) {
-              set({ actions, isGeneratingActions: false });
+            const data = await res.json();
+            if (Array.isArray(data.actions)) {
+              set({ actions: data.actions, allOptimal: !!data.allOptimal, isGeneratingActions: false });
               return;
             }
           }
@@ -147,6 +148,7 @@ export const useHealthStore = create<HealthStore>()(
       actions: [],
       setActions: (actions) => set({ actions }),
       isGeneratingActions: false,
+      allOptimal: false,
       toggleAction: (id) =>
         set((state) => {
           const updated = state.actions.map((a) =>
@@ -206,6 +208,7 @@ export const useHealthStore = create<HealthStore>()(
         streak: state.streak,
         lastCompletedDate: state.lastCompletedDate,
         completionHistory: state.completionHistory,
+        allOptimal: state.allOptimal,
       }),
     }
   )

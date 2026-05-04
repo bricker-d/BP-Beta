@@ -30,7 +30,7 @@ const GOAL_LABELS: Record<string, string> = {
 };
 
 export default function ActionsPage() {
-  const { actions, toggleAction, isGeneratingActions, streak, completionHistory, intakeProfile } = useHealthStore();
+  const { actions, toggleAction, isGeneratingActions, streak, completionHistory, intakeProfile, allOptimal } = useHealthStore();
   const completed = actions.filter(a => a.completed).length;
   const total     = actions.length;
   const pct       = total ? (completed / total) * 100 : 0;
@@ -104,6 +104,19 @@ export default function ActionsPage() {
           </div>
         )}
 
+        {/* All markers optimal — no actions needed */}
+        {allOptimal && total === 0 && !isGeneratingActions && (
+          <div className="rounded-2xl px-4 py-4"
+            style={{ background: "rgba(5,150,105,0.07)", border: "1px solid rgba(5,150,105,0.2)" }}>
+            <p className="text-[15px] font-semibold" style={{ color: "var(--green)" }}>
+              All markers are in optimal range
+            </p>
+            <p className="text-[13px] mt-1" style={{ color: "var(--text2)" }}>
+              No interventions needed based on your current panel. Upload a new panel when you have your next results.
+            </p>
+          </div>
+        )}
+
         {/* All done state */}
         {allDone && (
           <div className="rounded-2xl px-4 py-4"
@@ -150,14 +163,14 @@ export default function ActionsPage() {
           </div>
         )}
 
-        {/* Empty — no labs */}
-        {!isGeneratingActions && total === 0 && (
+        {/* Empty — no labs uploaded */}
+        {!isGeneratingActions && total === 0 && !allOptimal && (
           <div className="text-center py-16">
             <p className="text-[15px] font-semibold" style={{ color: "var(--text1)" }}>
               No protocol yet
             </p>
             <p className="text-[13px] mt-1" style={{ color: "var(--text2)" }}>
-              Upload your lab results to generate your 5 daily actions
+              Upload your lab results to generate your daily actions
             </p>
           </div>
         )}
