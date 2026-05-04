@@ -1,7 +1,11 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { getBiomarkerStatus } from "@/lib/biomarkers";
 import { LabPanel, Biomarker } from "@/lib/types";
-import { saveLabPanel } from "@/lib/supabase";
+let saveLabPanel: ((patientId: string, source: string, biomarkers: unknown[], date: string) => Promise<unknown>) | null = null;
+try {
+  // Supabase is optional — parse-labs works without it
+  saveLabPanel = (await import("@/lib/supabase")).saveLabPanel;
+} catch { /* supabase not configured */ }
 
 let _client: Anthropic | null = null;
 function getClient(): Anthropic {
@@ -147,7 +151,7 @@ export async function POST(req: Request) {
       const base64 = Buffer.from(buffer).toString("base64");
 
       const response = await getClient().messages.create({
-        model: "claude-opus-4-5",
+        model: "claude-opus-4-6",
         max_tokens: 4096,
         messages: [
           {
@@ -179,7 +183,7 @@ export async function POST(req: Request) {
 
     // Parse text content with Claude
     const response = await getClient().messages.create({
-      model: "claude-opus-4-5",
+      model: "claude-opus-4-6",
       max_tokens: 4096,
       messages: [
         {
@@ -199,9 +203,21 @@ export async function POST(req: Request) {
 
 function buildResponse(rawJson: string, source: string, fileName: string, patientId?: string) {
   try {
-    // Extract JSON from response (handle markdown code blocks)
-    const jsonMatch = rawJson.match(/\[[\s\S]*\]/);
-    const parsed = JSON.parse(jsonMatch ? jsonMatch[0] : rawJson);
+    // Strip markdown code fences if present, then extract the JSON array
+    const stripped = rawJson
+      .replace(/```(?:json)?\s*/gi, "")
+      .replace(/```/g, "")
+      .trim();
+    const jsonMatch = stripped.match(/\[[\s\S]*\]/);
+    if (!jsonMatch) {
+      console.error("[parse-labs] No JSON array found in response. Raw:", rawJson.slice(0, 300));
+      return Response.json({ error: "AI returned no structured data" }, { status: 500 });
+    }
+    const parsed = JSON.parse(jsonMatch[0]);
+    if (!Array.isArray(parsed) || parsed.length === 0) {
+      console.error("[parse-labs] Parsed array is empty. Raw:", rawJson.slice(0, 300));
+      return Response.json({ error: "No biomarkers extracted from document" }, { status: 422 });
+    }
 
     const biomarkers: Biomarker[] = parsed.map((b: Omit<Biomarker, "status">) => ({
       ...b,
@@ -216,7 +232,7 @@ function buildResponse(rawJson: string, source: string, fileName: string, patien
     };
 
     // Persist to Supabase if patient_id provided (fire-and-forget, don't block response)
-    if (patientId) {
+    if (patientId && saveLabPanel) {
       saveLabPanel(patientId, source, biomarkers, panel.date).catch(() => {});
     }
 
