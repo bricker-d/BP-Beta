@@ -3,19 +3,19 @@
 @tailwind utilities;
 
 :root {
-  --bg:         #F5F4F0;
+  --bg:         #F4F6F4;
   --surface:    #FFFFFF;
-  --surface2:   #EFEDE8;
-  --border:     #E4E2D9;
-  --accent:     #5B4FE9;
-  --accent-lo:  rgba(91,79,233,0.09);
-  --accent-mid: rgba(91,79,233,0.18);
+  --surface2:   #ECF0EC;
+  --border:     #DDE3DD;
+  --accent:     #0D9488;
+  --accent-lo:  rgba(13,148,136,0.08);
+  --accent-mid: rgba(13,148,136,0.18);
   --green:      #059669;
   --amber:      #D97706;
   --red:        #DC2626;
-  --text1:      #0A0A0B;
-  --text2:      #6B6872;
-  --text3:      #A4A3AE;
+  --text1:      #0A0F0A;
+  --text2:      #5C6B5C;
+  --text3:      #9AA89A;
 }
 
 * {
@@ -71,7 +71,7 @@ body {
   width: 100%;
   letter-spacing: -0.01em;
   transition: opacity 0.15s, transform 0.1s;
-  box-shadow: 0 2px 12px rgba(91,79,233,0.28);
+  box-shadow: 0 2px 12px rgba(13,148,136,0.28);
 }
 .btn-primary:active { opacity: 0.88; transform: scale(0.98); }
 
@@ -151,10 +151,10 @@ body {
   }
 
   body {
-    background: #07070F;
+    background: #050F0D;
     background-image:
-      radial-gradient(ellipse 90% 60% at 50% -10%, rgba(91,79,233,0.22) 0%, transparent 65%),
-      radial-gradient(ellipse 60% 40% at 80% 100%, rgba(99,102,241,0.1) 0%, transparent 60%);
+      radial-gradient(ellipse 90% 60% at 50% -10%, rgba(13,148,136,0.20) 0%, transparent 65%),
+      radial-gradient(ellipse 60% 40% at 80% 100%, rgba(5,150,105,0.10) 0%, transparent 60%);
     justify-content: center;
     align-items: center;
     padding: 24px;
@@ -174,7 +174,7 @@ body {
       0 0 0 11.5px #48484A,
       0 0 0 12px #1C1C1E,
       0 60px 160px rgba(0,0,0,0.95),
-      0 0 80px rgba(91,79,233,0.12);
+      0 0 80px rgba(13,148,136,0.14);
     overflow: hidden;
     flex-shrink: 0;
     background: var(--bg);

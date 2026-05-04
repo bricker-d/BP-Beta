@@ -134,10 +134,10 @@ function CompletionRings({ done, total }: { done: number; total: number }) {
     <div className="flex items-center gap-2">
       <div className="relative w-10 h-10 flex items-center justify-center">
         <svg className="-rotate-90" width="40" height="40" viewBox="0 0 40 40">
-          <circle cx="20" cy="20" r={r} fill="none" stroke="rgba(168,85,247,0.15)" strokeWidth="4" />
-          <circle cx="20" cy="20" r={r} fill="none" stroke="#a855f7" strokeWidth="4"
+          <circle cx="20" cy="20" r={r} fill="none" stroke="var(--accent-mid)" strokeWidth="4" />
+          <circle cx="20" cy="20" r={r} fill="none" stroke="var(--accent)" strokeWidth="4"
             strokeDasharray={circ} strokeDashoffset={offset} strokeLinecap="round"
-            style={{ filter: "drop-shadow(0 0 4px rgba(168,85,247,0.6))" }}
+            style={{ filter: "drop-shadow(0 0 4px rgba(13,148,136,0.5))" }}
           />
         </svg>
         <span className="absolute mono text-[10px] font-bold" style={{ color: "var(--text1)" }}>{done}</span>
@@ -251,7 +251,7 @@ export default function DashboardPage() {
             >
               <div
                 className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0"
-                style={{ background: "rgba(168,85,247,0.15)" }}
+                style={{ background: "var(--accent-lo)" }}
               >
                 <FlaskConical size={22} color="var(--accent)" />
               </div>
@@ -330,11 +330,11 @@ export default function DashboardPage() {
         <Link href="/coach">
           <div
             className="rounded-2xl px-4 py-4 flex items-center gap-3"
-            style={{ background: "linear-gradient(135deg, rgba(147,51,234,0.25), rgba(99,102,241,0.25))", border: "1px solid rgba(168,85,247,0.3)" }}
+            style={{ background: "linear-gradient(135deg, rgba(13,148,136,0.12), rgba(5,150,105,0.10))", border: "1px solid rgba(13,148,136,0.25)" }}
           >
             <div
               className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-              style={{ background: "rgba(168,85,247,0.2)" }}
+              style={{ background: "var(--accent-lo)" }}
             >
               <MessageCircle size={18} color="var(--accent)" />
             </div>

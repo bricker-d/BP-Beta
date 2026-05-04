@@ -5,12 +5,12 @@ import { ChevronDown, ChevronUp, FlaskConical, Clock, TrendingUp } from "lucide-
 import { HealthAction } from "@/lib/types";
 
 const CATEGORY_CONFIG: Record<string, { color: string; bg: string; border: string }> = {
-  Movement:   { color: "#F59E0B", bg: "rgba(245,158,11,0.08)",  border: "rgba(245,158,11,0.3)"  },
-  Nutrition:  { color: "#10B981", bg: "rgba(16,185,129,0.08)",  border: "rgba(16,185,129,0.3)"  },
-  Exercise:   { color: "#3B82F6", bg: "rgba(59,130,246,0.08)",  border: "rgba(59,130,246,0.3)"  },
-  Sleep:      { color: "#8B5CF6", bg: "rgba(139,92,246,0.08)",  border: "rgba(139,92,246,0.3)"  },
-  Supplement: { color: "#EC4899", bg: "rgba(236,72,153,0.08)",  border: "rgba(236,72,153,0.3)"  },
-  Lifestyle:  { color: "#6366F1", bg: "rgba(99,102,241,0.08)",  border: "rgba(99,102,241,0.3)"  },
+  Movement:   { color: "#F59E0B", bg: "rgba(245,158,11,0.08)",  border: "rgba(245,158,11,0.25)"  },
+  Nutrition:  { color: "#0D9488", bg: "rgba(13,148,136,0.08)",  border: "rgba(13,148,136,0.25)"  },
+  Exercise:   { color: "#2563EB", bg: "rgba(37,99,235,0.08)",   border: "rgba(37,99,235,0.25)"   },
+  Sleep:      { color: "#7C3AED", bg: "rgba(124,58,237,0.08)",  border: "rgba(124,58,237,0.25)"  },
+  Supplement: { color: "#DB2777", bg: "rgba(219,39,119,0.08)",  border: "rgba(219,39,119,0.25)"  },
+  Lifestyle:  { color: "#4F7942", bg: "rgba(79,121,66,0.08)",   border: "rgba(79,121,66,0.25)"   },
 };
 
 const GRADE_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
@@ -29,7 +29,6 @@ export default function ActionCard({ action, onToggle }: Props) {
   const cat   = CATEGORY_CONFIG[action.category] ?? CATEGORY_CONFIG.Lifestyle;
   const grade = GRADE_CONFIG[action.evidenceGrade ?? "B"] ?? GRADE_CONFIG.B;
 
-  // Parse first citation string for display
   const rawCite = typeof action.citations?.[0] === "string" ? action.citations[0] : null;
   const pmidMatch = rawCite?.match(/PMID\s*:?\s*(\d+)/i);
   const pmid = pmidMatch?.[1] ?? null;
@@ -37,26 +36,25 @@ export default function ActionCard({ action, onToggle }: Props) {
   return (
     <div style={{
       background: "var(--surface)",
-      border: `1px solid var(--border)`,
-      borderLeft: `3px solid ${cat.color}`,
+      border: "1px solid var(--border)",
       borderRadius: 16,
       overflow: "hidden",
-      opacity: action.completed ? 0.55 : 1,
+      opacity: action.completed ? 0.5 : 1,
       transition: "opacity 0.2s",
     }}>
 
-      {/* ── Main row ── */}
-      <div className="flex items-start gap-3 px-4 pt-4 pb-3">
+      {/* ── Collapsed row ── */}
+      <div className="flex items-center gap-3 px-4 py-3.5">
 
         {/* Checkbox */}
         <button
           onClick={() => onToggle(action.id)}
-          className="flex-shrink-0 mt-0.5"
           style={{
-            width: 22, height: 22, borderRadius: "50%",
-            border: action.completed ? "none" : `2px solid var(--border)`,
+            width: 24, height: 24, borderRadius: "50%",
+            border: action.completed ? "none" : "2px solid var(--border)",
             background: action.completed ? "var(--green)" : "transparent",
             display: "flex", alignItems: "center", justifyContent: "center",
+            flexShrink: 0,
           }}
         >
           {action.completed && (
@@ -66,29 +64,66 @@ export default function ActionCard({ action, onToggle }: Props) {
           )}
         </button>
 
-        {/* Content */}
+        {/* Title + category */}
         <div className="flex-1 min-w-0">
-          <p className="text-[14px] font-semibold leading-snug"
+          <p className="text-[14px] font-medium leading-snug"
             style={{ color: "var(--text1)", textDecoration: action.completed ? "line-through" : "none" }}>
             {action.title}
           </p>
+          <div className="flex items-center gap-1.5 mt-1">
+            <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: cat.color }} />
+            <span className="text-[11px]" style={{ color: "var(--text3)" }}>{action.category}</span>
+          </div>
+        </div>
 
-          {/* Biomarker target */}
-          {action.biomarkerTarget && (
-            <p className="text-[12px] mt-1 font-medium" style={{ color: cat.color }}>
-              {action.biomarkerTarget}
+        {/* Expand */}
+        <button
+          onClick={() => setExpanded(e => !e)}
+          className="p-1 flex-shrink-0"
+          style={{ color: "var(--text3)" }}
+        >
+          {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+        </button>
+      </div>
+
+      {/* ── Expanded detail ── */}
+      {expanded && (
+        <div className="px-4 pb-4 pt-3" style={{ borderTop: "1px solid var(--border)" }}>
+
+          {/* What to do */}
+          {action.description && (
+            <p className="text-[13px] leading-relaxed mb-3" style={{ color: "var(--text2)" }}>
+              {action.description}
             </p>
           )}
 
-          {/* Stat row — always visible */}
-          <div className="flex items-center gap-2 mt-2 flex-wrap">
-            {/* Evidence grade */}
+          {/* Biomarker target chip */}
+          {action.biomarkerTarget && (
+            <div className="inline-flex rounded-xl px-3 py-1.5 mb-3"
+              style={{ background: cat.bg, border: `1px solid ${cat.border}` }}>
+              <p className="text-[11px] font-medium" style={{ color: cat.color }}>
+                {action.biomarkerTarget}
+              </p>
+            </div>
+          )}
+
+          {/* Why it works */}
+          {action.why && (
+            <div className="mb-3">
+              <p className="text-[10px] font-semibold uppercase tracking-wider mb-1.5"
+                style={{ color: "var(--text3)" }}>Why it works</p>
+              <p className="text-[13px] leading-relaxed" style={{ color: "var(--text2)" }}>
+                {action.why}
+              </p>
+            </div>
+          )}
+
+          {/* Evidence row */}
+          <div className="flex items-center gap-2 flex-wrap mb-3">
             <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md"
               style={{ background: grade.bg, color: grade.color }}>
               {grade.label}
             </span>
-
-            {/* Effect size */}
             {action.effectSize && (
               <span className="flex items-center gap-1 text-[10px] font-medium"
                 style={{ color: "var(--text2)" }}>
@@ -96,8 +131,6 @@ export default function ActionCard({ action, onToggle }: Props) {
                 {action.effectSize}
               </span>
             )}
-
-            {/* Time to effect */}
             {action.timeToEffect && (
               <span className="flex items-center gap-1 text-[10px]"
                 style={{ color: "var(--text3)" }}>
@@ -106,40 +139,6 @@ export default function ActionCard({ action, onToggle }: Props) {
               </span>
             )}
           </div>
-        </div>
-
-        {/* Expand toggle */}
-        <button
-          onClick={() => setExpanded(e => !e)}
-          className="flex-shrink-0 mt-1"
-          style={{ color: "var(--text3)" }}
-        >
-          {expanded ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
-        </button>
-      </div>
-
-      {/* ── Expanded panel ── */}
-      {expanded && (
-        <div className="px-4 pb-4" style={{ borderTop: "1px solid var(--border)" }}>
-
-          {/* Category tag */}
-          <div className="flex items-center gap-1.5 pt-3 mb-3">
-            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
-              style={{ background: cat.bg, color: cat.color, border: `1px solid ${cat.border}` }}>
-              {action.category}
-            </span>
-          </div>
-
-          {/* Why it works */}
-          {action.why && (
-            <div className="mb-3">
-              <p className="text-[10px] font-semibold uppercase tracking-wider mb-1"
-                style={{ color: "var(--text3)" }}>Why it works</p>
-              <p className="text-[13px] leading-relaxed" style={{ color: "var(--text2)" }}>
-                {action.why}
-              </p>
-            </div>
-          )}
 
           {/* Citation */}
           {rawCite && (
@@ -148,7 +147,7 @@ export default function ActionCard({ action, onToggle }: Props) {
               <FlaskConical size={12} color={cat.color} className="flex-shrink-0 mt-0.5" />
               <div className="min-w-0">
                 <p className="text-[10px] font-semibold uppercase tracking-wider mb-0.5"
-                  style={{ color: "var(--text3)" }}>Peer-reviewed source</p>
+                  style={{ color: "var(--text3)" }}>Research</p>
                 <p className="text-[11px] leading-relaxed" style={{ color: "var(--text2)" }}>
                   {rawCite}
                 </p>

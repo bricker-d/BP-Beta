@@ -124,7 +124,10 @@ export const useHealthStore = create<HealthStore>()(
                 alcoholFrequency:    state.intakeProfile?.alcoholFrequency,
               },
               medications: state.intakeProfile?.medications,
+              currentSupplements: state.intakeProfile?.currentSupplements,
               timeHorizon: state.intakeProfile?.timeHorizon,
+              painPoint: state.intakeProfile?.painPoint,
+              symptoms: state.intakeProfile?.symptoms,
             }),
           });
 

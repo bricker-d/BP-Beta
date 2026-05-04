@@ -109,6 +109,7 @@ export default function OnboardingPage() {
   const [stressLevel,       setStressLevel]       = useState<number | null>(null);
   const [alcoholFrequency,  setAlcoholFrequency]  = useState("");
   const [symptoms,          setSymptoms]          = useState<string[]>([]);
+  const [supplements,       setSupplements]       = useState<string[]>([]);
   const [notificationStyle, setNotificationStyle] = useState("");
   const [checkInTime,       setCheckInTime]       = useState("7:00 am");
   const [eveningTime,       setEveningTime]       = useState("7:00 pm");
@@ -161,6 +162,7 @@ export default function OnboardingPage() {
       stressLevel:         stressLevel ?? undefined,
       alcoholFrequency:    alcoholFrequency || undefined,
       symptoms,
+      currentSupplements:  supplements.length ? supplements : undefined,
       notificationStyle:   notificationStyle || "direct",
       checkInTime,
       eveningReminderTime: eveningTime,
@@ -438,6 +440,10 @@ export default function OnboardingPage() {
                     </button>
                   ))}
                 </div>
+              </HabitSection>
+              <HabitSection label="Current supplements (select all you take)">
+                <ChipGroup items={["Vitamin D", "Magnesium", "Omega-3 / Fish oil", "Vitamin B12", "Zinc", "Creatine", "Protein powder", "Multivitamin", "Collagen", "Probiotics", "Ashwagandha", "NAD+ / NMN"]}
+                  selected={supplements} onToggle={s => toggle(supplements, s, setSupplements)} />
               </HabitSection>
             </div>
             <button className="btn-primary" onClick={next}>Continue <ChevronRight size={16} /></button>

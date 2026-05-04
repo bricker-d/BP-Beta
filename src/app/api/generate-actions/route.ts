@@ -75,7 +75,7 @@ export async function POST(req: Request) {
   try {
     const {
       labPanel, wearableData, goals, patientName, biologicalSex,
-      habits, medications, timeHorizon, painPoint,
+      habits, medications, currentSupplements, timeHorizon, painPoint, symptoms,
     }: {
       labPanel: LabPanel;
       wearableData?: WearableData;
@@ -84,8 +84,10 @@ export async function POST(req: Request) {
       biologicalSex?: string;
       habits?: Record<string, string | number | undefined>;
       medications?: string[];
+      currentSupplements?: string[];
       timeHorizon?: string;
       painPoint?: string;
+      symptoms?: string[];
     } = await req.json();
 
     if (!labPanel?.biomarkers?.length) {
@@ -174,6 +176,8 @@ export async function POST(req: Request) {
       habits.stressLevel        ? `Stress: ${habits.stressLevel}/5` : null,
       habits.alcoholFrequency   ? `Alcohol: ${habits.alcoholFrequency}` : null,
     ].filter(Boolean).join(" | ") : "";
+    const supplementContext = currentSupplements?.length ? `Already taking: ${currentSupplements.join(", ")}` : "";
+    const symptomContext = symptoms?.length ? `Reported symptoms: ${symptoms.join(", ")}` : "";
 
     // Sort and slice candidates — Claude will select from these by index
     const rankedCandidates = candidates
@@ -210,32 +214,38 @@ export async function POST(req: Request) {
       max_tokens: 2000,
       messages: [{
         role: "user",
-        content: `You are a clinical protocol builder. Your job is to select interventions from the list below that are directly supported by this patient's lab results, and explain them in plain language a non-physician can understand.
+        content: `You are building a daily health protocol for someone who is NOT medically trained. Your only job is to pick the right interventions from the list below and write them in the simplest possible language — like a text from a knowledgeable friend.
 
-RULES — read carefully:
-1. Only select interventions that directly address a marker that is out of range in this panel. Do not add anything not tied to an actual lab finding.
-2. Return ONLY as many actions as are genuinely supported. If 2 markers are out of range, return 2 actions. Do not pad to reach a number.
-3. No jargon. Write as if explaining to a smart friend. No Latin, no receptor names, no pathway abbreviations.
-4. Prefer Grade A evidence. Do not select two interventions for the same biomarker.
-5. If a medication conflicts with a contraindication, skip that intervention entirely.
-6. If goal-priority biomarkers are listed, address those first.
+RULES:
+1. Only select interventions tied to an actual out-of-range lab marker. No extras.
+2. Return only as many actions as there are supported markers. No padding.
+3. Titles must be dead simple — a specific action a confused person can follow immediately. Examples: "Walk 15 minutes after each meal", "Take vitamin D3 with breakfast", "Swap your evening drink for sparkling water", "Do 20 push-ups before bed". No lab values, no ranges, no clinical terms in the title.
+4. Use the patient's habits to personalise: if they already exercise 5 days/week, don't tell them to exercise more — pick a different lever. If they sleep 8 hrs already, don't tell them to sleep more.
+5. If they already take a supplement, skip recommending that same supplement.
+6. Prefer Grade A evidence. One intervention per biomarker max.
+7. Address goal-priority biomarkers first.
 
 PATIENT: ${patientName ?? "Patient"} | ${biologicalSex ?? ""} | Goals: ${goalList}
 Medications: ${(medications ?? []).join(", ") || "none"}
+Habits: ${habitContext || "unknown"}
+${supplementContext}
+${symptomContext}
+${wearableContext}
+${timeNote}
 ${priorityNote}
 
-OUT-OF-RANGE LAB MARKERS (only these should generate actions):
+OUT-OF-RANGE MARKERS:
 ${labContext}
 
-CANDIDATE INTERVENTIONS — select by [number], only what the data supports:
+CANDIDATE INTERVENTIONS — select by [number]:
 ${candidateContext}
 
 Return ONLY valid JSON, no markdown:
 [{
   "candidateIndex": <number>,
-  "title": "plain action title with patient's actual value (e.g. 'Build testosterone from 516 toward 600+ ng/dL')",
-  "description": "one sentence — what to do specifically, no jargon",
-  "plainWhy": "2-3 sentences explaining why this works in plain English — no receptor names, no Latin terms, no abbreviations. Explain what the body does and why this intervention helps."
+  "title": "ultra-simple action — 5 to 8 words max, sounds like a friendly reminder",
+  "description": "one sentence with the specific dose or timing",
+  "plainWhy": "2-3 plain sentences — what this does in the body and why it helps. No jargon, no Latin, no abbreviations."
 }]`,
       }],
     });

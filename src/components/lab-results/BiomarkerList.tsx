@@ -63,7 +63,7 @@ function BiomarkerCard({ b, onSelect }: { b: Biomarker; onSelect: () => void }) 
         <div className="flex-1 min-w-0 pr-3">
           <p className="text-[14px] font-semibold" style={{ color: "var(--text1)" }}>{b.name}</p>
           <div className="flex items-baseline gap-1.5 mt-0.5">
-            <span className="text-[22px] font-bold mono" style={{ color: cfg.color }}>{b.value}</span>
+            <span className="text-[16px] font-bold mono" style={{ color: cfg.color }}>{b.value}</span>
             <span className="text-[12px]" style={{ color: "var(--text3)" }}>{b.unit}</span>
           </div>
         </div>
@@ -79,7 +79,7 @@ function BiomarkerCard({ b, onSelect }: { b: Biomarker; onSelect: () => void }) 
       <div className="flex justify-between text-[11px]" style={{ color: "var(--text3)" }}>
         <span>Optimal: {b.optimalMin}–{b.optimalMax} {b.unit}</span>
         {b.status !== "optimal" && (
-          <span style={{ color: "var(--accent)" }}>Tap to fix →</span>
+          <span style={{ color: "var(--accent)" }}>See protocol</span>
         )}
       </div>
     </button>
