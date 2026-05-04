@@ -152,7 +152,7 @@ export async function POST(req: Request) {
 
       const response = await getClient().messages.create({
         model: "claude-opus-4-6",
-        max_tokens: 4096,
+        max_tokens: 16000,
         messages: [
           {
             role: "user",
@@ -211,7 +211,7 @@ function buildResponse(rawJson: string, source: string, fileName: string, patien
     const jsonMatch = stripped.match(/\[[\s\S]*\]/);
     if (!jsonMatch) {
       console.error("[parse-labs] No JSON array found in response. Raw:", rawJson.slice(0, 300));
-      return Response.json({ error: "AI returned no structured data", _debug: rawJson.slice(0, 500) }, { status: 500 });
+      return Response.json({ error: "AI returned no structured data" }, { status: 500 });
     }
     const parsed = JSON.parse(jsonMatch[0]);
     if (!Array.isArray(parsed) || parsed.length === 0) {
