@@ -104,7 +104,7 @@ export default function StepHealthFocus({ step, totalSteps, profile, update, nex
   );
 }
 
-const PURPLE = '#9333ea';
+const PURPLE = '#C96A2B';
 
 const s = StyleSheet.create({
   list: { gap: 10 },
@@ -120,7 +120,7 @@ const s = StyleSheet.create({
   },
   cardPrimary: {
     borderColor: PURPLE,
-    backgroundColor: '#faf5ff',
+    backgroundColor: '#FDF7F0',
   },
   cardSecondary: {
     borderColor: '#d8b4fe',

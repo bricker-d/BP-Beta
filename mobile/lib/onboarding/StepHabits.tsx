@@ -117,7 +117,7 @@ export default function StepHabits({ step, totalSteps, profile, update, next, ba
   );
 }
 
-const PURPLE = '#9333ea';
+const PURPLE = '#C96A2B';
 
 const s = StyleSheet.create({
   label: {
@@ -141,7 +141,7 @@ const s = StyleSheet.create({
     borderColor: '#e5e7eb',
     backgroundColor: '#fff',
   },
-  chipActive: { borderColor: PURPLE, backgroundColor: '#faf5ff' },
+  chipActive: { borderColor: PURPLE, backgroundColor: '#FDF7F0' },
   chipTxt: { fontSize: 13, fontWeight: '500', color: '#374151' },
   chipTxtActive: { color: PURPLE, fontWeight: '600' },
   chipEmoji: { fontSize: 14 },

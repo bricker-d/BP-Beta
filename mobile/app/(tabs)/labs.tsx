@@ -54,12 +54,12 @@ const db = StyleSheet.create({
 const up = StyleSheet.create({
   btn: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
-    backgroundColor: '#faf5ff', borderWidth: 1.5, borderColor: '#e9d5ff',
+    backgroundColor: '#FDF7F0', borderWidth: 1.5, borderColor: '#EAD9C5',
     borderRadius: 12, paddingHorizontal: 16, paddingVertical: 12,
     marginBottom: 16,
   },
   icon: { fontSize: 18 },
-  txt: { fontSize: 14, fontWeight: '600', color: '#7c3aed', flex: 1 },
+  txt: { fontSize: 14, fontWeight: '600', color: '#C96A2B', flex: 1 },
 });
 
 // ─── Category filter config ──────────────────────────────────────────────────
@@ -206,7 +206,7 @@ const empty = StyleSheet.create({
   wrap:   { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32, paddingTop: 48, gap: 12 },
   title:  { fontSize: 20, fontWeight: '700', color: '#111827', textAlign: 'center' },
   sub:    { fontSize: 14, color: '#6b7280', textAlign: 'center', lineHeight: 20 },
-  btn:    { marginTop: 12, backgroundColor: '#9333ea', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 12 },
+  btn:    { marginTop: 12, backgroundColor: '#C96A2B', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 12 },
   btnTxt: { color: '#fff', fontWeight: '700', fontSize: 14 },
 });
 
@@ -366,16 +366,16 @@ export default function LabsScreen() {
 
 // ─── Styles ──────────────────────────────────────────────────────────────────
 
-const PURPLE = '#9333ea';
+const PURPLE = '#C96A2B';
 
 const s = StyleSheet.create({
-  container:   { flex: 1, backgroundColor: '#f9fafb' },
+  container:   { flex: 1, backgroundColor: '#FDF7F0' },
   header:      { paddingHorizontal: 20, paddingVertical: 16, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#f3f4f6', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   title:       { fontSize: 22, fontWeight: '800', color: '#111827' },
   subtitle:    { fontSize: 13, color: '#9ca3af', marginTop: 2 },
   scoreBubble: { width: 56, height: 56, borderRadius: 28, backgroundColor: PURPLE, alignItems: 'center', justifyContent: 'center' },
   scoreNum:    { fontSize: 20, fontWeight: '900', color: '#fff', lineHeight: 22 },
-  scoreLbl:    { fontSize: 9, color: '#e9d5ff', fontWeight: '600', letterSpacing: 0.5 },
+  scoreLbl:    { fontSize: 9, color: '#EAD9C5', fontWeight: '600', letterSpacing: 0.5 },
   scroll:      { flex: 1, paddingHorizontal: 16 },
   summaryRow:  { flexDirection: 'row', gap: 8, paddingVertical: 14 },
   pill:        { flex: 1, alignItems: 'center', paddingVertical: 8, borderRadius: 12, borderWidth: 1.5, borderColor: 'transparent' },
@@ -387,14 +387,14 @@ const s = StyleSheet.create({
   catScroll:   { marginBottom: 4 },
   catRow:      { gap: 8, paddingBottom: 8 },
   catChip:     { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20, borderWidth: 1.5, borderColor: '#e5e7eb', backgroundColor: '#fff' },
-  catChipActive:{ borderColor: PURPLE, backgroundColor: '#faf5ff' },
+  catChipActive:{ borderColor: PURPLE, backgroundColor: '#FDF7F0' },
   catEmoji:    { fontSize: 13 },
   catLabel:    { fontSize: 12, fontWeight: '500', color: '#6b7280' },
   catLabelActive: { color: PURPLE, fontWeight: '600' },
   sortRow:     { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
   sortLabel:   { fontSize: 12, color: '#9ca3af', fontWeight: '600' },
   sortBtn:     { paddingHorizontal: 12, paddingVertical: 5, borderRadius: 20, borderWidth: 1.5, borderColor: '#e5e7eb', backgroundColor: '#fff' },
-  sortBtnActive: { borderColor: PURPLE, backgroundColor: '#faf5ff' },
+  sortBtnActive: { borderColor: PURPLE, backgroundColor: '#FDF7F0' },
   sortBtnTxt:  { fontSize: 12, color: '#6b7280', fontWeight: '500' },
   sortBtnTxtActive: { color: PURPLE, fontWeight: '600' },
   cards:       { paddingBottom: 8 },

@@ -21,7 +21,7 @@ import DailyCheckIn from '../../lib/DailyCheckIn';
 import type { DailyLog } from '../../lib/types';
 
 const { width: SCREEN_W } = Dimensions.get('window');
-const PURPLE = '#9333ea';
+const PURPLE = '#C96A2B';
 
 // ── Status config ────────────────────────────────────────────────────────────
 const STATUS_CFG: Record<string, { color: string; bg: string; label: string; icon: React.FC<any> }> = {
@@ -319,7 +319,7 @@ export default function HomeScreen() {
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 const s = StyleSheet.create({
-  container:       { flex: 1, backgroundColor: '#f9fafb' },
+  container:       { flex: 1, backgroundColor: '#FDF7F0' },
   scroll:          { flex: 1, paddingHorizontal: 16 },
   empty:           { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, gap: 16 },
   emptyTitle:      { fontSize: 22, fontWeight: '700', color: '#111827', textAlign: 'center' },
@@ -352,7 +352,7 @@ const s = StyleSheet.create({
   seeAll:          { fontSize: 13, color: PURPLE, fontWeight: '600' },
 
   goalRow:         { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  goalChip:        { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: '#f3e8ff', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 },
+  goalChip:        { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: '#FEF0E6', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 },
   goalEmoji:       { fontSize: 14 },
   goalLabel:       { fontSize: 12, color: PURPLE, fontWeight: '600' },
 
@@ -362,7 +362,7 @@ const s = StyleSheet.create({
   allDone:         { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#f0fdf4', borderRadius: 14, padding: 16 },
   allDoneTxt:      { fontSize: 14, color: '#16a34a', fontWeight: '600' },
 
-  coachNudge:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#f3e8ff', borderRadius: 14, padding: 16, marginBottom: 8 },
+  coachNudge:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#FEF0E6', borderRadius: 14, padding: 16, marginBottom: 8 },
   coachNudgeLeft:  { flexDirection: 'row', alignItems: 'center' },
   coachNudgeTitle: { fontSize: 14, fontWeight: '700', color: '#1f2937' },
   coachNudgeSub:   { fontSize: 12, color: '#6b7280', marginTop: 1 },

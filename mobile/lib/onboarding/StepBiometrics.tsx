@@ -128,7 +128,7 @@ export default function StepBiometrics({ step, totalSteps, profile, update, next
   );
 }
 
-const PURPLE = '#9333ea';
+const PURPLE = '#C96A2B';
 
 const s = StyleSheet.create({
   row: {
@@ -182,7 +182,7 @@ const s = StyleSheet.create({
   },
   sexBtnActive: {
     borderColor: PURPLE,
-    backgroundColor: '#faf5ff',
+    backgroundColor: '#FDF7F0',
   },
   sexEmoji: {
     fontSize: 18,

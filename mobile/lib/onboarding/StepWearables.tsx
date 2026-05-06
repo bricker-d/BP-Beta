@@ -77,7 +77,7 @@ export default function StepWearables({ step, totalSteps, profile, update, next,
               <Text style={s.cardDesc}>{d.desc}</Text>
             </View>
             {connecting && active ? (
-              <ActivityIndicator size="small" color="#9333ea" />
+              <ActivityIndicator size="small" color="#C96A2B" />
             ) : active && connected && isOAuth ? (
               <Text style={s.checkmark}>✓</Text>
             ) : (
@@ -100,7 +100,7 @@ export default function StepWearables({ step, totalSteps, profile, update, next,
   );
 }
 
-const PURPLE = '#9333ea';
+const PURPLE = '#C96A2B';
 
 const s = StyleSheet.create({
   card: {
@@ -108,7 +108,7 @@ const s = StyleSheet.create({
     borderRadius: 14, borderWidth: 1.5, borderColor: '#e5e7eb',
     backgroundColor: '#fff', marginBottom: 10, gap: 12,
   },
-  cardActive: { borderColor: PURPLE, backgroundColor: '#faf5ff' },
+  cardActive: { borderColor: PURPLE, backgroundColor: '#FDF7F0' },
   iconBox: {
     width: 40, height: 40, borderRadius: 20,
     backgroundColor: '#f3f4f6', alignItems: 'center', justifyContent: 'center',

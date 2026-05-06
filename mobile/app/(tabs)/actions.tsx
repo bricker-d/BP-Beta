@@ -13,7 +13,7 @@ import {
 import { useHealthStore } from '../../lib/store';
 import type { Action } from '../../lib/types';
 
-const PURPLE = '#9333ea';
+const PURPLE = '#C96A2B';
 
 // ── Category config ───────────────────────────────────────────────────────────
 const CAT_CFG: Record<string, {
@@ -23,7 +23,7 @@ const CAT_CFG: Record<string, {
   Movement:   { bg: '#eff6ff', text: '#1d4ed8', border: '#bfdbfe', icon: Flame,    emoji: '🏃' },
   Nutrition:  { bg: '#f0fdf4', text: '#15803d', border: '#bbf7d0', icon: Leaf,     emoji: '🥗' },
   Exercise:   { bg: '#ecfeff', text: '#0e7490', border: '#a5f3fc', icon: Dumbbell, emoji: '💪' },
-  Sleep:      { bg: '#faf5ff', text: '#7e22ce', border: '#e9d5ff', icon: Moon,     emoji: '🌙' },
+  Sleep:      { bg: '#FDF7F0', text: '#C96A2B', border: '#EAD9C5', icon: Moon,     emoji: '🌙' },
   Supplement: { bg: '#fffbeb', text: '#b45309', border: '#fde68a', icon: Pill,     emoji: '💊' },
   Lifestyle:  { bg: '#fff1f2', text: '#be123c', border: '#fecdd3', icon: Target,   emoji: '🎯' },
 };
@@ -73,7 +73,7 @@ function ActionCard({ action, onToggle, onAskCoach }: {
           {/* Biomarker target tag */}
           {action.biomarkerTarget && (
             <View style={ac.targetRow}>
-              <FlaskConical color="#9333ea" size={11} />
+              <FlaskConical color="#C96A2B" size={11} />
               <Text style={ac.targetTxt}>Targets: {action.biomarkerTarget}</Text>
             </View>
           )}
@@ -225,7 +225,7 @@ export default function ActionsScreen() {
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 const s = StyleSheet.create({
-  container:        { flex: 1, backgroundColor: '#f9fafb' },
+  container:        { flex: 1, backgroundColor: '#FDF7F0' },
   empty:            { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, gap: 16 },
   emptyTitle:       { fontSize: 22, fontWeight: '700', color: '#111827', textAlign: 'center' },
   emptyBody:        { fontSize: 14, color: '#6b7280', textAlign: 'center', lineHeight: 20 },
@@ -243,7 +243,7 @@ const s = StyleSheet.create({
 
   filterRow:        { flexDirection: 'row', gap: 6, paddingHorizontal: 16, paddingVertical: 12, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#f3f4f6' },
   filterBtn:        { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20, borderWidth: 1.5, borderColor: '#e5e7eb', backgroundColor: '#fff' },
-  filterBtnActive:  { borderColor: PURPLE, backgroundColor: '#f3e8ff' },
+  filterBtnActive:  { borderColor: PURPLE, backgroundColor: '#FEF0E6' },
   filterTxt:        { fontSize: 13, fontWeight: '600', color: '#6b7280' },
   filterTxtActive:  { color: PURPLE },
   filterBadge:      { fontSize: 12, color: '#6b7280' },
@@ -275,6 +275,6 @@ const ac = StyleSheet.create({
   descDone:   { color: '#d1d5db' },
   targetRow:  { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
   targetTxt:  { fontSize: 11, color: PURPLE, fontWeight: '500' },
-  coachRow:   { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 14, paddingVertical: 9, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#f3f4f6', backgroundColor: '#faf5ff' },
+  coachRow:   { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 14, paddingVertical: 9, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#f3f4f6', backgroundColor: '#FDF7F0' },
   coachTxt:   { flex: 1, fontSize: 12, color: PURPLE, fontWeight: '600' },
 });

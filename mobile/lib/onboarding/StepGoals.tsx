@@ -80,7 +80,7 @@ export default function StepGoals({ step, totalSteps, profile, update, next, bac
   );
 }
 
-const PURPLE = '#9333ea';
+const PURPLE = '#C96A2B';
 
 const s = StyleSheet.create({
   nameInput: {
@@ -120,7 +120,7 @@ const s = StyleSheet.create({
   },
   chipActive: {
     borderColor: PURPLE,
-    backgroundColor: '#faf5ff',
+    backgroundColor: '#FDF7F0',
   },
   chipEmoji: {
     fontSize: 16,

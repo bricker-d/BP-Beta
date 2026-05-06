@@ -168,13 +168,13 @@ export default function StepSummary({ profile, onFinish }: Props) {
             <View style={s.aiBadge}>
               <Text style={s.aiBadgeTxt}>AI Coach</Text>
             </View>
-            {streaming && <ActivityIndicator size="small" color="#9333ea" />}
+            {streaming && <ActivityIndicator size="small" color="#C96A2B" />}
           </View>
           {summary ? (
             <Text style={s.aiMsg}>{summary}{streaming ? '▍' : ''}</Text>
           ) : (
             <View style={s.thinking}>
-              <ActivityIndicator size="small" color="#9333ea" />
+              <ActivityIndicator size="small" color="#C96A2B" />
               <Text style={s.thinkingTxt}>Personalising your welcome…</Text>
             </View>
           )}
@@ -199,7 +199,7 @@ export default function StepSummary({ profile, onFinish }: Props) {
   );
 }
 
-const PURPLE = '#9333ea';
+const PURPLE = '#C96A2B';
 
 const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: '#fff' },
@@ -212,7 +212,7 @@ const s = StyleSheet.create({
   subtitle: { fontSize: 14, color: '#6b7280', textAlign: 'center', lineHeight: 20 },
 
   card: {
-    backgroundColor: '#f9fafb',
+    backgroundColor: '#FDF7F0',
     borderRadius: 14,
     borderWidth: 1,
     borderColor: '#e5e7eb',
@@ -235,10 +235,10 @@ const s = StyleSheet.create({
   rowValue: { fontSize: 13, color: '#111827', textAlign: 'right', flex: 1 },
 
   aiCard: {
-    backgroundColor: '#faf5ff',
+    backgroundColor: '#FDF7F0',
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#e9d5ff',
+    borderColor: '#EAD9C5',
     padding: 16,
     marginBottom: 8,
   },

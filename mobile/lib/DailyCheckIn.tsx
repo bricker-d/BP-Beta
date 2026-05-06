@@ -23,7 +23,7 @@ export interface DailyLog {
 }
 
 const QUALITY_LABELS = ['Terrible', 'Poor', 'OK', 'Good', 'Great'];
-const PURPLE = '#9333ea';
+const PURPLE = '#C96A2B';
 
 export default function DailyCheckIn({ actions, onComplete, onSkip }: DailyCheckInProps) {
   const [completions, setCompletions] = useState<Record<string, boolean>>(

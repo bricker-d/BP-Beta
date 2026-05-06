@@ -142,7 +142,7 @@ export default function StepLabs({ step, totalSteps, profile, update, next, back
           </Text>
           {loading && selected === 'upload' && (
             <View style={s.loadingRow}>
-              <ActivityIndicator size="small" color="#9333ea" />
+              <ActivityIndicator size="small" color="#C96A2B" />
               <Text style={s.loadingTxt}>{uploadMsg}</Text>
             </View>
           )}
@@ -206,7 +206,7 @@ export default function StepLabs({ step, totalSteps, profile, update, next, back
   );
 }
 
-const PURPLE = '#9333ea';
+const PURPLE = '#C96A2B';
 
 const s = StyleSheet.create({
   card: {
@@ -214,7 +214,7 @@ const s = StyleSheet.create({
     borderRadius: 14, borderWidth: 1.5, borderColor: '#e5e7eb',
     backgroundColor: '#fff', marginBottom: 12, gap: 12,
   },
-  cardActive: { borderColor: PURPLE, backgroundColor: '#faf5ff' },
+  cardActive: { borderColor: PURPLE, backgroundColor: '#FDF7F0' },
   cardLeft: {
     width: 40, height: 40, borderRadius: 20,
     backgroundColor: '#f3f4f6', alignItems: 'center', justifyContent: 'center',
@@ -236,7 +236,7 @@ const s = StyleSheet.create({
     paddingHorizontal: 10, paddingVertical: 6, borderRadius: 16,
     borderWidth: 1, borderColor: '#e5e7eb', backgroundColor: '#fff',
   },
-  providerChipActive: { borderColor: PURPLE, backgroundColor: '#faf5ff' },
+  providerChipActive: { borderColor: PURPLE, backgroundColor: '#FDF7F0' },
   providerChipTxt: { fontSize: 12, color: '#6b7280', fontWeight: '500' },
   providerChipTxtActive: { color: PURPLE, fontWeight: '600' },
   notice: {

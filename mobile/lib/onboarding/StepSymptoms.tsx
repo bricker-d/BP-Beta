@@ -84,7 +84,7 @@ export default function StepSymptoms({ step, totalSteps, profile, update, next, 
   );
 }
 
-const PURPLE = '#9333ea';
+const PURPLE = '#C96A2B';
 
 const s = StyleSheet.create({
   grid: {
@@ -106,7 +106,7 @@ const s = StyleSheet.create({
   },
   chipActive: {
     borderColor: PURPLE,
-    backgroundColor: '#faf5ff',
+    backgroundColor: '#FDF7F0',
   },
   chipEmoji: { fontSize: 15 },
   chipLabel: {

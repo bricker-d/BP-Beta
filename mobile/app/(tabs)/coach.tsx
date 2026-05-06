@@ -14,7 +14,7 @@ import { BIOMARKER_REFS } from '../../lib/biomarkers';
 import type { ChatMessage, LabPanel, IntakeProfile } from '../../lib/types';
 
 const API_URL = 'https://bp-beta-beta.vercel.app/api/chat';
-const PURPLE  = '#9333ea';
+const PURPLE  = '#C96A2B';
 
 // ── SSE streaming helper ──────────────────────────────────────────────────────
 async function streamChat(
@@ -420,7 +420,7 @@ export default function CoachScreen() {
             </View>
             {loadingWeekly ? (
               <View style={wk.loading}>
-                <ActivityIndicator size="small" color="#9333ea" />
+                <ActivityIndicator size="small" color="#C96A2B" />
                 <Text style={wk.loadingTxt}>Analysing your week...</Text>
               </View>
             ) : (
@@ -499,7 +499,7 @@ export default function CoachScreen() {
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 const s = StyleSheet.create({
-  container:       { flex: 1, backgroundColor: '#f9fafb' },
+  container:       { flex: 1, backgroundColor: '#FDF7F0' },
 
   header:          { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#f3f4f6' },
   headerLeft:      { flexDirection: 'row', alignItems: 'center', gap: 10 },
@@ -508,7 +508,7 @@ const s = StyleSheet.create({
   headerTitle:     { fontSize: 15, fontWeight: '700', color: '#111827' },
   headerSub:       { fontSize: 11, color: '#9ca3af', marginTop: 1 },
   headerRight:     { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  thinkingBadge:   { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#f3e8ff', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12 },
+  thinkingBadge:   { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#FEF0E6', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12 },
   thinkingTxt:     { fontSize: 12, color: PURPLE, fontWeight: '600' },
   clearBtn:        { padding: 6 },
 
@@ -532,13 +532,13 @@ const s = StyleSheet.create({
 
   // Suggestion chips
   chipRow:         { paddingHorizontal: 16, paddingVertical: 8, gap: 8 },
-  chip:            { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: '#f3e8ff', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 7, maxWidth: 220 },
+  chip:            { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: '#FEF0E6', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 7, maxWidth: 220 },
   chipEmoji:       { fontSize: 13 },
   chipTxt:         { fontSize: 12, color: PURPLE, fontWeight: '600' },
 
   // Input bar
   inputBar:        { flexDirection: 'row', alignItems: 'flex-end', gap: 10, paddingHorizontal: 16, paddingVertical: 12, backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#f3f4f6' },
-  input:           { flex: 1, backgroundColor: '#f9fafb', borderRadius: 20, paddingHorizontal: 16, paddingVertical: 10, fontSize: 14, color: '#1f2937', borderWidth: 1.5, borderColor: '#e5e7eb', maxHeight: 100 },
+  input:           { flex: 1, backgroundColor: '#FDF7F0', borderRadius: 20, paddingHorizontal: 16, paddingVertical: 10, fontSize: 14, color: '#1f2937', borderWidth: 1.5, borderColor: '#e5e7eb', maxHeight: 100 },
   sendBtn:         { width: 42, height: 42, borderRadius: 21, backgroundColor: PURPLE, alignItems: 'center', justifyContent: 'center' },
   sendBtnDisabled: { backgroundColor: '#d1d5db' },
 });
@@ -568,11 +568,11 @@ const sc = StyleSheet.create({
 
 // ── Weekly summary banner styles ──────────────────────────────────────────────
 const wk = StyleSheet.create({
-  banner:     { backgroundColor: '#faf5ff', borderWidth: 1, borderColor: '#e9d5ff', borderRadius: 14, padding: 14, marginHorizontal: 12, marginTop: 8, marginBottom: 4 },
+  banner:     { backgroundColor: '#FDF7F0', borderWidth: 1, borderColor: '#EAD9C5', borderRadius: 14, padding: 14, marginHorizontal: 12, marginTop: 8, marginBottom: 4 },
   header:     { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
   headerTxt:  { fontSize: 13, fontWeight: '700', color: '#6b21a8' },
   dismiss:    { fontSize: 14, color: '#9ca3af', fontWeight: '600' },
   loading:    { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  loadingTxt: { fontSize: 13, color: '#9333ea' },
+  loadingTxt: { fontSize: 13, color: '#C96A2B' },
   body:       { fontSize: 13, color: '#374151', lineHeight: 20 },
 });
