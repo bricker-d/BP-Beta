@@ -157,12 +157,13 @@ export async function POST(req: Request) {
       });
     }
 
-    // Build context for Claude
+    // Build context for Claude — NO numeric values, so they cannot appear in titles
     const labContext = outOfRange.map(b => {
       const meta = BIOMARKER_LIBRARY[b.id];
       const priorityIdx = priorityBiomarkers.indexOf(b.id);
       const goalFlag = priorityIdx !== -1 ? ` [GOAL PRIORITY #${priorityIdx + 1}]` : "";
-      return `- ${b.name}: ${b.value} ${b.unit} [${b.status.toUpperCase()}]${goalFlag}\n  Optimal: ${b.optimalMin}–${b.optimalMax} ${b.unit}\n  ${meta?.clinicalSignificance ?? ""}`;
+      const direction = b.status === "low" ? "needs to come up" : b.status === "elevated" ? "needs to come down" : "is borderline";
+      return `- ${b.name} ${direction}${goalFlag}\n  ${meta?.clinicalSignificance ?? ""}`;
     }).join("\n\n");
 
     const wearableContext = wearableData
@@ -188,7 +189,7 @@ export async function POST(req: Request) {
     const candidateContext = rankedCandidates.map((c, i) => {
       const cite = c.intervention.citations[0];
       return [
-        `[${i + 1}] BIOMARKER: ${c.biomarkerName} — ${c.biomarkerValue} ${c.biomarkerUnit} (optimal: ${c.optimalRange}) [${c.biomarkerStatus.toUpperCase()}] GoalRelevance:${c.goalRelevance}`,
+        `[${i + 1}] BIOMARKER: ${c.biomarkerName} [${c.biomarkerStatus.toUpperCase()}] GoalRelevance:${c.goalRelevance}`,
         `    INTERVENTION: ${c.intervention.title}`,
         `    CATEGORY: ${c.intervention.category} | GRADE: ${c.intervention.evidenceGrade}`,
         `    DOSE: ${c.intervention.description}`,

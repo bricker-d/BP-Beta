@@ -372,8 +372,8 @@ export default function OnboardingPage() {
             <div className="flex-1 space-y-5 overflow-y-auto">
               <ChipGroup label="Current medications" items={MEDICATIONS}
                 selected={medications} onToggle={m => {
-                  if (m === "None") { setMedications([]); return; }
-                  toggle(medications, m, setMedications);
+                  if (m === "None") { setMedications(["None"]); return; }
+                  toggle(medications.filter(x => x !== "None"), m, setMedications);
                 }} />
               <ChipGroup label="Family history" items={FAMILY_HISTORY}
                 selected={familyHistory} onToggle={f => toggle(familyHistory, f, setFamilyHistory)} />
