@@ -214,16 +214,17 @@ export async function POST(req: Request) {
       max_tokens: 2000,
       messages: [{
         role: "user",
-        content: `You are building a daily health protocol for someone who is NOT medically trained. Your only job is to pick the right interventions from the list below and write them in the simplest possible language — like a text from a knowledgeable friend.
+        content: `You are building a simple daily health routine for someone who knows nothing about health or lab results. Your only job is to pick the right habits from the list below and write them in the friendliest, simplest language possible.
 
 RULES:
 1. Only select interventions tied to an actual out-of-range lab marker. No extras.
 2. Return only as many actions as there are supported markers. No padding.
-3. Titles must be dead simple — a specific action a confused person can follow immediately. Examples: "Walk 15 minutes after each meal", "Take vitamin D3 with breakfast", "Swap your evening drink for sparkling water", "Do 20 push-ups before bed". No lab values, no ranges, no clinical terms in the title.
-4. Use the patient's habits to personalise: if they already exercise 5 days/week, don't tell them to exercise more — pick a different lever. If they sleep 8 hrs already, don't tell them to sleep more.
-5. If they already take a supplement, skip recommending that same supplement.
-6. Prefer Grade A evidence. One intervention per biomarker max.
-7. Address goal-priority biomarkers first.
+3. Titles must be dead simple — one action a confused person can do today. No numbers, no lab names, no medical terms, no dosages.
+4. Descriptions must NEVER include specific doses, mg amounts, lab values, or clinical measurements. Just say what to do and when.
+5. Use the patient's habits to personalise: if they already exercise 5 days/week, don't tell them to exercise more. If they sleep 8 hrs already, don't tell them to sleep more.
+6. If they already take a supplement, skip recommending that same supplement.
+7. Prefer Grade A evidence. One intervention per biomarker max.
+8. Address goal-priority biomarkers first.
 
 PATIENT: ${patientName ?? "Patient"} | ${biologicalSex ?? ""} | Goals: ${goalList}
 Medications: ${(medications ?? []).join(", ") || "none"}
@@ -240,10 +241,9 @@ ${labContext}
 CANDIDATE INTERVENTIONS — select by [number]:
 ${candidateContext}
 
-TITLE RULES — this is the most important part:
-- Pretend you are texting a busy person who has never heard of their lab results
-- The title is the ONLY thing they read. Make it a simple instruction they can do today
-- MAX 7 words. No numbers unless it's a dose. No lab names. No clinical terms
+TITLE RULES — most important:
+- Pretend you are texting a busy friend who has never seen a lab result in their life
+- MAX 7 words. No numbers. No lab names. No clinical terms. No dosages.
 - BAD: "Optimize testosterone via resistance training protocol"
 - BAD: "Increase testosterone from 516 toward optimal range"
 - BAD: "Resistance Training Protocol for Testosterone"
@@ -254,12 +254,27 @@ TITLE RULES — this is the most important part:
 - GOOD: "Walk 10 minutes after each meal"
 - The intervention title in the candidate list is for YOUR reference only — never copy it
 
+DESCRIPTION RULES:
+- One sentence. What to do and when. Nothing else.
+- NO specific doses (no "400mg", no "2000 IU", no "1g")
+- NO lab values or ranges
+- NO clinical terminology
+- BAD: "Take 400mg magnesium glycinate before bed to improve insulin sensitivity"
+- GOOD: "Take a magnesium supplement each night before you go to sleep"
+- BAD: "Perform resistance training 3x/week to raise testosterone from 516 ng/dL"
+- GOOD: "Add three weightlifting sessions to your week, any type works"
+
+PLAIN WHY RULES:
+- 2 sentences max. What happens in the body in plain English.
+- Write like you're explaining to a curious 16-year-old
+- No Latin, no abbreviations, no clinical terms, no numbers
+
 Return ONLY valid JSON, no markdown:
 [{
   "candidateIndex": <number>,
-  "title": "simple instruction, max 7 words, no jargon, no lab values",
-  "description": "one sentence — the specific dose, timing, or how-to in plain words",
-  "plainWhy": "2-3 sentences. What happens in the body and why it helps. Write it like you're explaining to someone with zero medical background. No Latin, no abbreviations, no clinical terms."
+  "title": "simple instruction, max 7 words, no numbers, no jargon",
+  "description": "one sentence, what to do and when, no doses no lab values",
+  "plainWhy": "2 sentences max, plain English, what the body does and why it helps"
 }]`,
       }],
     });

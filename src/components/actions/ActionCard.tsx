@@ -6,7 +6,7 @@ import { HealthAction } from "@/lib/types";
 
 const CATEGORY_CONFIG: Record<string, { color: string; bg: string; border: string }> = {
   Movement:   { color: "#F59E0B", bg: "rgba(245,158,11,0.08)",  border: "rgba(245,158,11,0.25)"  },
-  Nutrition:  { color: "#0D9488", bg: "rgba(13,148,136,0.08)",  border: "rgba(13,148,136,0.25)"  },
+  Nutrition:  { color: "#C96A2B", bg: "rgba(201,106,43,0.08)",  border: "rgba(201,106,43,0.25)"  },
   Exercise:   { color: "#2563EB", bg: "rgba(37,99,235,0.08)",   border: "rgba(37,99,235,0.25)"   },
   Sleep:      { color: "#7C3AED", bg: "rgba(124,58,237,0.08)",  border: "rgba(124,58,237,0.25)"  },
   Supplement: { color: "#DB2777", bg: "rgba(219,39,119,0.08)",  border: "rgba(219,39,119,0.25)"  },

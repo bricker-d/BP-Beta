@@ -34,7 +34,8 @@
     "production": {
       "ios": {
         "appleId": "bricker.daniel5@gmail.com",
-        "appleTeamId": "8KRYG768QC"
+        "appleTeamId": "8KRYG768QC",
+        "ascAppId": "6766655554"
       }
     }
   }
