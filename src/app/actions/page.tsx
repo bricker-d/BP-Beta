@@ -4,7 +4,7 @@ import { useHealthStore } from "@/store/useHealthStore";
 import Header from "@/components/layout/Header";
 import ActionCard from "@/components/actions/ActionCard";
 import CompletionCalendar from "@/components/actions/CompletionCalendar";
-import { Loader2, Flame, Target } from "lucide-react";
+import { Loader2, Flame, Target, RefreshCw } from "lucide-react";
 
 // Maps goals to plain-english biomarker targets for the explanation card
 const GOAL_TARGETS: Record<string, string> = {
@@ -30,7 +30,7 @@ const GOAL_LABELS: Record<string, string> = {
 };
 
 export default function ActionsPage() {
-  const { actions, toggleAction, isGeneratingActions, streak, completionHistory, intakeProfile, allOptimal } = useHealthStore();
+  const { actions, toggleAction, isGeneratingActions, streak, completionHistory, intakeProfile, allOptimal, labPanel, setLabPanel } = useHealthStore();
   const completed = actions.filter(a => a.completed).length;
   const total     = actions.length;
   const pct       = total ? (completed / total) * 100 : 0;
@@ -58,13 +58,26 @@ export default function ActionsPage() {
               Evidence-based actions for your biomarkers
             </p>
           </div>
-          {streak > 0 && (
-            <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl"
-              style={{ background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.2)" }}>
-              <Flame size={14} color="#F59E0B" />
-              <span className="text-[13px] font-bold" style={{ color: "#F59E0B" }}>{streak}d</span>
-            </div>
-          )}
+          <div className="flex items-center gap-2">
+            {streak > 0 && (
+              <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl"
+                style={{ background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.2)" }}>
+                <Flame size={14} color="#F59E0B" />
+                <span className="text-[13px] font-bold" style={{ color: "#F59E0B" }}>{streak}d</span>
+              </div>
+            )}
+            {labPanel && !isGeneratingActions && (
+              <button
+                onClick={() => setLabPanel(labPanel)}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl"
+                style={{ background: "var(--surface2)", border: "1px solid var(--border)" }}
+                title="Regenerate protocol"
+              >
+                <RefreshCw size={13} color="var(--text2)" />
+                <span className="text-[12px] font-medium" style={{ color: "var(--text2)" }}>Refresh</span>
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Goal → protocol explanation */}
