@@ -44,6 +44,9 @@ interface HealthStore {
   toggleAction: (id: string) => void;
   refreshActions: () => void;
 
+  // Streak
+  streak: number;
+
   // Daily check-in
   lastCheckInDate: string | null;
   dailyLogs: DailyLog[];
@@ -246,6 +249,9 @@ export const useHealthStore = create<HealthStore>()(
         });
       },
 
+      // ── Streak ──────────────────────────────────────────────────────────
+      streak: 0,
+
       // ── Daily check-in ──────────────────────────────────────────────────
       lastCheckInDate: null,
       dailyLogs: [],
@@ -258,16 +264,23 @@ export const useHealthStore = create<HealthStore>()(
       },
 
       submitDailyLog: (log: DailyLog) => {
-        const { actions, patientId } = get();
+        const { actions, patientId, lastCheckInDate, streak } = get();
         const updatedActions = actions.map(a => ({
           ...a,
           completed: log.actionCompletions[a.id] ?? a.completed,
         }));
 
+        // Streak: increment if checked in yesterday, else reset to 1
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        const yesterdayStr = yesterday.toISOString().split('T')[0];
+        const newStreak = lastCheckInDate === yesterdayStr ? streak + 1 : 1;
+
         set((state) => ({
           lastCheckInDate: today(),
           dailyLogs: [...state.dailyLogs.slice(-89), log],
           actions: updatedActions,
+          streak: newStreak,
         }));
 
         // Persist to Supabase in background
@@ -321,6 +334,7 @@ export const useHealthStore = create<HealthStore>()(
         wearableData:           state.wearableData,
         messages:               state.messages,
         actions:                state.actions,
+        streak:                 state.streak,
         lastCheckInDate:        state.lastCheckInDate,
         dailyLogs:              state.dailyLogs,
         patientId:              state.patientId,

@@ -11,6 +11,7 @@ import {
   Flame, Leaf, Dumbbell, Moon, Pill, Target,
 } from 'lucide-react-native';
 import { useHealthStore } from '../../lib/store';
+import { track, EVENTS } from '../../lib/analytics';
 import type { Action } from '../../lib/types';
 
 const PURPLE = '#C96A2B';
@@ -176,6 +177,10 @@ export default function ActionsScreen() {
   const handleToggle = useCallback((action: Action) => {
     const wasCompleted = action.completed;
     toggleAction(action.id);
+    track(wasCompleted ? EVENTS.ACTION_UNCOMPLETED : EVENTS.ACTION_COMPLETED, {
+      actionId: action.id,
+      category: action.category,
+    });
     // Show feedback sheet when completing (not un-completing)
     if (!wasCompleted) setFeedbackActionId(action.id);
   }, [toggleAction]);

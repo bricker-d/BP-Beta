@@ -2,6 +2,9 @@ import { useEffect, useRef } from 'react';
 import { Stack, useRouter, useSegments, SplashScreen } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useHealthStore } from '../lib/store';
+import { ErrorBoundary } from '../lib/ErrorBoundary';
+import { configureRevenueCat } from '../lib/paywall';
+import { identify } from '../lib/analytics';
 import {
   useFonts,
   DMSans_400Regular,
@@ -53,6 +56,20 @@ function OnboardingGuard() {
   useEffect(() => {
     if (!hasCompletedOnboarding) return;
     syncWearable().catch(() => {});
+  }, [hasCompletedOnboarding]);
+
+  // Init RevenueCat + analytics identity on onboarding complete
+  useEffect(() => {
+    if (!hasCompletedOnboarding) return;
+    const { deviceId, intakeProfile } = useHealthStore.getState();
+    configureRevenueCat(deviceId ?? undefined);
+    if (deviceId) {
+      identify(deviceId, {
+        name: intakeProfile?.name,
+        goals: intakeProfile?.goals,
+        hasLabs: !!useHealthStore.getState().labPanel,
+      });
+    }
   }, [hasCompletedOnboarding]);
 
   // Handle notification taps and action buttons
@@ -112,10 +129,10 @@ export default function RootLayout() {
   if (!fontsLoaded) return null;
 
   return (
-    <>
+    <ErrorBoundary>
       <StatusBar style="dark" />
       <OnboardingGuard />
       <Stack screenOptions={{ headerShown: false }} />
-    </>
+    </ErrorBoundary>
   );
 }

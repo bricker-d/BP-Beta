@@ -53,6 +53,7 @@ export interface HealthAction {
   completed: boolean;
   targetBiomarkers: string[];  // biomarker IDs this action addresses
   biomarkerTarget?: string;    // human-readable display string, e.g. "Glucose, HbA1c"
+  timeOfDay?: 'morning' | 'midday' | 'evening';
 }
 
 // Alias for convenience
@@ -91,6 +92,8 @@ export interface IntakeProfile {
     stressLevel?: string;         // e.g. 'Moderate'
     alcoholPerWeek?: string;      // e.g. '1-3/week'
   };
+  medications?: string[];
+  supplements?: string[];
   labDataSource?: 'upload' | 'demo' | 'skip';
   parsedLabPanel?: LabPanel;    // set when user uploads during onboarding
   patientId?: string;           // set after Supabase sync

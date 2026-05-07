@@ -25,10 +25,10 @@ const PURPLE = '#C96A2B';
 
 // ── Status config ────────────────────────────────────────────────────────────
 const STATUS_CFG: Record<string, { color: string; bg: string; label: string; icon: React.FC<any> }> = {
-  optimal:     { color: '#16a34a', bg: '#dcfce7', label: 'Optimal',     icon: Minus         },
-  borderline:  { color: '#d97706', bg: '#fef3c7', label: 'Borderline',  icon: AlertTriangle },
-  elevated:    { color: '#dc2626', bg: '#fee2e2', label: 'Elevated',     icon: TrendingUp    },
-  low:         { color: '#2563eb', bg: '#dbeafe', label: 'Low',          icon: TrendingDown  },
+  optimal:     { color: '#2D8A5E', bg: '#EAF5EF', label: 'Optimal',     icon: Minus         },
+  borderline:  { color: '#C07A1A', bg: '#FEF4DC', label: 'Borderline',  icon: AlertTriangle },
+  elevated:    { color: '#B83232', bg: '#FAEBEB', label: 'Elevated',     icon: TrendingUp    },
+  low:         { color: '#2B65A8', bg: '#E3EDF8', label: 'Low',          icon: TrendingDown  },
 };
 
 // ── Goal display config ───────────────────────────────────────────────────────
@@ -88,7 +88,7 @@ function ActionRow({ label, done, onPress }: { label: string; done: boolean; onP
 // ── Main ──────────────────────────────────────────────────────────────────────
 export default function HomeScreen() {
   const router   = useRouter();
-  const { actions, intakeProfile, labPanel, needsCheckIn, submitDailyLog, skipCheckIn } = useHealthStore();
+  const { actions, intakeProfile, labPanel, streak, needsCheckIn, submitDailyLog, skipCheckIn } = useHealthStore();
   const [showCheckIn, setShowCheckIn] = useState(false);
 
   // Show check-in modal on mount if needed
@@ -156,7 +156,7 @@ export default function HomeScreen() {
 
   // ── Score ring colour ─────────────────────────────────────────────────────
   const scoreColor = score !== null
-    ? score >= 75 ? '#16a34a' : score >= 50 ? '#d97706' : '#dc2626'
+    ? score >= 75 ? '#2D8A5E' : score >= 50 ? '#C07A1A' : '#B83232'
     : PURPLE;
 
   return (
@@ -166,7 +166,7 @@ export default function HomeScreen() {
         {/* ── Header ─────────────────────────────────────────────────────── */}
         <View style={s.header}>
           <View>
-            <Text style={s.greeting}>{greeting} 👋</Text>
+            <Text style={s.greeting}>{greeting}</Text>
             <Text style={s.name}>{firstName}</Text>
           </View>
           <TouchableOpacity style={s.coachBtn} onPress={() => router.push('/(tabs)/coach')}>
@@ -174,6 +174,20 @@ export default function HomeScreen() {
             <Text style={s.coachBtnTxt}>Ask Coach</Text>
           </TouchableOpacity>
         </View>
+
+        {/* ── Streak banner ───────────────────────────────────────────────── */}
+        {(streak ?? 0) > 0 && (
+          <View style={s.streakBanner}>
+            <Text style={s.streakFire}>🔥</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={s.streakDays}>{streak}-day streak</Text>
+              <Text style={s.streakSub}>Keep your protocol going</Text>
+            </View>
+            <View style={s.streakBadge}>
+              <Text style={s.streakBadgeTxt}>{streak}</Text>
+            </View>
+          </View>
+        )}
 
         {/* ── Score card ─────────────────────────────────────────────────── */}
         <View style={s.scoreCard}>
@@ -328,8 +342,15 @@ const s = StyleSheet.create({
   emptyBtnTxt:     { color: '#fff', fontWeight: '600', fontSize: 15 },
 
   header:          { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 20 },
-  greeting:        { fontSize: 13, color: '#9ca3af' },
-  name:            { fontSize: 24, fontWeight: '800', color: '#111827', marginTop: 1 },
+  greeting:        { fontSize: 13, color: '#9ca3af', fontFamily: 'DMSans_400Regular' },
+  name:            { fontSize: 26, fontWeight: '700', color: '#111827', marginTop: 1, fontFamily: 'DMSans_700Bold' },
+
+  streakBanner:    { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#FEF0E6', borderRadius: 14, padding: 14, marginBottom: 16, borderWidth: 1, borderColor: '#EAD9C5' },
+  streakFire:      { fontSize: 22 },
+  streakDays:      { fontSize: 14, fontWeight: '700', color: '#C96A2B', fontFamily: 'DMSans_700Bold' },
+  streakSub:       { fontSize: 12, color: '#B59A80', marginTop: 1, fontFamily: 'DMSans_400Regular' },
+  streakBadge:     { width: 38, height: 38, borderRadius: 19, backgroundColor: '#C96A2B', alignItems: 'center', justifyContent: 'center' },
+  streakBadgeTxt:  { fontSize: 14, fontWeight: '700', color: '#fff', fontFamily: 'DMSans_700Bold' },
   coachBtn:        { flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1.5, borderColor: PURPLE, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 7 },
   coachBtnTxt:     { fontSize: 13, color: PURPLE, fontWeight: '600' },
 
