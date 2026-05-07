@@ -54,6 +54,7 @@ export interface HealthAction {
   effectSize?: string;
   timeToEffect?: string;
   citations?: string[];
+  timeOfDay?: "morning" | "midday" | "evening";
 }
 
 // ─── Chat ──────────────────────────────────────────────────────────────────────

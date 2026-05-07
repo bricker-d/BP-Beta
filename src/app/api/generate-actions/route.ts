@@ -219,13 +219,15 @@ export async function POST(req: Request) {
 
 RULES:
 1. Only select interventions tied to an actual out-of-range lab marker. No extras.
-2. Return only as many actions as there are supported markers. No padding.
+2. Return exactly 3 to 4 actions total — no more, no fewer. Pick the highest-impact ones. Fewer actions = more compliance.
+3. Assign a timeOfDay to each action: "morning", "midday", or "evening". Spread them across the day — no more than 2 at the same time. Match the action to a natural moment (morning = supplements with breakfast, midday = walk after lunch, evening = magnesium before bed).
 3. Titles must be dead simple — one action a confused person can do today. No numbers, no lab names, no medical terms, no dosages.
 4. Descriptions must NEVER include specific doses, mg amounts, lab values, or clinical measurements. Just say what to do and when.
 5. Use the patient's habits to personalise: if they already exercise 5 days/week, don't tell them to exercise more. If they sleep 8 hrs already, don't tell them to sleep more.
 6. If they already take a supplement, skip recommending that same supplement.
 7. Prefer Grade A evidence. One intervention per biomarker max.
 8. Address goal-priority biomarkers first.
+9. Spread timeOfDay across morning, midday, evening — no more than 2 at the same time of day.
 
 PATIENT: ${patientName ?? "Patient"} | ${biologicalSex ?? ""} | Goals: ${goalList}
 Medications: ${(medications ?? []).join(", ") || "none"}
@@ -275,7 +277,8 @@ Return ONLY valid JSON, no markdown:
   "candidateIndex": <number>,
   "title": "simple instruction, max 7 words, no numbers, no jargon",
   "description": "one sentence, what to do and when, no doses no lab values",
-  "plainWhy": "2 sentences max, plain English, what the body does and why it helps"
+  "plainWhy": "2 sentences max, plain English, what the body does and why it helps",
+  "timeOfDay": "morning" | "midday" | "evening"
 }]`,
       }],
     });
@@ -285,7 +288,7 @@ Return ONLY valid JSON, no markdown:
     if (!jsonMatch) return Response.json({ error: "Failed to generate actions" }, { status: 500 });
 
     // Parse Claude's selections and merge with library data — all clinical facts from library
-    interface Selection { candidateIndex: number; title: string; description: string; plainWhy: string; }
+    interface Selection { candidateIndex: number; title: string; description: string; plainWhy: string; timeOfDay?: "morning" | "midday" | "evening"; }
     const selections: Selection[] = JSON.parse(jsonMatch[0]);
 
     const actions: HealthAction[] = selections
@@ -307,6 +310,7 @@ Return ONLY valid JSON, no markdown:
           effectSize: iv.effectSize,
           timeToEffect: iv.timeToEffect,
           citations: iv.citations.map(formatCitation),
+          timeOfDay: s.timeOfDay ?? undefined,
         };
       });
 

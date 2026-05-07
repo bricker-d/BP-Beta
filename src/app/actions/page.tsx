@@ -167,12 +167,26 @@ export default function ActionsPage() {
           </div>
         )}
 
-        {/* Action cards */}
+        {/* Action cards grouped by time of day */}
         {!isGeneratingActions && total > 0 && (
-          <div className="space-y-3">
-            {actions.map(action => (
-              <ActionCard key={action.id} action={action} onToggle={toggleAction} />
-            ))}
+          <div className="space-y-5">
+            {(["morning", "midday", "evening"] as const).map(slot => {
+              const slotActions = actions.filter(a => (a.timeOfDay ?? "morning") === slot);
+              if (slotActions.length === 0) return null;
+              const labels = { morning: "🌅 Morning", midday: "☀️ Midday", evening: "🌙 Evening" };
+              return (
+                <div key={slot}>
+                  <p className="text-[11px] font-semibold uppercase tracking-widest mb-2" style={{ color: "var(--text3)" }}>
+                    {labels[slot]}
+                  </p>
+                  <div className="space-y-2.5">
+                    {slotActions.map(action => (
+                      <ActionCard key={action.id} action={action} onToggle={toggleAction} />
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
 
