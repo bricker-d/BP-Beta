@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, FlaskConical, CheckSquare, MessageCircle } from "lucide-react";
+import { Home, FlaskConical, CheckSquare, MessageCircle, UserCircle } from "lucide-react";
 
 const NAV_ITEMS = [
   { href: "/",            label: "Home",     icon: Home          },
   { href: "/lab-results", label: "Labs",     icon: FlaskConical  },
   { href: "/actions",     label: "Protocol", icon: CheckSquare   },
   { href: "/coach",       label: "Coach",    icon: MessageCircle },
+  { href: "/profile",     label: "Profile",  icon: UserCircle    },
 ];
 
 export default function BottomNav() {

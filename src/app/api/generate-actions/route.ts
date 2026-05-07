@@ -305,7 +305,7 @@ Return ONLY valid JSON, no markdown:
           why: s.plainWhy?.trim() || iv.citations[0]?.finding || iv.mechanism,
           completed: false,
           targetBiomarkers: iv.targetBiomarkers,
-          biomarkerTarget: `${c.biomarkerName}: ${c.biomarkerValue} ${c.biomarkerUnit} → ${c.optimalRange}`,
+          biomarkerTarget: c.biomarkerName,
           evidenceGrade: iv.evidenceGrade,
           effectSize: iv.effectSize,
           timeToEffect: iv.timeToEffect,
