@@ -1,11 +1,11 @@
 import { useEffect, useRef } from 'react';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import * as Notifications from 'expo-notifications';
 import { useHealthStore } from '../lib/store';
 import {
   registerForPushNotifications,
   scheduleDailyNotifications,
+  sendCompletionCelebration,
 } from '../lib/notifications';
 
 function OnboardingGuard() {
@@ -13,13 +13,15 @@ function OnboardingGuard() {
   const segments = useSegments();
   const hasCompletedOnboarding = useHealthStore((s) => s.hasCompletedOnboarding);
   const syncWearable            = useHealthStore((s) => s.syncWearable);
-  const markWearableConnected   = useHealthStore((s) => s.markWearableConnected);
+  const actions                 = useHealthStore((s) => s.actions);
+  const intakeProfile           = useHealthStore((s) => s.intakeProfile);
+  const streak                  = useHealthStore((s) => s.streak);
+  const toggleAction            = useHealthStore((s) => s.toggleAction);
   const notifSetup = useRef(false);
 
   // Route guard
   useEffect(() => {
     const inOnboarding = segments[0] === '(onboarding)';
-    const inTabs       = segments[0] === '(tabs)';
     if (!hasCompletedOnboarding && !inOnboarding) {
       router.replace('/(onboarding)');
     } else if (hasCompletedOnboarding && inOnboarding) {
@@ -27,34 +29,61 @@ function OnboardingGuard() {
     }
   }, [hasCompletedOnboarding, segments]);
 
-  // Setup notifications once after onboarding
+  // Setup notifications once after onboarding completes
   useEffect(() => {
     if (!hasCompletedOnboarding || notifSetup.current) return;
     notifSetup.current = true;
     registerForPushNotifications()
       .then((token) => {
-        if (token) scheduleDailyNotifications();
+        if (token) scheduleDailyNotifications(actions, intakeProfile, streak);
       })
       .catch(() => {});
   }, [hasCompletedOnboarding]);
 
-  // Sync wearable data on app open
+  // Sync wearable on app open
   useEffect(() => {
     if (!hasCompletedOnboarding) return;
     syncWearable().catch(() => {});
   }, [hasCompletedOnboarding]);
 
-  // Handle deep link from wearable OAuth callback
+  // Handle notification taps and action buttons
   useEffect(() => {
-    const sub = Notifications.addNotificationResponseReceivedListener(response => {
-      const screen = response.notification.request.content.data?.screen as string;
-      if (!screen) return;
-      if (screen === 'checkin') router.push('/(tabs)');
-      else if (screen === 'actions') router.push('/(tabs)/actions');
-      else if (screen === 'coach')   router.push('/(tabs)/coach');
+    const { addNotificationResponseReceivedListener } = require('expo-notifications');
+    const sub = addNotificationResponseReceivedListener((response: any) => {
+      const actionId   = response.actionIdentifier;
+      const data       = response.notification.request.content.data ?? {};
+      const screen     = data.screen as string;
+      const targetId   = data.actionId as string;
+
+      // "Done" button — mark complete without opening app
+      if (actionId === 'DONE' && targetId) {
+        toggleAction(targetId);
+        const allDone = actions.every(a => a.id === targetId ? true : a.completed);
+        if (allDone) sendCompletionCelebration().catch(() => {});
+        return;
+      }
+
+      // "Remind me in 1hr" button
+      if (actionId === 'REMIND_1HR') {
+        const Notifications = require('expo-notifications');
+        Notifications.scheduleNotificationAsync({
+          identifier: `remind-later-${Date.now()}`,
+          content: response.notification.request.content,
+          trigger: {
+            type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+            seconds: 3600,
+          },
+        }).catch(() => {});
+        return;
+      }
+
+      // Default tap — navigate to screen
+      if (screen === 'actions') router.push('/(tabs)/actions');
+      else if (screen === 'coach') router.push('/(tabs)/coach');
+      else if (screen === 'checkin') router.push('/(tabs)');
     });
     return () => sub.remove();
-  }, []);
+  }, [actions, toggleAction]);
 
   return null;
 }

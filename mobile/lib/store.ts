@@ -108,6 +108,11 @@ export const useHealthStore = create<HealthStore>()(
 
         // Sync to Supabase in background
         get().syncPatient().catch(() => {});
+
+        // Schedule notifications with actual protocol actions
+        import('./notifications').then(({ scheduleDailyNotifications }) => {
+          scheduleDailyNotifications(actions, profile, 0).catch(() => {});
+        });
       },
 
       resetOnboarding: () => set({
@@ -174,11 +179,18 @@ export const useHealthStore = create<HealthStore>()(
         const completedIds = new Set(
           get().actions.filter(a => a.completed).map(a => a.id)
         );
+        const updatedActions = actions.map(a => ({ ...a, completed: completedIds.has(a.id) }));
         set((state) => ({
           previousLabPanel: state.labPanel,
           labPanel: panel,
-          actions: actions.map(a => ({ ...a, completed: completedIds.has(a.id) })),
+          actions: updatedActions,
         }));
+
+        // Reschedule notifications with updated actions
+        const { intakeProfile, streak } = get();
+        import('./notifications').then(({ scheduleDailyNotifications }) => {
+          scheduleDailyNotifications(updatedActions, intakeProfile ?? null, streak).catch(() => {});
+        });
       },
 
       // ── Wearable data ───────────────────────────────────────────────────
