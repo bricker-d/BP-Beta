@@ -214,7 +214,7 @@ const empty = StyleSheet.create({
 
 export default function LabsScreen() {
   const router = useRouter();
-  const { labPanel, intakeProfile, resetOnboarding } = useHealthStore();
+  const { labPanel, previousLabPanel, intakeProfile, resetOnboarding } = useHealthStore();
   const [activeCategory, setActiveCategory] = useState('all');
   const [sortBy, setSortBy] = useState<'priority' | 'status' | 'name'>('priority');
 
@@ -294,6 +294,49 @@ export default function LabsScreen() {
             </TouchableOpacity>
           ))}
         </View>
+
+        {/* ── Before/after delta hero — shown when 2+ panels exist ──────── */}
+        {previousLabPanel && (() => {
+          const improved = labPanel.biomarkers.filter(b => b.deltaStatus === 'improved');
+          const worsened = labPanel.biomarkers.filter(b => b.deltaStatus === 'worsened');
+          const hero = improved[0];
+          if (!hero) return null;
+          const pct = Math.round(Math.abs((hero.delta ?? 0) / (hero.previousValue ?? 1)) * 100);
+          return (
+            <View style={delta.card}>
+              <Text style={delta.label}>Since your last panel</Text>
+              <View style={delta.heroRow}>
+                <View style={delta.heroLeft}>
+                  <Text style={delta.heroName}>{hero.name}</Text>
+                  <Text style={delta.heroPct}>
+                    {pct}% {hero.deltaStatus === 'improved' ? 'improvement' : 'change'}
+                  </Text>
+                </View>
+                <View style={delta.heroRight}>
+                  <Text style={delta.heroOld}>{hero.previousValue} {hero.unit}</Text>
+                  <Text style={delta.heroArrow}>→</Text>
+                  <Text style={delta.heroNew}>{hero.value} {hero.unit}</Text>
+                </View>
+              </View>
+              <View style={delta.statsRow}>
+                <View style={[delta.stat, { backgroundColor: '#dcfce7' }]}>
+                  <Text style={[delta.statNum, { color: '#16a34a' }]}>{improved.length}</Text>
+                  <Text style={[delta.statLbl, { color: '#16a34a' }]}>Improved</Text>
+                </View>
+                <View style={[delta.stat, { backgroundColor: '#fee2e2' }]}>
+                  <Text style={[delta.statNum, { color: '#dc2626' }]}>{worsened.length}</Text>
+                  <Text style={[delta.statLbl, { color: '#dc2626' }]}>Need work</Text>
+                </View>
+                <View style={[delta.stat, { backgroundColor: '#f3f4f6' }]}>
+                  <Text style={[delta.statNum, { color: '#6b7280' }]}>
+                    {labPanel.biomarkers.length - improved.length - worsened.length}
+                  </Text>
+                  <Text style={[delta.statLbl, { color: '#6b7280' }]}>Stable</Text>
+                </View>
+              </View>
+            </View>
+          );
+        })()}
 
         {/* Needs attention callout */}
         {notOptimal > 0 && (
@@ -399,4 +442,22 @@ const s = StyleSheet.create({
   sortBtnTxtActive: { color: PURPLE, fontWeight: '600' },
   cards:       { paddingBottom: 8 },
   emptyFilter: { textAlign: 'center', color: '#9ca3af', fontSize: 14, marginTop: 32 },
+});
+
+// ── Before/after delta styles ─────────────────────────────────────────────────
+const delta = StyleSheet.create({
+  card:      { marginHorizontal: 16, marginBottom: 14, backgroundColor: '#fff', borderRadius: 16, padding: 16, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 8, elevation: 2, borderWidth: 1, borderColor: '#EAD9C5' },
+  label:     { fontSize: 11, fontWeight: '700', color: '#C96A2B', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 12 },
+  heroRow:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 },
+  heroLeft:  { flex: 1 },
+  heroName:  { fontSize: 16, fontWeight: '800', color: '#111827' },
+  heroPct:   { fontSize: 13, color: '#16a34a', fontWeight: '600', marginTop: 2 },
+  heroRight: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  heroOld:   { fontSize: 13, color: '#9ca3af', textDecorationLine: 'line-through' },
+  heroArrow: { fontSize: 13, color: '#d1d5db' },
+  heroNew:   { fontSize: 15, fontWeight: '800', color: '#16a34a' },
+  statsRow:  { flexDirection: 'row', gap: 8 },
+  stat:      { flex: 1, borderRadius: 10, paddingVertical: 8, alignItems: 'center', gap: 2 },
+  statNum:   { fontSize: 18, fontWeight: '800' },
+  statLbl:   { fontSize: 11, fontWeight: '600' },
 });

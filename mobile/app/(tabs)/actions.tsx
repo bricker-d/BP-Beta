@@ -1,7 +1,7 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useCallback } from 'react';
 import {
   View, Text, ScrollView, StyleSheet,
-  TouchableOpacity, Animated,
+  TouchableOpacity, Modal, Pressable,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -30,6 +30,63 @@ const CAT_CFG: Record<string, {
 
 const FILTER_TABS = ['All', 'Pending', 'Done'] as const;
 type FilterTab = typeof FILTER_TABS[number];
+
+// ── Streak milestones tied to clinical timeframes ─────────────────────────────
+const STREAK_MILESTONES: { days: number; message: string }[] = [
+  { days: 3,  message: "3 days in. Your body is beginning to respond." },
+  { days: 7,  message: "1 week consistent. Early habit formation begins at day 7." },
+  { days: 14, message: "2 weeks in. Glucose and sleep quality typically start improving here." },
+  { days: 21, message: "21 days. This is when new behaviours start to feel automatic." },
+  { days: 30, message: "30 days. Omega-3 and vitamin D levels are measurably shifting by now." },
+  { days: 60, message: "60 days consistent. Inflammatory markers respond in this timeframe." },
+  { days: 90, message: "90 days. Most biomarkers show measurable change — time for new labs." },
+];
+
+function getStreakMilestone(streak: number): string | null {
+  const hit = [...STREAK_MILESTONES].reverse().find(m => streak >= m.days);
+  return hit ? hit.message : null;
+}
+
+// ── Post-completion feedback sheet ────────────────────────────────────────────
+const FEEDBACK_OPTIONS: { rating: 'tired' | 'fine' | 'good'; emoji: string; label: string }[] = [
+  { rating: 'tired', emoji: '😴', label: 'Tired' },
+  { rating: 'fine',  emoji: '😐', label: 'Fine'  },
+  { rating: 'good',  emoji: '⚡', label: 'Great'  },
+];
+
+function FeedbackSheet({ visible, onSelect, onDismiss }: {
+  visible: boolean;
+  onSelect: (rating: 'tired' | 'fine' | 'good') => void;
+  onDismiss: () => void;
+}) {
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onDismiss}>
+      <Pressable style={fb.overlay} onPress={onDismiss}>
+        <Pressable style={fb.sheet} onPress={e => e.stopPropagation()}>
+          <View style={fb.handle} />
+          <Text style={fb.title}>How do you feel?</Text>
+          <Text style={fb.sub}>Your coach uses this to personalise your plan</Text>
+          <View style={fb.options}>
+            {FEEDBACK_OPTIONS.map(opt => (
+              <TouchableOpacity
+                key={opt.rating}
+                style={fb.option}
+                onPress={() => { onSelect(opt.rating); onDismiss(); }}
+                activeOpacity={0.7}
+              >
+                <Text style={fb.optionEmoji}>{opt.emoji}</Text>
+                <Text style={fb.optionLabel}>{opt.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          <TouchableOpacity onPress={onDismiss} style={fb.skip}>
+            <Text style={fb.skipTxt}>Skip</Text>
+          </TouchableOpacity>
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+}
 
 // ── Action card ───────────────────────────────────────────────────────────────
 function ActionCard({ action, onToggle, onAskCoach }: {
@@ -95,8 +152,18 @@ function ActionCard({ action, onToggle, onAskCoach }: {
 // ── Main ──────────────────────────────────────────────────────────────────────
 export default function ActionsScreen() {
   const router = useRouter();
-  const { actions, toggleAction } = useHealthStore();
+  const { actions, toggleAction, submitActionFeedback, streak } = useHealthStore();
   const [filter, setFilter] = useState<FilterTab>('All');
+  const [feedbackActionId, setFeedbackActionId] = useState<string | null>(null);
+
+  const handleToggle = useCallback((action: Action) => {
+    const wasCompleted = action.completed;
+    toggleAction(action.id);
+    // Show feedback sheet when completing (not un-completing)
+    if (!wasCompleted) setFeedbackActionId(action.id);
+  }, [toggleAction]);
+
+  const streakMessage = getStreakMilestone(streak ?? 0);
 
   const doneCount    = useMemo(() => actions.filter(a => a.completed).length, [actions]);
   const pendingCount = useMemo(() => actions.filter(a => !a.completed).length, [actions]);
@@ -145,6 +212,12 @@ export default function ActionsScreen() {
 
   return (
     <SafeAreaView style={s.container}>
+      <FeedbackSheet
+        visible={!!feedbackActionId}
+        onSelect={(rating) => feedbackActionId && submitActionFeedback(feedbackActionId, rating)}
+        onDismiss={() => setFeedbackActionId(null)}
+      />
+
       {/* ── Header ──────────────────────────────────────────────────────── */}
       <View style={s.header}>
         <View>
@@ -182,6 +255,14 @@ export default function ActionsScreen() {
         ))}
       </View>
 
+      {/* ── Streak milestone ────────────────────────────────────────────── */}
+      {streakMessage && (
+        <View style={s.milestone}>
+          <Text style={s.milestoneEmoji}>🔥</Text>
+          <Text style={s.milestoneTxt}>{streakMessage}</Text>
+        </View>
+      )}
+
       {/* ── Grouped action list ──────────────────────────────────────────── */}
       <ScrollView style={s.scroll} showsVerticalScrollIndicator={false}>
         {grouped.length === 0 && (
@@ -210,7 +291,7 @@ export default function ActionsScreen() {
                 <ActionCard
                   key={action.id}
                   action={action}
-                  onToggle={() => toggleAction(action.id)}
+                  onToggle={() => handleToggle(action)}
                   onAskCoach={() => router.push('/(tabs)/coach')}
                 />
               ))}
@@ -257,6 +338,10 @@ const s = StyleSheet.create({
   groupHeader:      { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 10, marginBottom: 6 },
   groupTitle:       { fontSize: 13, fontWeight: '700', flex: 1 },
   groupCount:       { fontSize: 12, fontWeight: '600' },
+
+  milestone:        { flexDirection: 'row', alignItems: 'center', gap: 10, marginHorizontal: 16, marginTop: 12, marginBottom: 2, backgroundColor: '#FEF0E6', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10, borderWidth: 1, borderColor: '#EAD9C5' },
+  milestoneEmoji:   { fontSize: 18 },
+  milestoneTxt:     { flex: 1, fontSize: 13, color: '#C96A2B', fontWeight: '500', lineHeight: 18 },
 });
 
 // ── Action card styles ────────────────────────────────────────────────────────
@@ -277,4 +362,19 @@ const ac = StyleSheet.create({
   targetTxt:  { fontSize: 11, color: PURPLE, fontWeight: '500' },
   coachRow:   { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 14, paddingVertical: 9, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#f3f4f6', backgroundColor: '#FDF7F0' },
   coachTxt:   { flex: 1, fontSize: 12, color: PURPLE, fontWeight: '600' },
+});
+
+// ── Feedback sheet styles ──────────────────────────────────────────────────────
+const fb = StyleSheet.create({
+  overlay:      { flex: 1, backgroundColor: 'rgba(0,0,0,0.35)', justifyContent: 'flex-end' },
+  sheet:        { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 24, paddingBottom: 40, paddingTop: 16, alignItems: 'center' },
+  handle:       { width: 36, height: 4, backgroundColor: '#e5e7eb', borderRadius: 2, marginBottom: 20 },
+  title:        { fontSize: 20, fontWeight: '800', color: '#111827', marginBottom: 4 },
+  sub:          { fontSize: 13, color: '#9ca3af', marginBottom: 28, textAlign: 'center' },
+  options:      { flexDirection: 'row', gap: 16, marginBottom: 24 },
+  option:       { alignItems: 'center', backgroundColor: '#FDF7F0', borderRadius: 16, paddingVertical: 18, paddingHorizontal: 22, borderWidth: 1.5, borderColor: '#EAD9C5', gap: 8 },
+  optionEmoji:  { fontSize: 32 },
+  optionLabel:  { fontSize: 13, fontWeight: '600', color: '#374151' },
+  skip:         { paddingVertical: 8 },
+  skipTxt:      { fontSize: 14, color: '#9ca3af' },
 });

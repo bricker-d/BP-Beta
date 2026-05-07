@@ -56,6 +56,10 @@ interface HealthStore {
   needsWeeklySummary: () => boolean;
   markWeeklySummaryShown: () => void;
 
+  // Action feedback
+  actionFeedback: Record<string, { rating: 'tired' | 'fine' | 'good'; date: string }>;
+  submitActionFeedback: (actionId: string, rating: 'tired' | 'fine' | 'good') => void;
+
   // Chat
   messages: ChatMessage[];
   addMessage: (msg: ChatMessage) => void;
@@ -186,10 +190,11 @@ export const useHealthStore = create<HealthStore>()(
           actions: updatedActions,
         }));
 
-        // Reschedule notifications with updated actions
+        // Reschedule notifications with updated actions + 90-day lab reminder
         const { intakeProfile, streak } = get();
-        import('./notifications').then(({ scheduleDailyNotifications }) => {
+        import('./notifications').then(({ scheduleDailyNotifications, scheduleLabUploadReminder }) => {
           scheduleDailyNotifications(updatedActions, intakeProfile ?? null, streak).catch(() => {});
+          scheduleLabUploadReminder(panel.date).catch(() => {});
         });
       },
 
@@ -290,6 +295,12 @@ export const useHealthStore = create<HealthStore>()(
       },
 
       markWeeklySummaryShown: () => set({ lastWeeklySummaryDate: today() }),
+
+      actionFeedback: {},
+      submitActionFeedback: (actionId, rating) =>
+        set((state) => ({
+          actionFeedback: { ...state.actionFeedback, [actionId]: { rating, date: today() } },
+        })),
 
       // ── Chat ────────────────────────────────────────────────────────────
       messages: [],

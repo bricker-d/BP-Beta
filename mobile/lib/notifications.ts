@@ -261,6 +261,24 @@ export async function scheduleDailyNotifications(
   console.log('[notifications] Scheduled: morning, midday, evening, streak, coach x3, weekly');
 }
 
+// ── Schedule 90-day lab upload reminder ──────────────────────────────────────
+export async function scheduleLabUploadReminder(labDate: string) {
+  await Notifications.cancelScheduledNotificationAsync('lab-upload-reminder').catch(() => {});
+  const uploaded = new Date(labDate);
+  const reminderDate = new Date(uploaded.getTime() + 90 * 24 * 60 * 60 * 1000);
+  if (reminderDate <= new Date()) return; // already past
+  await Notifications.scheduleNotificationAsync({
+    identifier: 'lab-upload-reminder',
+    content: {
+      title: 'Time for new labs',
+      body: "Your protocol has been running 90 days. Upload your new results to see what moved.",
+      data: { screen: 'labs' },
+      categoryIdentifier: 'coach-prompt',
+    },
+    trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: reminderDate },
+  });
+}
+
 // ── Immediate celebration when all actions done ───────────────────────────────
 export async function sendCompletionCelebration() {
   await Notifications.scheduleNotificationAsync({
