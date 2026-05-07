@@ -217,6 +217,7 @@ export default function LabsScreen() {
   const { labPanel, previousLabPanel, intakeProfile, resetOnboarding } = useHealthStore();
   const [activeCategory, setActiveCategory] = useState('all');
   const [sortBy, setSortBy] = useState<'priority' | 'status' | 'name'>('priority');
+  const [showAll, setShowAll] = useState(false);
 
   const profile = intakeProfile;
 
@@ -252,6 +253,18 @@ export default function LabsScreen() {
     }
     return list;
   }, [labPanel, activeCategory, sortBy, profile]);
+
+  // Focus list = out-of-range only; showAll shows everything
+  const visibleBiomarkers = useMemo(() => {
+    if (showAll || activeCategory !== 'all') return biomarkers;
+    const focused = biomarkers.filter(b => b.status !== 'optimal');
+    return focused.length > 0 ? focused : biomarkers;
+  }, [biomarkers, showAll, activeCategory]);
+
+  const hiddenOptimalCount = useMemo(() => {
+    if (showAll || activeCategory !== 'all') return 0;
+    return biomarkers.filter(b => b.status === 'optimal').length;
+  }, [biomarkers, showAll, activeCategory]);
 
   if (!labPanel) {
     return (
@@ -378,9 +391,18 @@ export default function LabsScreen() {
           ))}
         </View>
 
+        {/* Focus label when in focus mode */}
+        {!showAll && activeCategory === 'all' && hiddenOptimalCount > 0 && (
+          <View style={s.focusBanner}>
+            <Text style={s.focusBannerTxt}>
+              Showing markers that need attention
+            </Text>
+          </View>
+        )}
+
         {/* Biomarker cards */}
         <View style={s.cards}>
-          {biomarkers.map(b => (
+          {visibleBiomarkers.map(b => (
             <BiomarkerCard
               key={b.id}
               b={b}
@@ -388,10 +410,21 @@ export default function LabsScreen() {
               onPress={() => router.push('/(tabs)/coach')}
             />
           ))}
-          {biomarkers.length === 0 && (
+          {visibleBiomarkers.length === 0 && (
             <Text style={s.emptyFilter}>No biomarkers in this category.</Text>
           )}
         </View>
+
+        {/* Show all / Show less toggle */}
+        {hiddenOptimalCount > 0 && activeCategory === 'all' && (
+          <TouchableOpacity style={s.showAllBtn} onPress={() => setShowAll(v => !v)} activeOpacity={0.7}>
+            <Text style={s.showAllTxt}>
+              {showAll
+                ? 'Show focus view'
+                : `Show all ${biomarkers.length} markers (${hiddenOptimalCount} optimal)`}
+            </Text>
+          </TouchableOpacity>
+        )}
 
         <View style={{ height: 32 }} />
       </ScrollView>
@@ -434,6 +467,10 @@ const s = StyleSheet.create({
   sortBtnTxtActive: { color: PURPLE, fontWeight: '600' },
   cards:       { paddingBottom: 8 },
   emptyFilter: { textAlign: 'center', color: '#9ca3af', fontSize: 14, marginTop: 32 },
+  focusBanner: { backgroundColor: '#FEF4DC', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 8, marginBottom: 10, borderWidth: 1, borderColor: '#EAD9C5' },
+  focusBannerTxt: { fontSize: 12, color: '#C07A1A', fontWeight: '600', fontFamily: 'DMSans_600SemiBold' },
+  showAllBtn:  { alignItems: 'center', paddingVertical: 16, marginBottom: 8 },
+  showAllTxt:  { fontSize: 13, color: '#C96A2B', fontWeight: '600', fontFamily: 'DMSans_600SemiBold' },
 });
 
 // ── Before/after delta styles ─────────────────────────────────────────────────

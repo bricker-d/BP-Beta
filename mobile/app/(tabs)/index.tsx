@@ -7,8 +7,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import {
   FlaskConical, TrendingUp, TrendingDown, Minus,
-  AlertTriangle, Zap, MessageCircle, ChevronRight,
-  Target, Activity,
+  AlertTriangle, Zap, ChevronRight,
+  Activity,
 } from 'lucide-react-native';
 import { useHealthStore } from '../../lib/store';
 import {
@@ -169,9 +169,16 @@ export default function HomeScreen() {
             <Text style={s.greeting}>{greeting}</Text>
             <Text style={s.name}>{firstName}</Text>
           </View>
-          <TouchableOpacity style={s.coachBtn} onPress={() => router.push('/(tabs)/coach')}>
-            <MessageCircle color={PURPLE} size={20} />
-            <Text style={s.coachBtnTxt}>Ask Coach</Text>
+          <TouchableOpacity
+            style={s.avatarBtn}
+            onPress={() => router.push('/(tabs)/profile')}
+            activeOpacity={0.8}
+          >
+            <Text style={s.avatarBtnTxt}>
+              {intakeProfile?.name
+                ? intakeProfile.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()
+                : '?'}
+            </Text>
           </TouchableOpacity>
         </View>
 
@@ -317,6 +324,7 @@ export default function HomeScreen() {
             category: a.category,
             biomarkerTarget: a.biomarkerTarget,
           }))}
+          firstName={firstName !== 'there' ? firstName : undefined}
           onComplete={(log: DailyLog) => {
             submitDailyLog(log);
             setShowCheckIn(false);
@@ -351,8 +359,8 @@ const s = StyleSheet.create({
   streakSub:       { fontSize: 12, color: '#B59A80', marginTop: 1, fontFamily: 'DMSans_400Regular' },
   streakBadge:     { width: 38, height: 38, borderRadius: 19, backgroundColor: '#C96A2B', alignItems: 'center', justifyContent: 'center' },
   streakBadgeTxt:  { fontSize: 14, fontWeight: '700', color: '#fff', fontFamily: 'DMSans_700Bold' },
-  coachBtn:        { flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1.5, borderColor: PURPLE, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 7 },
-  coachBtnTxt:     { fontSize: 13, color: PURPLE, fontWeight: '600' },
+  avatarBtn:       { width: 40, height: 40, borderRadius: 20, backgroundColor: PURPLE, alignItems: 'center', justifyContent: 'center' },
+  avatarBtnTxt:    { fontSize: 14, fontWeight: '700', color: '#fff', fontFamily: 'DMSans_700Bold' },
 
   scoreCard:       { backgroundColor: '#fff', borderRadius: 16, padding: 16, flexDirection: 'row', alignItems: 'center', gap: 16, marginBottom: 20, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 },
   scoreRing:       { width: 72, height: 72, borderRadius: 36, borderWidth: 4, alignItems: 'center', justifyContent: 'center' },

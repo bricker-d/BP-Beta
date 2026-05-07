@@ -1,99 +1,193 @@
 import React, { useState } from 'react';
 import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  ScrollView,
-  SafeAreaView,
+  View, Text, TouchableOpacity, StyleSheet,
+  ScrollView, SafeAreaView,
 } from 'react-native';
-
-interface DailyCheckInProps {
-  actions: Array<{ id: string; title: string; category: string; biomarkerTarget?: string }>;
-  onComplete: (log: DailyLog) => void;
-  onSkip: () => void;
-}
 
 export interface DailyLog {
   date: string;
   actionCompletions: Record<string, boolean>;
-  sleepQuality: number | null;   // 1–5
-  stressLevel: number | null;    // 1–5
-  energyLevel: number | null;    // 1–5
+  sleepQuality: number | null;
+  stressLevel: number | null;
+  energyLevel: number | null;
 }
 
-const QUALITY_LABELS = ['Terrible', 'Poor', 'OK', 'Good', 'Great'];
-const PURPLE = '#C96A2B';
+interface Props {
+  actions: Array<{ id: string; title: string; category: string; biomarkerTarget?: string }>;
+  firstName?: string;
+  onComplete: (log: DailyLog) => void;
+  onSkip: () => void;
+}
 
-export default function DailyCheckIn({ actions, onComplete, onSkip }: DailyCheckInProps) {
-  const [completions, setCompletions] = useState<Record<string, boolean>>(
-    Object.fromEntries(actions.map(a => [a.id, false]))
+type Status = 'pending' | 'done' | 'missed';
+
+const FEEL = {
+  sleep: [
+    { emoji: '😴', label: 'Rough',     value: 2 },
+    { emoji: '😐', label: 'Okay',      value: 3 },
+    { emoji: '🌙', label: 'Solid',     value: 5 },
+  ],
+  energy: [
+    { emoji: '🪫', label: 'Drained',   value: 1 },
+    { emoji: '😐', label: 'Okay',      value: 3 },
+    { emoji: '⚡', label: 'Energised', value: 5 },
+  ],
+  stress: [
+    { emoji: '😤', label: 'High',      value: 1 },
+    { emoji: '😐', label: 'Moderate',  value: 3 },
+    { emoji: '😌', label: 'Low',       value: 5 },
+  ],
+};
+
+const ACCENT = '#C96A2B';
+
+// ── Emoji picker row ──────────────────────────────────────────────────────────
+function EmojiPicker({
+  label, options, selected, onSelect,
+}: {
+  label: string;
+  options: { emoji: string; label: string; value: number }[];
+  selected: number | null;
+  onSelect: (v: number) => void;
+}) {
+  return (
+    <View style={ep.wrap}>
+      <Text style={ep.label}>{label}</Text>
+      <View style={ep.row}>
+        {options.map(opt => {
+          const active = selected === opt.value;
+          return (
+            <TouchableOpacity
+              key={opt.value}
+              style={[ep.btn, active && ep.btnActive]}
+              onPress={() => onSelect(opt.value)}
+              activeOpacity={0.7}
+            >
+              <Text style={ep.emoji}>{opt.emoji}</Text>
+              <Text style={[ep.optLabel, active && ep.optLabelActive]}>{opt.label}</Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    </View>
   );
-  const [sleep, setSleep]   = useState<number | null>(null);
-  const [stress, setStress] = useState<number | null>(null);
-  const [energy, setEnergy] = useState<number | null>(null);
+}
 
-  function toggle(id: string) {
-    setCompletions(prev => ({ ...prev, [id]: !prev[id] }));
-  }
+const ep = StyleSheet.create({
+  wrap:         { marginBottom: 16 },
+  label:        { fontSize: 14, fontWeight: '600', color: '#374151', marginBottom: 10, fontFamily: 'DMSans_600SemiBold' },
+  row:          { flexDirection: 'row', gap: 10 },
+  btn:          { flex: 1, alignItems: 'center', paddingVertical: 12, borderRadius: 14, borderWidth: 1.5, borderColor: '#e5e7eb', backgroundColor: '#fff', gap: 4 },
+  btnActive:    { borderColor: ACCENT, backgroundColor: '#FEF0E6' },
+  emoji:        { fontSize: 22 },
+  optLabel:     { fontSize: 11, fontWeight: '500', color: '#9ca3af', fontFamily: 'DMSans_500Medium' },
+  optLabelActive:{ color: ACCENT, fontWeight: '600', fontFamily: 'DMSans_600SemiBold' },
+});
+
+// ── Main ──────────────────────────────────────────────────────────────────────
+export default function DailyCheckIn({ actions, firstName, onComplete, onSkip }: Props) {
+  const [statuses, setStatuses] = useState<Record<string, Status>>(
+    Object.fromEntries(actions.map(a => [a.id, 'pending']))
+  );
+  const [sleep,  setSleep]  = useState<number | null>(null);
+  const [energy, setEnergy] = useState<number | null>(null);
+  const [stress, setStress] = useState<number | null>(null);
+
+  const setStatus = (id: string, s: Status) =>
+    setStatuses(prev => ({ ...prev, [id]: prev[id] === s ? 'pending' : s }));
+
+  const doneCount = Object.values(statuses).filter(s => s === 'done').length;
+
+  const hour = new Date().getHours();
+  const timeGreeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+  const name = firstName ? `, ${firstName}` : '';
 
   function submit() {
     onComplete({
       date: new Date().toISOString().split('T')[0],
-      actionCompletions: completions,
+      actionCompletions: Object.fromEntries(
+        Object.entries(statuses).map(([id, s]) => [id, s === 'done'])
+      ),
       sleepQuality: sleep,
-      stressLevel: stress,
-      energyLevel: energy,
+      energyLevel:  energy,
+      stressLevel:  stress,
     });
   }
 
-  const doneCount = Object.values(completions).filter(Boolean).length;
-
   return (
     <SafeAreaView style={s.safe}>
-      <ScrollView style={s.scroll} showsVerticalScrollIndicator={false}>
+      <ScrollView style={s.scroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+
+        {/* Header */}
         <View style={s.header}>
-          <Text style={s.title}>Morning check-in</Text>
-          <Text style={s.sub}>How did yesterday go?</Text>
+          <Text style={s.greeting}>{timeGreeting}{name}</Text>
+          <Text style={s.title}>How did yesterday go?</Text>
+          {actions.length > 0 && (
+            <Text style={s.tally}>
+              {doneCount} of {actions.length} actions completed
+            </Text>
+          )}
         </View>
 
-        {/* Action completions */}
-        <Text style={s.sectionLabel}>Yesterday's actions</Text>
-        <Text style={s.sectionSub}>{doneCount}/{actions.length} completed</Text>
+        {/* Action cards */}
+        {actions.length > 0 && (
+          <View style={s.section}>
+            <Text style={s.sectionLabel}>Yesterday's protocol</Text>
+            <View style={s.actionList}>
+              {actions.map(action => {
+                const st = statuses[action.id];
+                return (
+                  <View
+                    key={action.id}
+                    style={[
+                      s.actionCard,
+                      st === 'done'   && s.actionCardDone,
+                      st === 'missed' && s.actionCardMissed,
+                    ]}
+                  >
+                    <Text style={[s.actionTitle, st === 'done' && s.actionTitleDone]}>
+                      {action.title}
+                    </Text>
+                    {action.biomarkerTarget && (
+                      <Text style={s.actionTarget}>Targets: {action.biomarkerTarget}</Text>
+                    )}
+                    <View style={s.actionBtns}>
+                      <TouchableOpacity
+                        style={[s.actionBtn, st === 'done' && s.actionBtnDone]}
+                        onPress={() => setStatus(action.id, 'done')}
+                        activeOpacity={0.75}
+                      >
+                        <Text style={[s.actionBtnTxt, st === 'done' && s.actionBtnTxtActive]}>
+                          {st === 'done' ? '✓  Done' : 'Done'}
+                        </Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[s.actionBtn, st === 'missed' && s.actionBtnMissed]}
+                        onPress={() => setStatus(action.id, 'missed')}
+                        activeOpacity={0.75}
+                      >
+                        <Text style={[s.actionBtnTxt, st === 'missed' && s.actionBtnTxtMissed]}>
+                          Missed
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
+          </View>
+        )}
 
-        <View style={s.actionList}>
-          {actions.map(action => {
-            const done = completions[action.id];
-            return (
-              <TouchableOpacity
-                key={action.id}
-                style={[s.actionRow, done && s.actionRowDone]}
-                onPress={() => toggle(action.id)}
-                activeOpacity={0.8}
-              >
-                <View style={[s.checkbox, done && s.checkboxDone]}>
-                  {done && <Text style={s.checkmark}>✓</Text>}
-                </View>
-                <View style={s.actionText}>
-                  <Text style={[s.actionTitle, done && s.actionTitleDone]}>{action.title}</Text>
-                  {action.biomarkerTarget && (
-                    <Text style={s.actionTarget}>{action.biomarkerTarget}</Text>
-                  )}
-                </View>
-              </TouchableOpacity>
-            );
-          })}
+        {/* How did you feel */}
+        <View style={s.section}>
+          <Text style={s.sectionLabel}>How did you feel?</Text>
+          <Text style={s.sectionSub}>Optional — your coach uses this to spot patterns</Text>
+          <EmojiPicker label="Sleep"   options={FEEL.sleep}  selected={sleep}  onSelect={setSleep}  />
+          <EmojiPicker label="Energy"  options={FEEL.energy} selected={energy} onSelect={setEnergy} />
+          <EmojiPicker label="Stress"  options={FEEL.stress} selected={stress} onSelect={setStress} />
         </View>
 
-        {/* How did you feel? */}
-        <Text style={[s.sectionLabel, { marginTop: 24 }]}>How did you feel?</Text>
-        <Text style={s.sectionSub}>Optional — helps correlate actions to outcomes</Text>
-
-        <RatingRow label="Sleep quality" value={sleep} onChange={setSleep} />
-        <RatingRow label="Energy level"  value={energy} onChange={setEnergy} />
-        <RatingRow label="Stress level"  value={stress} onChange={setStress} invert />
-
-        <View style={{ height: 32 }} />
+        <View style={{ height: 24 }} />
       </ScrollView>
 
       {/* Footer */}
@@ -102,106 +196,55 @@ export default function DailyCheckIn({ actions, onComplete, onSkip }: DailyCheck
           <Text style={s.skipTxt}>Skip</Text>
         </TouchableOpacity>
         <TouchableOpacity style={s.submitBtn} onPress={submit}>
-          <Text style={s.submitTxt}>Log & start day</Text>
+          <Text style={s.submitTxt}>Log & start day →</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
   );
 }
 
-function RatingRow({
-  label,
-  value,
-  onChange,
-  invert = false,
-}: {
-  label: string;
-  value: number | null;
-  onChange: (v: number) => void;
-  invert?: boolean;
-}) {
-  return (
-    <View style={s.ratingGroup}>
-      <Text style={s.ratingLabel}>{label}</Text>
-      <View style={s.ratingRow}>
-        {[1, 2, 3, 4, 5].map(n => {
-          const active = value === n;
-          const color = invert
-            ? n <= 2 ? '#22c55e' : n === 3 ? '#f59e0b' : '#ef4444'
-            : n <= 2 ? '#ef4444' : n === 3 ? '#f59e0b' : '#22c55e';
-          return (
-            <TouchableOpacity
-              key={n}
-              style={[s.ratingDot, { borderColor: active ? color : '#e5e7eb', backgroundColor: active ? color : '#fff' }]}
-              onPress={() => onChange(n)}
-            >
-              <Text style={[s.ratingNum, { color: active ? '#fff' : '#9ca3af' }]}>{n}</Text>
-            </TouchableOpacity>
-          );
-        })}
-        {value && (
-          <Text style={s.ratingCaption}>{QUALITY_LABELS[value - 1]}</Text>
-        )}
-      </View>
-    </View>
-  );
-}
-
+// ── Styles ────────────────────────────────────────────────────────────────────
 const s = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#fff' },
+  safe:   { flex: 1, backgroundColor: '#FDF7F0' },
   scroll: { flex: 1, paddingHorizontal: 20 },
-  header: { paddingTop: 24, paddingBottom: 20 },
-  title: { fontSize: 26, fontWeight: '800', color: '#111827' },
-  sub:   { fontSize: 15, color: '#6b7280', marginTop: 4 },
-  sectionLabel: { fontSize: 13, fontWeight: '700', color: '#111827', textTransform: 'uppercase', letterSpacing: 0.5 },
-  sectionSub:   { fontSize: 13, color: '#9ca3af', marginTop: 2, marginBottom: 14 },
+
+  header:    { paddingTop: 28, paddingBottom: 24 },
+  greeting:  { fontSize: 14, color: '#9ca3af', fontFamily: 'DMSans_400Regular', marginBottom: 4 },
+  title:     { fontSize: 28, fontWeight: '700', color: '#111827', fontFamily: 'DMSans_700Bold', lineHeight: 34 },
+  tally:     { fontSize: 14, color: '#C96A2B', fontWeight: '600', marginTop: 6, fontFamily: 'DMSans_600SemiBold' },
+
+  section:     { marginBottom: 28 },
+  sectionLabel:{ fontSize: 12, fontWeight: '700', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 4, fontFamily: 'DMSans_700Bold' },
+  sectionSub:  { fontSize: 13, color: '#B59A80', marginBottom: 16, fontFamily: 'DMSans_400Regular' },
+
   actionList: { gap: 10 },
-  actionRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    padding: 14,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: '#e5e7eb',
-    backgroundColor: '#fff',
+  actionCard: {
+    backgroundColor: '#fff', borderRadius: 14, padding: 16,
+    borderWidth: 1.5, borderColor: '#e5e7eb',
+    shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 4, elevation: 1,
   },
-  actionRowDone: { borderColor: '#bbf7d0', backgroundColor: '#f0fdf4' },
-  checkbox: {
-    width: 24, height: 24, borderRadius: 12,
-    borderWidth: 2, borderColor: '#d1d5db',
-    alignItems: 'center', justifyContent: 'center',
-  },
-  checkboxDone: { backgroundColor: '#22c55e', borderColor: '#22c55e' },
-  checkmark: { color: '#fff', fontSize: 13, fontWeight: '700' },
-  actionText: { flex: 1 },
-  actionTitle: { fontSize: 14, fontWeight: '600', color: '#111827' },
-  actionTitleDone: { color: '#15803d', textDecorationLine: 'line-through' },
-  actionTarget: { fontSize: 12, color: '#9ca3af', marginTop: 2 },
-  ratingGroup: { marginBottom: 16 },
-  ratingLabel: { fontSize: 14, fontWeight: '600', color: '#374151', marginBottom: 8 },
-  ratingRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  ratingDot: {
-    width: 40, height: 40, borderRadius: 20,
-    borderWidth: 2, alignItems: 'center', justifyContent: 'center',
-  },
-  ratingNum: { fontSize: 15, fontWeight: '700' },
-  ratingCaption: { fontSize: 13, color: '#6b7280', marginLeft: 4, fontWeight: '500' },
+  actionCardDone:   { borderColor: '#2D8A5E', backgroundColor: '#EAF5EF' },
+  actionCardMissed: { borderColor: '#e5e7eb', backgroundColor: '#fafafa', opacity: 0.7 },
+  actionTitle:     { fontSize: 15, fontWeight: '600', color: '#111827', lineHeight: 21, fontFamily: 'DMSans_600SemiBold', marginBottom: 4 },
+  actionTitleDone: { color: '#2D8A5E' },
+  actionTarget:    { fontSize: 12, color: '#9ca3af', marginBottom: 12, fontFamily: 'DMSans_400Regular' },
+
+  actionBtns:       { flexDirection: 'row', gap: 8, marginTop: 4 },
+  actionBtn:        { flex: 1, paddingVertical: 9, borderRadius: 10, borderWidth: 1.5, borderColor: '#e5e7eb', alignItems: 'center', backgroundColor: '#fff' },
+  actionBtnDone:    { borderColor: '#2D8A5E', backgroundColor: '#2D8A5E' },
+  actionBtnMissed:  { borderColor: '#d1d5db', backgroundColor: '#f3f4f6' },
+  actionBtnTxt:     { fontSize: 13, fontWeight: '600', color: '#6b7280', fontFamily: 'DMSans_600SemiBold' },
+  actionBtnTxtActive:{ color: '#fff' },
+  actionBtnTxtMissed:{ color: '#9ca3af' },
+
   footer: {
     flexDirection: 'row', gap: 12,
     paddingHorizontal: 20, paddingVertical: 16,
-    borderTopWidth: 1, borderTopColor: '#f3f4f6',
-    backgroundColor: '#fff',
+    borderTopWidth: 1, borderTopColor: '#EAD9C5',
+    backgroundColor: '#FDF7F0',
   },
-  skipBtn: {
-    flex: 1, paddingVertical: 14, borderRadius: 12,
-    borderWidth: 1.5, borderColor: '#e5e7eb',
-    alignItems: 'center',
-  },
-  skipTxt: { fontSize: 15, fontWeight: '600', color: '#6b7280' },
-  submitBtn: {
-    flex: 2, paddingVertical: 14, borderRadius: 12,
-    backgroundColor: PURPLE, alignItems: 'center',
-  },
-  submitTxt: { fontSize: 15, fontWeight: '700', color: '#fff' },
+  skipBtn:   { paddingVertical: 14, paddingHorizontal: 20, borderRadius: 12, borderWidth: 1.5, borderColor: '#d1d5db', alignItems: 'center' },
+  skipTxt:   { fontSize: 14, fontWeight: '500', color: '#9ca3af', fontFamily: 'DMSans_500Medium' },
+  submitBtn: { flex: 1, paddingVertical: 14, borderRadius: 12, backgroundColor: ACCENT, alignItems: 'center' },
+  submitTxt: { fontSize: 15, fontWeight: '700', color: '#fff', fontFamily: 'DMSans_700Bold' },
 });

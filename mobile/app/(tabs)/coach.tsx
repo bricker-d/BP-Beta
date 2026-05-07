@@ -222,6 +222,19 @@ export default function CoachScreen() {
   const [loadingWeekly,  setLoadingWeekly]  = useState(false);
   const listRef = useRef<FlatList>(null);
   const streamingIdRef = useRef<string | null>(null);
+  const briefingFiredRef = useRef(false);
+
+  // Auto-briefing: fire a health snapshot on first open when labs are loaded
+  useEffect(() => {
+    if (briefingFiredRef.current || messages.length > 0 || !labPanel) return;
+    briefingFiredRef.current = true;
+    const timer = setTimeout(() => {
+      handleSend(
+        "Give me a brief health snapshot — the 3 most important things I should know from my labs right now. Be direct, plain English, no clinical terms or lab values."
+      );
+    }, 700);
+    return () => clearTimeout(timer);
+  }, [labPanel]);
 
   // Load weekly summary on Sundays
   useEffect(() => {
