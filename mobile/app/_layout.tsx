@@ -1,7 +1,16 @@
 import { useEffect, useRef } from 'react';
-import { Stack, useRouter, useSegments } from 'expo-router';
+import { Stack, useRouter, useSegments, SplashScreen } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useHealthStore } from '../lib/store';
+import {
+  useFonts,
+  DMSans_400Regular,
+  DMSans_500Medium,
+  DMSans_600SemiBold,
+  DMSans_700Bold,
+} from '@expo-google-fonts/dm-sans';
+
+SplashScreen.preventAutoHideAsync();
 import {
   registerForPushNotifications,
   scheduleDailyNotifications,
@@ -89,6 +98,19 @@ function OnboardingGuard() {
 }
 
 export default function RootLayout() {
+  const [fontsLoaded] = useFonts({
+    DMSans_400Regular,
+    DMSans_500Medium,
+    DMSans_600SemiBold,
+    DMSans_700Bold,
+  });
+
+  useEffect(() => {
+    if (fontsLoaded) SplashScreen.hideAsync();
+  }, [fontsLoaded]);
+
+  if (!fontsLoaded) return null;
+
   return (
     <>
       <StatusBar style="dark" />

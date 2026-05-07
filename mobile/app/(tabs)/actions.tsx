@@ -1,7 +1,7 @@
-import React, { useMemo, useState, useCallback } from 'react';
+import React, { useMemo, useState, useCallback, useEffect, useRef } from 'react';
 import {
   View, Text, ScrollView, StyleSheet,
-  TouchableOpacity, Modal, Pressable,
+  TouchableOpacity, Modal, Pressable, Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -96,16 +96,33 @@ function ActionCard({ action, onToggle, onAskCoach }: {
 }) {
   const cat = CAT_CFG[action.category] ?? CAT_CFG.Lifestyle;
   const CatIcon = cat.icon;
+  const checkScale = useRef(new Animated.Value(action.completed ? 1 : 0)).current;
+
+  useEffect(() => {
+    if (action.completed) {
+      Animated.spring(checkScale, {
+        toValue: 1,
+        useNativeDriver: true,
+        damping: 10,
+        stiffness: 200,
+        mass: 0.8,
+      }).start();
+    } else {
+      checkScale.setValue(0);
+    }
+  }, [action.completed]);
 
   return (
     <View style={[ac.card, action.completed && ac.cardDone, { borderLeftColor: cat.border, borderLeftWidth: 3 }]}>
       {/* Check + content row */}
       <TouchableOpacity style={ac.row} onPress={onToggle} activeOpacity={0.7}>
-        <View style={[ac.checkWrap, { borderColor: action.completed ? '#16a34a' : '#d1d5db' }, action.completed && { backgroundColor: '#16a34a' }]}>
-          {action.completed
-            ? <CheckCircle2 color="#fff" size={18} />
-            : <Circle color="#d1d5db" size={18} />
-          }
+        <View style={[ac.checkWrap, { borderColor: action.completed ? '#2D8A5E' : '#d1d5db' }, action.completed && { backgroundColor: '#2D8A5E' }]}>
+          <Animated.View style={{ transform: [{ scale: checkScale }] }}>
+            {action.completed
+              ? <CheckCircle2 color="#fff" size={18} />
+              : <Circle color="#d1d5db" size={18} />
+            }
+          </Animated.View>
         </View>
 
         <View style={ac.body}>
@@ -313,9 +330,9 @@ const s = StyleSheet.create({
   emptyBtn:         { backgroundColor: PURPLE, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 24 },
   emptyBtnTxt:      { color: '#fff', fontWeight: '600', fontSize: 15 },
 
-  header:           { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 16, paddingBottom: 10, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#f3f4f6' },
-  title:            { fontSize: 22, fontWeight: '800', color: '#111827' },
-  subtitle:         { fontSize: 13, color: '#9ca3af', marginTop: 2 },
+  header:           { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 20, paddingBottom: 14, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#f3f4f6' },
+  title:            { fontSize: 24, fontWeight: '700', color: '#111827', fontFamily: 'DMSans_700Bold' },
+  subtitle:         { fontSize: 13, color: '#9ca3af', marginTop: 3, fontFamily: 'DMSans_400Regular' },
   scoreBubble:      { width: 50, height: 50, borderRadius: 25, backgroundColor: PURPLE, alignItems: 'center', justifyContent: 'center' },
   scoreNum:         { fontSize: 15, fontWeight: '800', color: '#fff' },
 
@@ -346,17 +363,17 @@ const s = StyleSheet.create({
 
 // ── Action card styles ────────────────────────────────────────────────────────
 const ac = StyleSheet.create({
-  card:       { backgroundColor: '#fff', borderRadius: 12, marginBottom: 8, overflow: 'hidden', shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 4, elevation: 1 },
-  cardDone:   { opacity: 0.7 },
-  row:        { flexDirection: 'row', padding: 14, gap: 12, alignItems: 'flex-start' },
+  card:       { backgroundColor: '#fff', borderRadius: 14, marginBottom: 10, overflow: 'hidden', shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 6, elevation: 2 },
+  cardDone:   { opacity: 0.65 },
+  row:        { flexDirection: 'row', padding: 16, gap: 14, alignItems: 'flex-start' },
   checkWrap:  { width: 28, height: 28, borderRadius: 14, borderWidth: 2, alignItems: 'center', justifyContent: 'center', marginTop: 2 },
   body:       { flex: 1, gap: 4 },
   chip:       { flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10, borderWidth: 1, marginBottom: 2 },
   chipEmoji:  { fontSize: 11 },
   chipTxt:    { fontSize: 11, fontWeight: '600' },
-  title:      { fontSize: 14, fontWeight: '700', color: '#1f2937', lineHeight: 19 },
+  title:      { fontSize: 14, fontWeight: '600', color: '#1f2937', lineHeight: 20, fontFamily: 'DMSans_600SemiBold' },
   titleDone:  { color: '#9ca3af', textDecorationLine: 'line-through' },
-  desc:       { fontSize: 12, color: '#6b7280', lineHeight: 17 },
+  desc:       { fontSize: 13, color: '#6b7280', lineHeight: 18, fontFamily: 'DMSans_400Regular' },
   descDone:   { color: '#d1d5db' },
   targetRow:  { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
   targetTxt:  { fontSize: 11, color: PURPLE, fontWeight: '500' },

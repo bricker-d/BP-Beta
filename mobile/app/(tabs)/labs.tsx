@@ -20,10 +20,10 @@ const { width: SCREEN_W } = Dimensions.get('window');
 // ─── Status config ──────────────────────────────────────────────────────────
 
 const STATUS: Record<string, { color: string; bg: string; label: string; icon: React.FC<any> }> = {
-  optimal:    { color: '#16a34a', bg: '#dcfce7', label: 'Optimal',    icon: Minus },
-  borderline: { color: '#d97706', bg: '#fef3c7', label: 'Borderline', icon: AlertTriangle },
-  elevated:   { color: '#dc2626', bg: '#fee2e2', label: 'Elevated',   icon: TrendingUp },
-  low:        { color: '#2563eb', bg: '#dbeafe', label: 'Low',        icon: TrendingDown },
+  optimal:    { color: '#2D8A5E', bg: '#EAF5EF', label: 'Optimal',    icon: Minus },
+  borderline: { color: '#C07A1A', bg: '#FEF4DC', label: 'Borderline', icon: AlertTriangle },
+  elevated:   { color: '#B83232', bg: '#FAEBEB', label: 'Elevated',   icon: TrendingUp },
+  low:        { color: '#2B65A8', bg: '#E3EDF8', label: 'Low',        icon: TrendingDown },
 };
 
 
@@ -173,8 +173,8 @@ const card = StyleSheet.create({
   topRow:   { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 2 },
   left:     { flex: 1 },
   right:    { alignItems: 'flex-end', gap: 4 },
-  name:     { fontSize: 15, fontWeight: '700', color: '#111827' },
-  cat:      { fontSize: 11, color: '#9ca3af', textTransform: 'capitalize', marginTop: 1 },
+  name:     { fontSize: 15, fontWeight: '600', color: '#111827', fontFamily: 'DMSans_600SemiBold' },
+  cat:      { fontSize: 11, color: '#9ca3af', textTransform: 'capitalize', marginTop: 1, fontFamily: 'DMSans_400Regular' },
   val:      { fontSize: 22, fontWeight: '800', color: '#111827', lineHeight: 24 },
   unit:     { fontSize: 11, color: '#6b7280', marginTop: -2 },
   badge:    { flexDirection: 'row', alignItems: 'center', gap: 3, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20, marginTop: 2 },
@@ -295,45 +295,37 @@ export default function LabsScreen() {
           ))}
         </View>
 
-        {/* ── Before/after delta hero — shown when 2+ panels exist ──────── */}
+        {/* ── Before/after delta — shown when 2+ panels exist ──────────── */}
         {previousLabPanel && (() => {
           const improved = labPanel.biomarkers.filter(b => b.deltaStatus === 'improved');
           const worsened = labPanel.biomarkers.filter(b => b.deltaStatus === 'worsened');
-          const hero = improved[0];
-          if (!hero) return null;
-          const pct = Math.round(Math.abs((hero.delta ?? 0) / (hero.previousValue ?? 1)) * 100);
+          const stable   = labPanel.biomarkers.filter(b => b.deltaStatus === 'stable' || !b.deltaStatus);
+          if (improved.length === 0 && worsened.length === 0) return null;
+          const headline = improved.length >= worsened.length
+            ? `${improved.length} of your markers are trending in the right direction`
+            : `${worsened.length} markers are worth discussing with your doctor`;
           return (
             <View style={delta.card}>
               <Text style={delta.label}>Since your last panel</Text>
-              <View style={delta.heroRow}>
-                <View style={delta.heroLeft}>
-                  <Text style={delta.heroName}>{hero.name}</Text>
-                  <Text style={delta.heroPct}>
-                    {pct}% {hero.deltaStatus === 'improved' ? 'improvement' : 'change'}
-                  </Text>
-                </View>
-                <View style={delta.heroRight}>
-                  <Text style={delta.heroOld}>{hero.previousValue} {hero.unit}</Text>
-                  <Text style={delta.heroArrow}>→</Text>
-                  <Text style={delta.heroNew}>{hero.value} {hero.unit}</Text>
-                </View>
-              </View>
+              <Text style={delta.headline}>{headline}</Text>
               <View style={delta.statsRow}>
-                <View style={[delta.stat, { backgroundColor: '#dcfce7' }]}>
-                  <Text style={[delta.statNum, { color: '#16a34a' }]}>{improved.length}</Text>
-                  <Text style={[delta.statLbl, { color: '#16a34a' }]}>Improved</Text>
+                <View style={[delta.stat, { backgroundColor: '#EAF5EF' }]}>
+                  <Text style={[delta.statArrow, { color: '#2D8A5E' }]}>↑</Text>
+                  <Text style={[delta.statNum, { color: '#2D8A5E' }]}>{improved.length}</Text>
+                  <Text style={[delta.statLbl, { color: '#2D8A5E' }]}>Moving up</Text>
                 </View>
-                <View style={[delta.stat, { backgroundColor: '#fee2e2' }]}>
-                  <Text style={[delta.statNum, { color: '#dc2626' }]}>{worsened.length}</Text>
-                  <Text style={[delta.statLbl, { color: '#dc2626' }]}>Need work</Text>
+                <View style={[delta.stat, { backgroundColor: '#F3F4F6' }]}>
+                  <Text style={[delta.statArrow, { color: '#6b7280' }]}>→</Text>
+                  <Text style={[delta.statNum, { color: '#6b7280' }]}>{stable.length}</Text>
+                  <Text style={[delta.statLbl, { color: '#6b7280' }]}>Holding</Text>
                 </View>
-                <View style={[delta.stat, { backgroundColor: '#f3f4f6' }]}>
-                  <Text style={[delta.statNum, { color: '#6b7280' }]}>
-                    {labPanel.biomarkers.length - improved.length - worsened.length}
-                  </Text>
-                  <Text style={[delta.statLbl, { color: '#6b7280' }]}>Stable</Text>
+                <View style={[delta.stat, { backgroundColor: '#FEF4DC' }]}>
+                  <Text style={[delta.statArrow, { color: '#C07A1A' }]}>↓</Text>
+                  <Text style={[delta.statNum, { color: '#C07A1A' }]}>{worsened.length}</Text>
+                  <Text style={[delta.statLbl, { color: '#C07A1A' }]}>Watch</Text>
                 </View>
               </View>
+              <Text style={delta.disclaimer}>Trends show direction only. Consult your doctor for clinical interpretation.</Text>
             </View>
           );
         })()}
@@ -413,9 +405,9 @@ const PURPLE = '#C96A2B';
 
 const s = StyleSheet.create({
   container:   { flex: 1, backgroundColor: '#FDF7F0' },
-  header:      { paddingHorizontal: 20, paddingVertical: 16, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#f3f4f6', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  title:       { fontSize: 22, fontWeight: '800', color: '#111827' },
-  subtitle:    { fontSize: 13, color: '#9ca3af', marginTop: 2 },
+  header:      { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 16, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#f3f4f6', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  title:       { fontSize: 24, fontWeight: '700', color: '#111827', fontFamily: 'DMSans_700Bold' },
+  subtitle:    { fontSize: 13, color: '#9ca3af', marginTop: 3, fontFamily: 'DMSans_400Regular' },
   scoreBubble: { width: 56, height: 56, borderRadius: 28, backgroundColor: PURPLE, alignItems: 'center', justifyContent: 'center' },
   scoreNum:    { fontSize: 20, fontWeight: '900', color: '#fff', lineHeight: 22 },
   scoreLbl:    { fontSize: 9, color: '#EAD9C5', fontWeight: '600', letterSpacing: 0.5 },
@@ -446,18 +438,13 @@ const s = StyleSheet.create({
 
 // ── Before/after delta styles ─────────────────────────────────────────────────
 const delta = StyleSheet.create({
-  card:      { marginHorizontal: 16, marginBottom: 14, backgroundColor: '#fff', borderRadius: 16, padding: 16, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 8, elevation: 2, borderWidth: 1, borderColor: '#EAD9C5' },
-  label:     { fontSize: 11, fontWeight: '700', color: '#C96A2B', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 12 },
-  heroRow:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 },
-  heroLeft:  { flex: 1 },
-  heroName:  { fontSize: 16, fontWeight: '800', color: '#111827' },
-  heroPct:   { fontSize: 13, color: '#16a34a', fontWeight: '600', marginTop: 2 },
-  heroRight: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  heroOld:   { fontSize: 13, color: '#9ca3af', textDecorationLine: 'line-through' },
-  heroArrow: { fontSize: 13, color: '#d1d5db' },
-  heroNew:   { fontSize: 15, fontWeight: '800', color: '#16a34a' },
-  statsRow:  { flexDirection: 'row', gap: 8 },
-  stat:      { flex: 1, borderRadius: 10, paddingVertical: 8, alignItems: 'center', gap: 2 },
-  statNum:   { fontSize: 18, fontWeight: '800' },
-  statLbl:   { fontSize: 11, fontWeight: '600' },
+  card:       { marginHorizontal: 16, marginBottom: 14, backgroundColor: '#fff', borderRadius: 16, padding: 16, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 8, elevation: 2, borderWidth: 1, borderColor: '#EAD9C5' },
+  label:      { fontSize: 11, fontWeight: '700', color: '#C96A2B', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 8 },
+  headline:   { fontSize: 15, fontWeight: '600', color: '#111827', marginBottom: 14, lineHeight: 22, fontFamily: 'DMSans_600SemiBold' },
+  statsRow:   { flexDirection: 'row', gap: 8, marginBottom: 12 },
+  stat:       { flex: 1, borderRadius: 10, paddingVertical: 10, alignItems: 'center', gap: 2 },
+  statArrow:  { fontSize: 14, fontWeight: '700' },
+  statNum:    { fontSize: 18, fontWeight: '800' },
+  statLbl:    { fontSize: 11, fontWeight: '600' },
+  disclaimer: { fontSize: 11, color: '#B59A80', lineHeight: 15 },
 });
