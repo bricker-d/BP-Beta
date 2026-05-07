@@ -199,6 +199,14 @@ export const useHealthStore = create<HealthStore>()(
     {
       name: "bioprecision-web",
       storage: createJSONStorage(() => localStorage),
+      onRehydrateStorage: () => (state) => {
+        // Reset action completions each new day
+        if (!state) return;
+        const today = new Date().toISOString().split("T")[0];
+        if (state.lastCompletedDate !== today && state.actions.some(a => a.completed)) {
+          state.actions = state.actions.map(a => ({ ...a, completed: false }));
+        }
+      },
       partialize: (state) => ({
         deviceId: state.deviceId,
         user: state.user,

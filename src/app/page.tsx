@@ -352,16 +352,20 @@ export default function DashboardPage() {
 
         {/* Bottom row */}
         <div className="grid grid-cols-2 gap-3">
-          <Link href="/connect">
-            <div
-              className="rounded-2xl px-3 py-4 flex flex-col gap-2"
-              style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
-            >
+          <div
+            className="rounded-2xl px-3 py-4 flex flex-col gap-2"
+            style={{ background: "var(--surface)", border: "1px solid var(--border)", opacity: 0.6 }}
+          >
+            <div className="flex items-center justify-between">
               <Watch size={18} color="var(--text3)" />
-              <p className="text-[13px] font-semibold" style={{ color: "var(--text1)" }}>Wearable</p>
-              <p className="text-[11px]" style={{ color: "var(--text3)" }}>Oura · WHOOP · Apple</p>
+              <span className="text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-full"
+                style={{ background: "var(--surface2)", color: "var(--text3)" }}>
+                Coming soon
+              </span>
             </div>
-          </Link>
+            <p className="text-[13px] font-semibold" style={{ color: "var(--text1)" }}>Wearable</p>
+            <p className="text-[11px]" style={{ color: "var(--text3)" }}>Oura · WHOOP · Apple</p>
+          </div>
           <Link href="/lab-results">
             <div
               className="rounded-2xl px-3 py-4 flex flex-col gap-2"

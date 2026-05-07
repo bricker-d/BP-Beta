@@ -99,6 +99,18 @@ export default function CoachPage() {
 
   const hasLabData = !!labPanel;
 
+  // Auto-briefing: fire once on first open when lab data exists
+  const briefingFired = useRef(false);
+  useEffect(() => {
+    if (briefingFired.current || messages.length > 0 || !labPanel) return;
+    briefingFired.current = true;
+    const timer = setTimeout(() => {
+      sendMessage("Give me a brief health snapshot — the 3 most important things I should know from my labs right now. Be direct, plain English, no clinical terms or lab values.");
+    }, 700);
+    return () => clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [labPanel]);
+
   return (
     <div className="flex flex-col h-screen page-enter" style={{ background: "var(--bg)" }}>
 
