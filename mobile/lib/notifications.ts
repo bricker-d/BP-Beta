@@ -57,25 +57,98 @@ export async function registerForPushNotifications(): Promise<string | null> {
   return token.data;
 }
 
-// ── Coach prompt pool ─────────────────────────────────────────────────────────
-const COACH_PROMPTS: string[] = [
-  "How's your energy been this week? Your coach can connect it to your labs.",
-  "Fatigue often has a root cause in your bloodwork. Ask your coach what yours might be.",
-  "Your coach knows your numbers. Ask: 'Why am I still tired?'",
-  "Sleep quality affects almost every biomarker. How have you been sleeping?",
-  "Ask your coach: 'What can I do tonight to sleep better?'",
-  "Consistency in your daily actions compounds over weeks. Ask your coach what's likely changing.",
-  "Your coach can tell you which of your actions is having the most impact. Ask.",
-  "Inflammation is silent. Your coach can explain what your markers mean in plain terms.",
-  "You've been showing up. Your coach can tell you what that looks like in your biology.",
-  "What's one thing about your health you've been curious about? Ask your coach now.",
-  "Your protocol is built on your labs. Ask your coach why each action was chosen for you.",
-  "Quick question for your coach: 'Am I on track?'",
-  "Your coach is ready. What's one thing you want to understand better about your health?",
+// ── Evidence-backed prompts per biomarker category ───────────────────────────
+// Each entry is grounded in the same clinical evidence as the protocol library.
+const BIOMARKER_PROMPTS: Record<string, string[]> = {
+  testosterone: [
+    "Resistance training raises testosterone by 20-25% in most men. How many sessions did you get this week?",
+    "Sleep is one of the biggest levers for testosterone — most production happens in deep sleep. How have you been sleeping?",
+    "Zinc and magnesium are cofactors for testosterone synthesis. Are you consistent with your evening supplement?",
+  ],
+  freeTesto: [
+    "SHBG binds free testosterone and alcohol raises it. How has your drinking been this week?",
+    "Resistance training shifts the testosterone-to-SHBG ratio in your favour. Staying consistent?",
+  ],
+  glucose: [
+    "A 10-minute walk after meals can cut glucose spikes by up to 30%. Have you been doing that after lunch?",
+    "Protein before carbs blunts glucose absorption by 30-40%. Are you eating in that order?",
+    "Fasting glucose responds to sleep quality — poor sleep raises cortisol, which raises blood sugar. How did you sleep last night?",
+  ],
+  hba1c: [
+    "HbA1c is a 3-month average — small daily habits compound into it. How consistent have you been this week?",
+    "Zone 2 cardio (a pace where you can hold a conversation) is one of the best tools for blood sugar. Getting those sessions in?",
+  ],
+  hscrp: [
+    "Inflammation like yours responds fast to diet. How close have you been to the Mediterranean pattern this week?",
+    "Sleep under 6 hours raises inflammatory markers by 25%. What's your sleep looking like?",
+    "Omega-3s reduce CRP measurably in 6-8 weeks. Taking yours consistently?",
+  ],
+  vitaminD: [
+    "Vitamin D levels respond to consistent daily supplementation over 8-12 weeks. Are you taking yours every day?",
+    "Morning sunlight is the most bioavailable form of vitamin D. Have you been getting outside in the morning?",
+    "Vitamin D affects mood, immunity, and testosterone. Consistency now shows up in your next panel.",
+  ],
+  ldl: [
+    "Soluble fiber from oats or psyllium binds LDL-raising bile acids. Are you getting fiber in most meals?",
+    "Zone 2 cardio shifts your cholesterol profile measurably in 8 weeks. How's your activity level?",
+  ],
+  triglycerides: [
+    "Triglycerides are the fastest-moving marker — they respond to diet within days. How's your sugar and alcohol intake this week?",
+    "Omega-3s reduce triglycerides by 20-50% — one of the strongest supplement effects in the literature. Consistent?",
+  ],
+  ferritin: [
+    "Iron-rich foods with vitamin C improve absorption by 3x. Are you pairing them at meals?",
+    "Low ferritin is one of the most common hidden causes of fatigue. How's your energy been this week?",
+  ],
+  homocysteine: [
+    "Homocysteine comes down with consistent B12, B6, and folate. Are you taking your supplements daily?",
+    "High homocysteine is linked to cardiovascular and cognitive risk — the good news is it's highly responsive to nutrition.",
+  ],
+  magnesium: [
+    "Magnesium before bed improves sleep quality and insulin sensitivity. Have you been consistent with your evening routine?",
+    "Most people are magnesium-deficient. It affects sleep, muscle recovery, and blood sugar — all at once.",
+  ],
+  cortisol: [
+    "Cortisol is the master stress hormone — it suppresses testosterone, raises glucose, and disrupts sleep. How's your stress this week?",
+    "10 minutes of breathwork daily measurably lowers cortisol over 4 weeks. Have you been doing yours?",
+  ],
+  tsh: [
+    "Thyroid function affects every cell in the body — energy, weight, mood. How's your energy been this week?",
+    "Selenium and iodine are key thyroid cofactors. Are you eating varied whole foods?",
+  ],
+  apoB: [
+    "ApoB is the best predictor of cardiovascular risk. It responds to diet, exercise, and omega-3s over 8-12 weeks.",
+    "Reducing refined carbs and saturated fat lowers ApoB measurably. How has your diet been this week?",
+  ],
+};
+
+// Fallback prompts for biomarkers not in the map
+const FALLBACK_PROMPTS: string[] = [
+  "Your protocol is built on your specific labs. Ask your coach why each action was chosen for you.",
+  "Consistency is the whole variable. Ask your coach what's likely changing after two weeks of your protocol.",
+  "Your coach knows your numbers and your goals. What's one thing you want to understand better?",
+  "Small daily actions compound into measurable lab changes over 8-12 weeks. How consistent have you been?",
 ];
 
-function pickCoachPrompt(seed: number): string {
-  return COACH_PROMPTS[seed % COACH_PROMPTS.length];
+function generateCoachPrompts(actions: HealthAction[]): string[] {
+  const prompts: string[] = [];
+
+  for (const action of actions) {
+    for (const biomarkerId of (action.targetBiomarkers ?? [])) {
+      const pool = BIOMARKER_PROMPTS[biomarkerId];
+      if (pool) prompts.push(...pool);
+    }
+  }
+
+  // Deduplicate and pad with fallbacks if needed
+  const unique = [...new Set(prompts)];
+  while (unique.length < 6) unique.push(...FALLBACK_PROMPTS);
+  return unique;
+}
+
+function pickCoachPrompt(actions: HealthAction[], seed: number): string {
+  const pool = generateCoachPrompts(actions);
+  return pool[seed % pool.length];
 }
 
 // ── Schedule all notifications ────────────────────────────────────────────────
@@ -97,8 +170,8 @@ export async function scheduleDailyNotifications(
     await Notifications.scheduleNotificationAsync({
       identifier: 'morning-action',
       content: {
-        title: `Good morning${name ? ', ' + name : ''} \u{1F305}`,
-        body: `First up: ${morning.title}`,
+        title: `Good morning${name ? ', ' + name : ''}`,
+        body: morning.title,
         data: { screen: 'actions', actionId: morning.id },
         categoryIdentifier: 'action-reminder',
       },
@@ -165,7 +238,7 @@ export async function scheduleDailyNotifications(
       identifier: `coach-prompt-${weekday}`,
       content: {
         title: 'Your health coach \uD83E\uDDE0',
-        body: pickCoachPrompt(dayOfYear + i),
+        body: pickCoachPrompt(actions, dayOfYear + i),
         data: { screen: 'coach' },
         categoryIdentifier: 'coach-prompt',
       },
