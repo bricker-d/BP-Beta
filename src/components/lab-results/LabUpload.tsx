@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { Upload, FileText, FileSpreadsheet, X, CheckCircle, Loader2, AlertCircle, Pencil, Check } from "lucide-react";
 import { useHealthStore } from "@/store/useHealthStore";
 import { LabPanel, Biomarker } from "@/lib/types";
@@ -97,7 +98,8 @@ export default function LabUpload() {
   const [pendingPanel, setPending] = useState<LabPanel | null>(null);
   const [editedBiomarkers, setEdited] = useState<Biomarker[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { setLabPanel } = useHealthStore();
+  const router = useRouter();
+  const { setLabPanel, patientId, labPanel: existingPanel } = useHealthStore();
 
   async function handleFile(rawFile: File) {
     const allowed = ["application/pdf", "text/csv",
@@ -117,6 +119,7 @@ export default function LabUpload() {
       const fd = new FormData();
       fd.append("file", rawFile);
       fd.append("source", source);
+      if (patientId) fd.append("patientId", patientId);
       const res = await fetch("/api/parse-labs", { method: "POST", body: fd });
       if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error ?? "Parsing failed"); }
       const { panel } = await res.json() as { panel: LabPanel };
@@ -142,9 +145,13 @@ export default function LabUpload() {
 
   function confirm() {
     if (!pendingPanel) return;
+    const isSecondPanel = !!existingPanel;
     const confirmed: LabPanel = { ...pendingPanel, biomarkers: editedBiomarkers };
     setLabPanel(confirmed);
     setState("success");
+    if (isSecondPanel) {
+      setTimeout(() => router.push("/lab-results/delta"), 800);
+    }
   }
 
   function reset() {

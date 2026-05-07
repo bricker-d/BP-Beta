@@ -197,3 +197,68 @@ export async function getPatientOverview() {
   if (error) { console.error('[supabase] getPatientOverview:', error.message); return []; }
   return data ?? [];
 }
+
+// ── Cohort outcomes ───────────────────────────────────────────────────────────
+
+export interface BiomarkerOutcome {
+  biomarkerId: string;
+  biomarkerName: string;
+  improved: number;   // count of patients who improved this marker
+  worsened: number;   // count who worsened
+  stable: number;     // count who stayed the same
+  totalPatients: number;
+}
+
+const STATUS_RANK: Record<string, number> = { optimal: 3, borderline: 2, low: 1, elevated: 1 };
+
+export async function getCohortOutcomes(): Promise<BiomarkerOutcome[]> {
+  // Get all patients with 2+ panels
+  const { data: panels, error } = await getSupabase()
+    .from('lab_panels')
+    .select('patient_id, panel_date, biomarkers')
+    .order('panel_date', { ascending: true });
+
+  if (error || !panels) return [];
+
+  // Group by patient
+  const byPatient = new Map<string, typeof panels>();
+  for (const p of panels) {
+    const list = byPatient.get(p.patient_id) ?? [];
+    list.push(p);
+    byPatient.set(p.patient_id, list);
+  }
+
+  // For each patient with 2+ panels, compute delta per biomarker
+  const outcomes = new Map<string, { name: string; improved: number; worsened: number; stable: number }>();
+
+  for (const [, patientPanels] of byPatient) {
+    if (patientPanels.length < 2) continue;
+    const first = patientPanels[0].biomarkers as Array<{ id: string; name: string; status: string }>;
+    const last  = patientPanels[patientPanels.length - 1].biomarkers as Array<{ id: string; name: string; status: string }>;
+    const firstMap = new Map(first.map(b => [b.id, b]));
+
+    for (const b of last) {
+      const prev = firstMap.get(b.id);
+      if (!prev) continue;
+      const prevRank = STATUS_RANK[prev.status] ?? 1;
+      const currRank = STATUS_RANK[b.status] ?? 1;
+      const entry = outcomes.get(b.id) ?? { name: b.name, improved: 0, worsened: 0, stable: 0 };
+      if (currRank > prevRank) entry.improved++;
+      else if (currRank < prevRank) entry.worsened++;
+      else entry.stable++;
+      outcomes.set(b.id, entry);
+    }
+  }
+
+  return Array.from(outcomes.entries())
+    .map(([id, v]) => ({
+      biomarkerId: id,
+      biomarkerName: v.name,
+      improved: v.improved,
+      worsened: v.worsened,
+      stable: v.stable,
+      totalPatients: v.improved + v.worsened + v.stable,
+    }))
+    .filter(o => o.totalPatients >= 2)
+    .sort((a, b) => b.totalPatients - a.totalPatients);
+}

@@ -52,8 +52,12 @@ interface HealthStore {
   setIntakeProfile: (profile: IntakeProfile | null) => void;
 
   labPanel: LabPanel | null;
+  previousLabPanel: LabPanel | null;
   labHistory: LabPanel[];
   setLabPanel: (panel: LabPanel) => void;
+
+  patientId: string | null;
+  syncPatient: () => Promise<void>;
 
   wearableData: WearableData | null;
   setWearableData: (data: WearableData) => void;
@@ -94,9 +98,28 @@ export const useHealthStore = create<HealthStore>()(
       setIntakeProfile: (profile) => set({ intakeProfile: profile }),
 
       labPanel: null,
+      previousLabPanel: null,
       labHistory: [],
+      patientId: null,
+
+      syncPatient: async () => {
+        const { deviceId, intakeProfile, patientId } = get();
+        if (!intakeProfile?.name) return;
+        try {
+          const res = await fetch("/api/patient", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ deviceId, profile: intakeProfile }),
+          });
+          if (!res.ok) return;
+          const data = await res.json();
+          if (data.patientId && data.patientId !== patientId) set({ patientId: data.patientId });
+        } catch { /* fail silently — app works offline */ }
+      },
+
       setLabPanel: async (panel) => {
         set((state) => ({
+          previousLabPanel: state.labPanel,
           labPanel: panel,
           labHistory: [...state.labHistory.filter(p => p.date !== panel.date), panel]
             .sort((a, b) => new Date(a.date ?? 0).getTime() - new Date(b.date ?? 0).getTime())
@@ -209,9 +232,11 @@ export const useHealthStore = create<HealthStore>()(
       },
       partialize: (state) => ({
         deviceId: state.deviceId,
+        patientId: state.patientId,
         user: state.user,
         intakeProfile: state.intakeProfile,
         labPanel: state.labPanel,
+        previousLabPanel: state.previousLabPanel,
         labHistory: state.labHistory,
         actions: state.actions,
         messages: state.messages,

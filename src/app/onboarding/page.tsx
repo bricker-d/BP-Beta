@@ -84,7 +84,7 @@ const DATA_STEPS = STEPS.slice(1, -1); // steps that count toward progress bar
 
 export default function OnboardingPage() {
   const router = useRouter();
-  const { setIntakeProfile, setUser, labPanel } = useHealthStore();
+  const { setIntakeProfile, setUser, labPanel, syncPatient } = useHealthStore();
 
   const [step, setStep]     = useState<Step>("welcome");
   const [showUpload,    setShowUpload]    = useState(false);
@@ -173,6 +173,7 @@ export default function OnboardingPage() {
     const profile = { ...buildProfile(), ...extra };
     setIntakeProfile(profile);
     setUser({ name, avatarInitials: name.slice(0, 2).toUpperCase() });
+    syncPatient().catch(() => {});
   }
 
   // Fetch AI summary when summary step is reached
