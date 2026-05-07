@@ -118,19 +118,19 @@ export default function BiomarkerDetail({ biomarker, onClose }: Props) {
 
           {/* What this is */}
           {meta?.description && (
-            <Section title="What this is">
+            <Section title="What this marker measures">
               <p className="text-[14px]" style={{ color: "var(--text1)", lineHeight: 1.7 }}>
                 {meta.description}
               </p>
             </Section>
           )}
 
-          {/* Risks when out of range */}
+          {/* Why it matters when out of range */}
           {meta && biomarker.status !== "optimal" && (
             <div className="rounded-2xl px-4 py-4"
               style={{ background: status.bg, border: `1px solid ${status.color}22` }}>
               <p className="text-[11px] font-semibold uppercase tracking-wider mb-2" style={{ color: status.color }}>
-                Risks at this level
+                Why this matters
               </p>
               <p className="text-[13px]" style={{ color: "var(--text1)", lineHeight: 1.65 }}>
                 {meta.clinicalSignificance}
@@ -138,23 +138,14 @@ export default function BiomarkerDetail({ biomarker, onClose }: Props) {
             </div>
           )}
 
-          {/* Why it matters */}
-          {meta?.mechanismSummary && (
-            <Section title="What's happening in your body">
-              <p className="text-[14px]" style={{ color: "var(--text1)", lineHeight: 1.7 }}>
-                {meta.mechanismSummary}
-              </p>
-            </Section>
-          )}
-
-          {/* How to fix it naturally */}
+          {/* How to improve it */}
           {meta && meta.interventions.length > 0 && (
-            <Section title="How to get it in range naturally">
+            <Section title={biomarker.status === "optimal" ? "What keeps it in range" : "How to bring it into range"}>
               <div className="space-y-3">
                 {meta.interventions.slice(0, 3).map((iv, i) => (
                   <div key={i} className="rounded-2xl px-4 py-4"
                     style={{ background: "var(--bg)", border: "1px solid var(--border)" }}>
-                    <div className="flex items-start justify-between gap-2 mb-1.5">
+                    <div className="flex items-start justify-between gap-2 mb-2">
                       <p className="text-[14px] font-semibold" style={{ color: "var(--text1)", lineHeight: 1.3 }}>
                         {iv.title}
                       </p>
@@ -167,7 +158,7 @@ export default function BiomarkerDetail({ biomarker, onClose }: Props) {
                       </span>
                     </div>
                     <p className="text-[13px]" style={{ color: "var(--text2)", lineHeight: 1.6 }}>
-                      {iv.mechanism}
+                      {iv.description}
                     </p>
                     <div className="flex items-center gap-4 mt-3 pt-3 flex-wrap"
                       style={{ borderTop: "1px solid var(--border)" }}>

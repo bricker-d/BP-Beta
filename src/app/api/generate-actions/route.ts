@@ -88,6 +88,8 @@ export async function POST(req: Request) {
       timeHorizon?: string;
       painPoint?: string;
       symptoms?: string[];
+      activeConditions?: string[];
+      allergies?: string[];
     } = await req.json();
 
     if (!labPanel?.biomarkers?.length) {
@@ -179,6 +181,8 @@ export async function POST(req: Request) {
     ].filter(Boolean).join(" | ") : "";
     const supplementContext = currentSupplements?.length ? `Already taking: ${currentSupplements.join(", ")}` : "";
     const symptomContext = symptoms?.length ? `Reported symptoms: ${symptoms.join(", ")}` : "";
+    const conditionContext = activeConditions?.length ? `Active medical conditions: ${activeConditions.join(", ")} — do NOT recommend anything contraindicated for these conditions.` : "";
+    const allergyContext = allergies?.length ? `Known allergies: ${allergies.join(", ")} — avoid any supplement or food recommendation containing these allergens.` : "";
 
     // Sort and slice candidates — Claude will select from these by index
     const rankedCandidates = candidates
@@ -234,6 +238,8 @@ Medications: ${(medications ?? []).join(", ") || "none"}
 Habits: ${habitContext || "unknown"}
 ${supplementContext}
 ${symptomContext}
+${conditionContext}
+${allergyContext}
 ${wearableContext}
 ${timeNote}
 ${priorityNote}
@@ -247,9 +253,10 @@ ${candidateContext}
 TITLE RULES — most important:
 - Pretend you are texting a busy friend who has never seen a lab result in their life
 - MAX 7 words. No numbers. No lab names. No clinical terms. No dosages.
-- BAD: "Optimize testosterone via resistance training protocol"
+- Sentence case ONLY: capitalize the first word, lowercase everything else.
+- BAD: "Optimize Testosterone Via Resistance Training" (Title Case — not allowed)
+- BAD: "optimize testosterone via resistance training" (all lowercase — not allowed)
 - BAD: "Increase testosterone from 516 toward optimal range"
-- BAD: "Resistance Training Protocol for Testosterone"
 - GOOD: "Lift weights three times this week"
 - BAD: "Supplement with magnesium glycinate 400mg for insulin"
 - GOOD: "Take magnesium before bed tonight"

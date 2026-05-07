@@ -173,7 +173,7 @@ export default function ActionsPage() {
             {(["morning", "midday", "evening"] as const).map(slot => {
               const slotActions = actions.filter(a => (a.timeOfDay ?? "morning") === slot);
               if (slotActions.length === 0) return null;
-              const labels = { morning: "🌅 Morning", midday: "☀️ Midday", evening: "🌙 Evening" };
+              const labels = { morning: "Morning", midday: "Midday", evening: "Evening" };
               return (
                 <div key={slot}>
                   <p className="text-[11px] font-semibold uppercase tracking-widest mb-2" style={{ color: "var(--text3)" }}>

@@ -4,17 +4,17 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useHealthStore } from "@/store/useHealthStore";
 import Header from "@/components/layout/Header";
-import { FlaskConical, Edit3, RotateCcw, ChevronRight } from "lucide-react";
+import { Edit3, ChevronRight } from "lucide-react";
 
-const GOAL_META: Record<string, { emoji: string; label: string }> = {
-  longevity:       { emoji: "⏳", label: "Longevity"       },
-  weight_loss:     { emoji: "⚖️",  label: "Weight Loss"     },
-  energy:          { emoji: "⚡", label: "Energy"          },
-  muscle_gain:     { emoji: "💪", label: "Muscle Gain"     },
-  heart_health:    { emoji: "❤️",  label: "Heart Health"    },
-  hormone_balance: { emoji: "🔄", label: "Hormone Balance" },
-  mental_clarity:  { emoji: "🧠", label: "Mental Clarity"  },
-  sleep:           { emoji: "🌙", label: "Sleep"           },
+const GOAL_META: Record<string, { label: string }> = {
+  longevity:       { label: "Longevity"       },
+  weight_loss:     { label: "Weight Loss"     },
+  energy:          { label: "Energy"          },
+  muscle_gain:     { label: "Muscle Gain"     },
+  heart_health:    { label: "Heart Health"    },
+  hormone_balance: { label: "Hormone Balance" },
+  mental_clarity:  { label: "Mental Clarity"  },
+  sleep:           { label: "Sleep"           },
 };
 
 const ALL_GOALS = Object.entries(GOAL_META);
@@ -109,7 +109,7 @@ export default function ProfilePage() {
           </p>
           {profile?.goals?.[0] && (
             <p className="text-[14px] mt-1" style={{ color: "var(--text2)" }}>
-              {GOAL_META[profile.goals[0]]?.emoji} {GOAL_META[profile.goals[0]]?.label}
+              {GOAL_META[profile.goals[0]]?.label}
             </p>
           )}
         </div>
@@ -117,15 +117,14 @@ export default function ProfilePage() {
         {/* Stats */}
         <div className="grid grid-cols-3 gap-3 mb-5">
           {[
-            { emoji: "🔥", value: streak, label: "Day streak" },
-            { emoji: "✓",  value: `${doneToday}/${actions.length}`, label: "Today" },
-            { emoji: "🧬", value: labPanel?.biomarkers.length ?? 0, label: "Biomarkers" },
+            { value: streak, label: "Day streak", accent: streak > 0 },
+            { value: `${doneToday}/${actions.length}`, label: "Today" },
+            { value: labPanel?.biomarkers.length ?? 0, label: "Biomarkers" },
           ].map(s => (
             <div key={s.label} className="flex flex-col items-center py-4 rounded-2xl"
               style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
-              <span className="text-xl mb-1">{s.emoji}</span>
-              <span className="text-[20px] font-bold" style={{ color: "var(--text1)" }}>{s.value}</span>
-              <span className="text-[11px]" style={{ color: "var(--text3)" }}>{s.label}</span>
+              <span className="text-[22px] font-bold" style={{ color: s.accent ? "var(--accent)" : "var(--text1)" }}>{s.value}</span>
+              <span className="text-[11px] mt-0.5" style={{ color: "var(--text3)" }}>{s.label}</span>
             </div>
           ))}
         </div>
@@ -136,11 +135,11 @@ export default function ProfilePage() {
             <div className="px-4 py-3">
               <div className="flex flex-wrap gap-2 mb-3">
                 {(profile?.goals ?? []).map(g => {
-                  const meta = GOAL_META[g] ?? { emoji: "🎯", label: g };
+                  const meta = GOAL_META[g] ?? { label: g };
                   return (
                     <span key={g} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-semibold"
                       style={{ background: "var(--accent-lo)", color: "var(--accent)", border: "1px solid var(--accent-mid)" }}>
-                      {meta.emoji} {meta.label}
+                      {meta.label}
                     </span>
                   );
                 })}
@@ -172,7 +171,7 @@ export default function ProfilePage() {
                         border: active ? "1.5px solid var(--accent)" : "1.5px solid var(--border)",
                       }}
                     >
-                      {meta.emoji} {meta.label}
+                      {meta.label}
                     </button>
                   );
                 })}

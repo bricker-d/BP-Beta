@@ -46,7 +46,11 @@ export default function ClinicianLoginPage() {
         maxWidth: 400,
       }}>
         <div style={{ textAlign: "center", marginBottom: 32 }}>
-          <div style={{ fontSize: 32, marginBottom: 8 }}>🏥</div>
+          <div style={{ width: 44, height: 44, borderRadius: 12, background: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 12px" }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round">
+              <path d="M2 12h3l3-8 3 16 3-10 3 5 2-3h3" />
+            </svg>
+          </div>
           <h1 style={{ fontSize: 20, fontWeight: 800, color: "#111827", margin: "0 0 4px" }}>
             Frame Longevity
           </h1>

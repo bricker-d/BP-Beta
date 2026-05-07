@@ -29,6 +29,8 @@ interface IntakeProfile {
   timeHorizon?: string;
   medications?: string[];
   familyHistory?: string[];
+  activeConditions?: string[];
+  allergies?: string[];
   sleepHours?: number;
   exerciseDaysPerWeek?: number;
   exerciseType?: string;
@@ -95,8 +97,10 @@ Your role: translate lab results and lifestyle data into specific, actionable gu
     const weight   = intakeProfile.weightLbs ? `${intakeProfile.weightLbs} lbs` : "";
     const symptoms = intakeProfile.symptoms?.join(", ") ?? "none reported";
     const wearable = intakeProfile.wearableSource ?? "none";
-    const meds     = intakeProfile.medications?.join(", ") || "none";
-    const family   = intakeProfile.familyHistory?.join(", ") || "none noted";
+    const meds       = intakeProfile.medications?.join(", ") || "none";
+    const family     = intakeProfile.familyHistory?.join(", ") || "none noted";
+    const conditions = intakeProfile.activeConditions?.join(", ") || "none reported";
+    const allergies  = intakeProfile.allergies?.join(", ") || "none reported";
 
     const habitLines = [
       intakeProfile.sleepHours        ? `Sleep: ${intakeProfile.sleepHours} hrs/night` : null,
@@ -116,6 +120,8 @@ Your role: translate lab results and lifestyle data into specific, actionable gu
 - Time horizon: ${intakeProfile.timeHorizon ?? "not specified"}
 - Reported symptoms: ${symptoms}
 - Habits baseline: ${habitLines || "not provided"}
+- Active conditions: ${conditions}
+- Allergies: ${allergies}
 - Medications: ${meds}
 - Family history: ${family}
 - Wearable device: ${wearable}
@@ -208,31 +214,21 @@ ${optimal.map(b => `- ${BIOMARKER_LIBRARY[b.id]?.name ?? b.id}: ${b.value} ${b.u
   prompt += `
 ## How to Respond
 
-Write like a knowledgeable friend explaining things over coffee — not a doctor writing a report. Plain words only. No Latin, no acronyms spelled out, no "randomized controlled trial" or "meta-analysis" in patient-facing text. If you reference a study, say "research shows" or "a large study found."
+You are a brilliant, direct friend who happens to know everything about health — not a physician writing a report. Be specific, be brief, be useful. No filler. No "great question." No clinical jargon. No hedging unless it's genuinely needed.
 
-**When asked about a specific biomarker or symptom:**
-1. Say what their number means in plain English ("yours is a bit low, which often shows up as fatigue")
-2. Explain why in 1–2 simple sentences — what's actually happening in the body
-3. Give 1–2 specific things they can do, with a realistic timeframe
-4. Flag if they should loop in their doctor
+**Format:**
+- 3–5 short paragraphs max. No bullet lists unless listing 3+ items.
+- Lead with the answer, then the reason, then what to do.
+- Always anchor to ${patientName}'s actual numbers — never give generic advice.
+- If they ask why, explain the biology in one plain sentence ("cortisol blocks insulin, so high stress raises blood sugar").
+- Give a specific action: dose, timing, duration. Not "consider magnesium" — "400mg magnesium glycinate before bed."
+- End with the single most useful follow-on insight they didn't ask for but need.
 
-**When asked for an overall summary:**
-1. Lead with the 1–2 most important things to fix given their goals
-2. Note any patterns ("your glucose, insulin, and triglycerides all point the same direction — metabolic")
-3. Prioritized action list, plain language
-4. End on what's already good so they see the full picture
-
-**When asked about supplements, diet, or exercise:**
-1. Say what it actually does in the body (plain English)
-2. Give a specific dose or protocol, not a vague suggestion
-3. Note if it conflicts with medications or needs a doctor's sign-off
-
-**Always:**
-- Use ${patientName}'s actual numbers, not generic examples
-- Use their name naturally in responses
-- Be honest — don't sugarcoat concerning results, but don't alarm unnecessarily
-- Never diagnose, prescribe, or tell them to stop medications
-- If something is severely out of range, tell them to bring it to their physician
+**Rules:**
+- Never say "randomized controlled trial", "meta-analysis", or "consult a healthcare professional" unless genuinely necessary.
+- Never diagnose or tell them to stop medications.
+- If a marker is severely out of range, say so directly and tell them to bring it to their doctor — once, briefly.
+- Use ${patientName}'s name once per response, naturally.
 `;
 
   return prompt;
@@ -287,8 +283,8 @@ When asked about their plan or what to do next, refer to these specific actions 
     }
 
     const stream = await getClient().messages.stream({
-      model: "claude-sonnet-4-6",
-      max_tokens: 2048,
+      model: "claude-opus-4-6",
+      max_tokens: 1024,
       system: systemPrompt,
       messages: messages.map((m: { role: string; content: string }) => ({
         role: m.role,

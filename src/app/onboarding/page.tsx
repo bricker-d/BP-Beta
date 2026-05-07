@@ -45,6 +45,18 @@ const FAMILY_HISTORY = [
   "Alzheimer's or dementia", "Autoimmune conditions", "Osteoporosis", "None known",
 ];
 
+const ACTIVE_CONDITIONS = [
+  "Type 2 diabetes", "Hypertension", "Hypothyroidism", "Hyperthyroidism",
+  "Autoimmune condition", "PCOS", "Cardiovascular disease", "Depression or anxiety",
+  "Sleep apnea", "Chronic kidney disease", "Liver disease", "Cancer (current)",
+  "Inflammatory bowel disease", "None",
+];
+
+const ALLERGY_OPTIONS = [
+  "Shellfish", "Tree nuts", "Peanuts", "Dairy / lactose", "Gluten / wheat",
+  "Eggs", "Soy", "Fish", "Penicillin", "Sulfa drugs", "NSAIDs / aspirin", "None known",
+];
+
 const SLEEP_OPTIONS  = [5, 6, 7, 8, 9];
 const EXERCISE_OPTIONS = [
   { id: "0", label: "None" }, { id: "1-2", label: "1–2 days" },
@@ -102,6 +114,8 @@ export default function OnboardingPage() {
   const [weightLbs,         setWeightLbs]         = useState("");
   const [medications,       setMedications]       = useState<string[]>([]);
   const [familyHistory,     setFamilyHistory]     = useState<string[]>([]);
+  const [activeConditions,  setActiveConditions]  = useState<string[]>([]);
+  const [allergies,         setAllergies]         = useState<string[]>([]);
   const [sleepHours,        setSleepHours]        = useState<number | null>(null);
   const [exerciseDays,      setExerciseDays]      = useState("");
   const [exerciseTypes,     setExerciseTypes]     = useState<string[]>([]);
@@ -155,6 +169,8 @@ export default function OnboardingPage() {
       timeHorizon:         timeHorizon || undefined,
       medications:         medications.filter(m => m !== "None"),
       familyHistory:       familyHistory.filter(f => f !== "None known"),
+      activeConditions:    activeConditions.filter(c => c !== "None"),
+      allergies:           allergies.filter(a => a !== "None known"),
       sleepHours:          sleepHours ?? undefined,
       exerciseDaysPerWeek: exerciseDays || undefined,
       exerciseType:        exerciseTypes.length ? exerciseTypes.join(", ") : undefined,
@@ -369,8 +385,18 @@ export default function OnboardingPage() {
         {/* ── MEDICAL ──────────────────────────────────────────────────── */}
         {step === "medical" && (
           <div className="flex-1 flex flex-col gap-5 step-enter">
-            <StepHeader n={4} title="Medical context" sub="Helps flag contraindications and genetic risk factors." />
+            <StepHeader n={4} title="Medical context" sub="Helps us recommend safely — conditions and allergies prevent inappropriate suggestions." />
             <div className="flex-1 space-y-5 overflow-y-auto">
+              <ChipGroup label="Active medical conditions" items={ACTIVE_CONDITIONS}
+                selected={activeConditions} onToggle={c => {
+                  if (c === "None") { setActiveConditions(["None"]); return; }
+                  toggle(activeConditions.filter(x => x !== "None"), c, setActiveConditions);
+                }} />
+              <ChipGroup label="Known allergies (food or drug)" items={ALLERGY_OPTIONS}
+                selected={allergies} onToggle={a => {
+                  if (a === "None known") { setAllergies(["None known"]); return; }
+                  toggle(allergies.filter(x => x !== "None known"), a, setAllergies);
+                }} />
               <ChipGroup label="Current medications" items={MEDICATIONS}
                 selected={medications} onToggle={m => {
                   if (m === "None") { setMedications(["None"]); return; }

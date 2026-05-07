@@ -17,6 +17,8 @@ interface IntakeProfile {
   // Medical context
   medications?: string[];
   familyHistory?: string[];
+  activeConditions?: string[];
+  allergies?: string[];
   // Habits baseline
   sleepHours?: number;
   exerciseDaysPerWeek?: string;
@@ -151,6 +153,8 @@ export const useHealthStore = create<HealthStore>()(
               timeHorizon: state.intakeProfile?.timeHorizon,
               painPoint: state.intakeProfile?.painPoint,
               symptoms: state.intakeProfile?.symptoms,
+              activeConditions: state.intakeProfile?.activeConditions,
+              allergies: state.intakeProfile?.allergies,
             }),
           });
 
