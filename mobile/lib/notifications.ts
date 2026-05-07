@@ -315,9 +315,10 @@ export function useNotificationNavigation(
     }
 
     if (actionIdentifier === 'REMIND_1HR') {
+      const { title, body, data, categoryIdentifier } = notification.request.content;
       Notifications.scheduleNotificationAsync({
         identifier: `remind-later-${Date.now()}`,
-        content: notification.request.content,
+        content: { title, body, data, categoryIdentifier: categoryIdentifier ?? undefined },
         trigger: {
           type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
           seconds: 3600,

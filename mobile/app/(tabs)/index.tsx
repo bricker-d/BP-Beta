@@ -7,8 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import {
   FlaskConical, TrendingUp, TrendingDown, Minus,
-  AlertTriangle, Zap, ChevronRight,
-  Activity,
+  AlertTriangle, Zap, ChevronRight, Activity,
 } from 'lucide-react-native';
 import { useHealthStore } from '../../lib/store';
 import {
@@ -294,18 +293,6 @@ export default function HomeScreen() {
             </View>
           )}
         </View>
-
-        {/* ── Coach nudge ──────────────────────────────────────────────────── */}
-        <TouchableOpacity style={s.coachNudge} onPress={() => router.push('/(tabs)/coach')} activeOpacity={0.85}>
-          <View style={s.coachNudgeLeft}>
-            <Target color={PURPLE} size={20} />
-            <View style={{ marginLeft: 10 }}>
-              <Text style={s.coachNudgeTitle}>Ask your AI Coach</Text>
-              <Text style={s.coachNudgeSub}>Get personalised insights from your labs</Text>
-            </View>
-          </View>
-          <ChevronRight color={PURPLE} size={18} />
-        </TouchableOpacity>
 
         <View style={{ height: 32 }} />
       </ScrollView>

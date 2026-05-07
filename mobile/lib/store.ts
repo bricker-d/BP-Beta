@@ -181,7 +181,7 @@ export const useHealthStore = create<HealthStore>()(
             }),
           };
         }
-        const { intakeProfile } = get();
+        const { intakeProfile, streak } = get();
         const actions = generateActionsFromPanel(panel, intakeProfile ?? null);
         const completedIds = new Set(
           get().actions.filter(a => a.completed).map(a => a.id)
@@ -194,7 +194,6 @@ export const useHealthStore = create<HealthStore>()(
         }));
 
         // Reschedule notifications with updated actions + 90-day lab reminder
-        const { intakeProfile, streak } = get();
         import('./notifications').then(({ scheduleDailyNotifications, scheduleLabUploadReminder }) => {
           scheduleDailyNotifications(updatedActions, intakeProfile ?? null, streak).catch(() => {});
           scheduleLabUploadReminder(panel.date).catch(() => {});
