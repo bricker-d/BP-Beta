@@ -110,7 +110,7 @@ export default function OnboardingPage() {
   const [alcoholFrequency,  setAlcoholFrequency]  = useState("");
   const [symptoms,          setSymptoms]          = useState<string[]>([]);
   const [supplements,       setSupplements]       = useState<string[]>([]);
-  const [notificationStyle, setNotificationStyle] = useState("");
+  const notificationStyle = "direct";
   const [checkInTime,       setCheckInTime]       = useState("7:00 am");
   const [eveningTime,       setEveningTime]       = useState("7:00 pm");
 
@@ -483,20 +483,7 @@ export default function OnboardingPage() {
         {/* ── ACCOUNTABILITY ───────────────────────────────────────────── */}
         {step === "accountability" && (
           <div className="flex-1 flex flex-col gap-5 step-enter">
-            <StepHeader n={7} title="How should we talk to you?" sub="Sets the tone of your AI coach and daily reminders." />
-            <div className="space-y-3">
-              {NOTIFICATION_STYLES.map(s => (
-                <button key={s.id} onClick={() => setNotificationStyle(s.id)}
-                  className="w-full px-4 py-4 rounded-2xl text-left transition-all"
-                  style={{ background: notificationStyle === s.id ? "var(--accent-lo)" : "var(--surface)", border: `1.5px solid ${notificationStyle === s.id ? "var(--accent)" : "var(--border)"}` }}>
-                  <div className="flex items-center justify-between">
-                    <p className="text-[15px] font-bold" style={{ color: "var(--text1)" }}>{s.label}</p>
-                    {notificationStyle === s.id && <Check size={16} color="var(--accent)" />}
-                  </div>
-                  <p className="text-[13px] mt-0.5" style={{ color: "var(--text2)" }}>{s.sub}</p>
-                </button>
-              ))}
-            </div>
+            <StepHeader n={7} title="Set your reminders" sub="When should we check in with you each day?" />
             <div className="space-y-4">
               <div>
                 <p className="text-[13px] font-semibold mb-2" style={{ color: "var(--text2)" }}>Morning check-in</p>
@@ -521,7 +508,7 @@ export default function OnboardingPage() {
                 </div>
               </div>
             </div>
-            <button className="btn-primary" onClick={next} disabled={!notificationStyle} style={{ opacity: notificationStyle ? 1 : 0.35 }}>
+            <button className="btn-primary" onClick={next}>
               Continue <ChevronRight size={16} />
             </button>
           </div>
