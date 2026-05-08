@@ -2,10 +2,33 @@
 
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Upload, FileText, FileSpreadsheet, X, CheckCircle, Loader2, AlertCircle, Pencil, Check } from "lucide-react";
+import { Upload, FileText, FileSpreadsheet, X, CheckCircle, Loader2, AlertCircle, Pencil, Check, FlaskConical } from "lucide-react";
 import { useHealthStore } from "@/store/useHealthStore";
 import { LabPanel, Biomarker } from "@/lib/types";
 import { getBiomarkerStatus } from "@/lib/biomarkers";
+
+// ── Sample data for demo / investor mode ─────────────────────────────────────
+const SAMPLE_PANEL: LabPanel = {
+  id: `sample-${Date.now()}`,
+  date: new Date().toISOString(),
+  source: "Quest Diagnostics",
+  biomarkers: [
+    { id: "glucose",        name: "Fasting Glucose",     shortName: "Glucose",      value: 94,   unit: "mg/dL",    status: "borderline", category: "metabolic",    optimalMin: 70,  optimalMax: 85  },
+    { id: "hba1c",          name: "HbA1c",               shortName: "HbA1c",        value: 5.7,  unit: "%",        status: "borderline", category: "metabolic",    optimalMin: 4.8, optimalMax: 5.4 },
+    { id: "fastingInsulin", name: "Fasting Insulin",     shortName: "Insulin",      value: 8.4,  unit: "μIU/mL",  status: "borderline", category: "metabolic",    optimalMin: 2,   optimalMax: 6   },
+    { id: "ldl",            name: "LDL Cholesterol",     shortName: "LDL",          value: 142,  unit: "mg/dL",   status: "elevated",   category: "lipid",        optimalMin: 0,   optimalMax: 100 },
+    { id: "hdl",            name: "HDL Cholesterol",     shortName: "HDL",          value: 46,   unit: "mg/dL",   status: "borderline", category: "lipid",        optimalMin: 60,  optimalMax: 80  },
+    { id: "triglycerides",  name: "Triglycerides",       shortName: "Trigs",        value: 162,  unit: "mg/dL",   status: "elevated",   category: "lipid",        optimalMin: 0,   optimalMax: 100 },
+    { id: "hscrp",          name: "hsCRP",               shortName: "hsCRP",        value: 2.1,  unit: "mg/L",    status: "borderline", category: "inflammatory", optimalMin: 0,   optimalMax: 1   },
+    { id: "testosterone",   name: "Total Testosterone",  shortName: "Testosterone", value: 498,  unit: "ng/dL",   status: "borderline", category: "hormone",      optimalMin: 700, optimalMax: 900 },
+    { id: "cortisol",       name: "Cortisol (AM)",       shortName: "Cortisol",     value: 22,   unit: "μg/dL",   status: "elevated",   category: "hormone",      optimalMin: 6,   optimalMax: 18  },
+    { id: "vitaminD",       name: "Vitamin D",           shortName: "Vit D",        value: 28,   unit: "ng/mL",   status: "low",        category: "vitamin",      optimalMin: 60,  optimalMax: 80  },
+    { id: "magnesium",      name: "Magnesium",           shortName: "Mag",          value: 1.9,  unit: "mg/dL",   status: "borderline", category: "vitamin",      optimalMin: 2.0, optimalMax: 2.5 },
+    { id: "omega3Index",    name: "Omega-3 Index",       shortName: "Omega-3",      value: 4.1,  unit: "%",       status: "low",        category: "vitamin",      optimalMin: 8,   optimalMax: 12  },
+    { id: "vitaminB12",     name: "Vitamin B12",         shortName: "B12",          value: 652,  unit: "pg/mL",   status: "optimal",    category: "vitamin",      optimalMin: 500, optimalMax: 900 },
+    { id: "ferritin",       name: "Ferritin",            shortName: "Ferritin",     value: 72,   unit: "ng/mL",   status: "optimal",    category: "vitamin",      optimalMin: 50,  optimalMax: 150 },
+  ] as Biomarker[],
+};
 
 type UploadState = "idle" | "dragging" | "uploading" | "parsing" | "confirming" | "success" | "error";
 
@@ -159,6 +182,15 @@ export default function LabUpload() {
     if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
+  function loadSampleData() {
+    const panel = { ...SAMPLE_PANEL, id: `sample-${Date.now()}` };
+    setPending(panel);
+    setEdited(panel.biomarkers);
+    setFileName("Sample Lab Report");
+    setSource("Quest Diagnostics");
+    setState("confirming");
+  }
+
   // Group biomarkers by category for the confirmation screen
   const grouped = CATEGORY_ORDER.map(cat => ({
     cat,
@@ -226,6 +258,24 @@ export default function LabUpload() {
         <div className="flex items-center gap-1"><FileText size={11} /><span>PDF reports</span></div>
         <div className="flex items-center gap-1"><FileSpreadsheet size={11} /><span>Excel / CSV</span></div>
       </div>
+
+      <div className="flex items-center gap-3">
+        <div style={{ flex: 1, height: 1, background: "var(--border)" }} />
+        <span className="text-[11px] font-medium" style={{ color: "var(--text3)" }}>or</span>
+        <div style={{ flex: 1, height: 1, background: "var(--border)" }} />
+      </div>
+
+      <button
+        onClick={loadSampleData}
+        className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-[13px] font-semibold transition-opacity active:opacity-70"
+        style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text2)" }}
+      >
+        <FlaskConical size={14} color="var(--accent)" />
+        Try with sample lab data
+      </button>
+      <p className="text-[11px] text-center" style={{ color: "var(--text3)" }}>
+        14 realistic biomarkers — see exactly what BioPrecision does with your results
+      </p>
     </div>
   );
 

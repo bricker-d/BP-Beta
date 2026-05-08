@@ -132,14 +132,31 @@ export default function ActionsPage() {
 
         {/* All done state */}
         {allDone && (
-          <div className="rounded-2xl px-4 py-4"
+          <div className="rounded-2xl px-5 py-5 flex flex-col items-center text-center gap-3"
             style={{ background: "rgba(5,150,105,0.07)", border: "1px solid rgba(5,150,105,0.2)" }}>
-            <p className="text-[14px] font-semibold" style={{ color: "var(--green)" }}>
-              Protocol complete for today
-            </p>
-            <p className="text-[13px] mt-1" style={{ color: "var(--text2)" }}>
-              Consistency compounds. Your next panel will show the difference.
-            </p>
+            <div className="w-12 h-12 rounded-full flex items-center justify-center"
+              style={{ background: "rgba(5,150,105,0.12)", boxShadow: "0 0 0 8px rgba(5,150,105,0.06)" }}>
+              <svg width="22" height="18" viewBox="0 0 22 18" fill="none">
+                <path d="M2 9l6 6L20 2" stroke="var(--green)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </div>
+            <div>
+              <p className="text-[16px] font-bold" style={{ color: "var(--green)", letterSpacing: "-0.01em" }}>
+                Protocol complete
+              </p>
+              <p className="text-[13px] mt-1" style={{ color: "var(--text2)", lineHeight: 1.55 }}>
+                Every action done. This consistency is what moves your biomarkers — your next panel will reflect it.
+              </p>
+            </div>
+            {streak > 0 && (
+              <div className="flex items-center gap-2 px-4 py-2 rounded-full"
+                style={{ background: "rgba(5,150,105,0.1)" }}>
+                <Flame size={13} color="var(--green)" />
+                <span className="text-[12px] font-semibold" style={{ color: "var(--green)" }}>
+                  {streak} day streak — keep it going
+                </span>
+              </div>
+            )}
           </div>
         )}
 

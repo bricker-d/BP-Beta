@@ -5,6 +5,7 @@ import { LabPanel, WearableData, HealthAction, ChatMessage, UserProfile } from "
 interface IntakeProfile {
   // Core
   name?: string;
+  email?: string;
   goals?: string[];
   age?: number;
   biologicalSex?: string;

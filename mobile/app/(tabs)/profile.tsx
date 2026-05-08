@@ -15,15 +15,15 @@ import { track, EVENTS } from '../../lib/analytics';
 
 const ACCENT = '#C96A2B';
 
-const GOAL_META: Record<string, { emoji: string; label: string }> = {
-  longevity:       { emoji: '⏳', label: 'Longevity'      },
-  weight_loss:     { emoji: '⚖️',  label: 'Weight Loss'    },
-  energy:          { emoji: '⚡', label: 'Energy'         },
-  muscle_gain:     { emoji: '💪', label: 'Muscle Gain'    },
-  heart_health:    { emoji: '❤️',  label: 'Heart Health'   },
-  hormone_balance: { emoji: '🔄', label: 'Hormones'       },
-  mental_clarity:  { emoji: '🧠', label: 'Mental Clarity' },
-  sleep:           { emoji: '🌙', label: 'Sleep'          },
+const GOAL_META: Record<string, { label: string }> = {
+  longevity:       { label: 'Longevity'      },
+  weight_loss:     { label: 'Weight Loss'    },
+  energy:          { label: 'Energy'         },
+  muscle_gain:     { label: 'Muscle Gain'    },
+  heart_health:    { label: 'Heart Health'   },
+  hormone_balance: { label: 'Hormones'       },
+  mental_clarity:  { label: 'Mental Clarity' },
+  sleep:           { label: 'Sleep'          },
 };
 
 const ALL_GOALS = Object.entries(GOAL_META).map(([key, meta]) => ({ key, ...meta }));
@@ -61,7 +61,6 @@ function GoalEditor({
                   onPress={() => toggle(g.key)}
                   activeOpacity={0.7}
                 >
-                  <Text style={ge.chipEmoji}>{g.emoji}</Text>
                   <Text style={[ge.chipLabel, active && ge.chipLabelActive]}>{g.label}</Text>
                 </TouchableOpacity>
               );
@@ -87,8 +86,7 @@ const ge = StyleSheet.create({
   grid:           { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 24 },
   chip:           { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 20, borderWidth: 1.5, borderColor: '#e5e7eb', backgroundColor: '#fff' },
   chipActive:     { borderColor: ACCENT, backgroundColor: '#FEF0E6' },
-  chipEmoji:      { fontSize: 16 },
-  chipLabel:      { fontSize: 13, fontWeight: '500', color: '#6b7280' },
+chipLabel:      { fontSize: 13, fontWeight: '500', color: '#6b7280' },
   chipLabelActive:{ color: ACCENT, fontWeight: '600' },
   saveBtn:        { backgroundColor: ACCENT, borderRadius: 14, paddingVertical: 14, alignItems: 'center' },
   saveTxt:        { color: '#fff', fontWeight: '700', fontSize: 16, fontFamily: 'DMSans_700Bold' },
@@ -228,7 +226,7 @@ export default function ProfileScreen() {
           <Text style={p.name}>{profile?.name ?? 'Your Profile'}</Text>
           {profile?.primaryFocus && (
             <Text style={p.focus}>
-              {GOAL_META[profile.primaryFocus]?.emoji} {GOAL_META[profile.primaryFocus]?.label ?? profile.primaryFocus}
+              {GOAL_META[profile.primaryFocus]?.label ?? profile.primaryFocus}
             </Text>
           )}
         </View>
@@ -236,19 +234,16 @@ export default function ProfileScreen() {
         {/* ── Stats row ──────────────────────────────────────────────────── */}
         <View style={p.statsRow}>
           <View style={p.stat}>
-            <Text style={p.statEmoji}>🔥</Text>
-            <Text style={p.statNum}>{streak}</Text>
+            <Text style={[p.statNum, streak > 0 && { color: ACCENT }]}>{streak}</Text>
             <Text style={p.statLabel}>Day streak</Text>
           </View>
           <View style={p.statDivider} />
           <View style={p.stat}>
-            <Text style={p.statEmoji}>✓</Text>
             <Text style={p.statNum}>{doneToday}/{actions.length}</Text>
             <Text style={p.statLabel}>Today</Text>
           </View>
           <View style={p.statDivider} />
           <View style={p.stat}>
-            <Text style={p.statEmoji}>🧬</Text>
             <Text style={p.statNum}>{labPanel?.biomarkers.length ?? 0}</Text>
             <Text style={p.statLabel}>Biomarkers</Text>
           </View>
@@ -258,10 +253,9 @@ export default function ProfileScreen() {
         <Section title="Goals">
           <View style={p.goalRow}>
             {(profile?.goals ?? []).map(g => {
-              const meta = GOAL_META[g] ?? { emoji: '🎯', label: g };
+              const meta = GOAL_META[g] ?? { label: g };
               return (
                 <View key={g} style={p.goalChip}>
-                  <Text style={p.goalEmoji}>{meta.emoji}</Text>
                   <Text style={p.goalLabel}>{meta.label}</Text>
                 </View>
               );
@@ -388,7 +382,6 @@ const p = StyleSheet.create({
 
   statsRow:     { flexDirection: 'row', backgroundColor: '#fff', marginBottom: 20, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#f3f4f6', borderTopWidth: 1, borderTopColor: '#f3f4f6' },
   stat:         { flex: 1, alignItems: 'center', gap: 2 },
-  statEmoji:    { fontSize: 18, marginBottom: 2 },
   statNum:      { fontSize: 20, fontWeight: '700', color: '#111827', fontFamily: 'DMSans_700Bold' },
   statLabel:    { fontSize: 11, color: '#9ca3af', fontFamily: 'DMSans_400Regular' },
   statDivider:  { width: 1, backgroundColor: '#f3f4f6', marginVertical: 4 },
@@ -403,7 +396,6 @@ const p = StyleSheet.create({
 
   goalRow:      { flexDirection: 'row', flexWrap: 'wrap', gap: 8, padding: 12 },
   goalChip:     { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: '#FEF0E6', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 },
-  goalEmoji:    { fontSize: 14 },
   goalLabel:    { fontSize: 12, color: ACCENT, fontWeight: '600', fontFamily: 'DMSans_600SemiBold' },
   editGoalsBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1.5, borderColor: ACCENT },
   editGoalsTxt: { fontSize: 12, color: ACCENT, fontWeight: '600', fontFamily: 'DMSans_600SemiBold' },

@@ -107,6 +107,7 @@ export default function OnboardingPage() {
   const [goals,             setGoals]             = useState<string[]>([]);
   const [timeHorizon,       setTimeHorizon]       = useState("");
   const [name,              setName]              = useState("");
+  const [email,             setEmail]             = useState("");
   const [age,               setAge]               = useState("");
   const [sex,               setSex]               = useState("");
   const [heightFt,          setHeightFt]          = useState("");
@@ -116,6 +117,7 @@ export default function OnboardingPage() {
   const [familyHistory,     setFamilyHistory]     = useState<string[]>([]);
   const [activeConditions,  setActiveConditions]  = useState<string[]>([]);
   const [allergies,         setAllergies]         = useState<string[]>([]);
+  const [consentChecked,    setConsentChecked]    = useState(false);
   const [sleepHours,        setSleepHours]        = useState<number | null>(null);
   const [exerciseDays,      setExerciseDays]      = useState("");
   const [exerciseTypes,     setExerciseTypes]     = useState<string[]>([]);
@@ -159,6 +161,7 @@ export default function OnboardingPage() {
   function buildProfile() {
     return {
       name,
+      email: email.trim() || undefined,
       goals,
       age:                 parseInt(age) || undefined,
       biologicalSex:       sex || undefined,
@@ -355,6 +358,10 @@ export default function OnboardingPage() {
               <Field label="First name">
                 <input type="text" value={name} onChange={e => setName(e.target.value)}
                   placeholder="Your first name" style={fieldStyle} />
+              </Field>
+              <Field label="Email (optional — used to save your progress)">
+                <input type="email" value={email} onChange={e => setEmail(e.target.value)}
+                  placeholder="you@example.com" style={fieldStyle} />
               </Field>
               <Field label="Age">
                 <input type="number" value={age} onChange={e => setAge(e.target.value)}
@@ -559,6 +566,9 @@ export default function OnboardingPage() {
               <button onClick={() => setShowLabUpload(true)} className="btn-primary" style={{ paddingTop: 16, paddingBottom: 16 }}>
                 <Upload size={16} /> Upload my labs
               </button>
+              <button onClick={next} className="btn-ghost" style={{ color: "var(--accent)", fontWeight: 600 }}>
+                Try with sample data first →
+              </button>
               <button onClick={next} className="btn-ghost">I will add labs later</button>
             </div>
           </div>
@@ -631,10 +641,22 @@ export default function OnboardingPage() {
             </div>
             {!summaryLoading && (
               <div className="space-y-3 pt-4">
-                <button className="btn-primary" onClick={startUpload}>
+                <button
+                  onClick={() => setConsentChecked(c => !c)}
+                  className="w-full flex items-start gap-3 text-left"
+                >
+                  <div className="w-5 h-5 rounded flex items-center justify-center flex-shrink-0 mt-0.5 transition-all"
+                    style={{ background: consentChecked ? "var(--accent)" : "transparent", border: `1.5px solid ${consentChecked ? "var(--accent)" : "var(--border)"}` }}>
+                    {consentChecked && <Check size={11} color="white" />}
+                  </div>
+                  <p className="text-[12px] leading-relaxed" style={{ color: "var(--text3)" }}>
+                    I understand that BioPrecision provides evidence-based suggestions for educational purposes only, not medical advice. I will consult a licensed clinician before making significant changes to my health routine.
+                  </p>
+                </button>
+                <button className="btn-primary" onClick={startUpload} disabled={!consentChecked} style={{ opacity: consentChecked ? 1 : 0.35 }}>
                   <Upload size={16} /> Upload my labs now
                 </button>
-                <button className="btn-ghost" onClick={goToDashboard}>Go to my dashboard first</button>
+                <button className="btn-ghost" onClick={goToDashboard} disabled={!consentChecked} style={{ opacity: consentChecked ? 1 : 0.5 }}>Go to my dashboard first</button>
               </div>
             )}
           </div>

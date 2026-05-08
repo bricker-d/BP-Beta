@@ -244,26 +244,35 @@ export default function DashboardPage() {
 
         {/* No labs CTA */}
         {!labPanel && !isGeneratingActions && (
-          <Link href="/lab-results">
-            <div
-              className="rounded-2xl px-4 py-5 flex items-center gap-4"
-              style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
-            >
+          <div className="space-y-2">
+            <Link href="/lab-results">
               <div
-                className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0"
-                style={{ background: "var(--accent-lo)" }}
+                className="rounded-2xl px-4 py-5 flex items-center gap-4"
+                style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
               >
-                <FlaskConical size={22} color="var(--accent)" />
+                <div
+                  className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0"
+                  style={{ background: "var(--accent-lo)" }}
+                >
+                  <FlaskConical size={22} color="var(--accent)" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-[14px] font-semibold" style={{ color: "var(--text1)" }}>Upload your labs</p>
+                  <p className="text-[12px] mt-0.5" style={{ color: "var(--text2)" }}>
+                    PDF from Quest, LabCorp, or your doctor
+                  </p>
+                </div>
+                <ChevronRight size={16} color="var(--text3)" />
               </div>
-              <div className="flex-1">
-                <p className="text-[14px] font-semibold" style={{ color: "var(--text1)" }}>Upload your labs</p>
-                <p className="text-[12px] mt-0.5" style={{ color: "var(--text2)" }}>
-                  Unlock your personalized daily protocol
-                </p>
+            </Link>
+            <Link href="/lab-results">
+              <div className="text-center py-2">
+                <span className="text-[12px] font-semibold" style={{ color: "var(--accent)" }}>
+                  No labs yet? Try with sample data →
+                </span>
               </div>
-              <ChevronRight size={16} color="var(--text3)" />
-            </div>
-          </Link>
+            </Link>
+          </div>
         )}
 
         {/* Today's #1 action */}
