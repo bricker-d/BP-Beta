@@ -137,7 +137,7 @@ function CompletionRings({ done, total }: { done: number; total: number }) {
           <circle cx="20" cy="20" r={r} fill="none" stroke="var(--accent-mid)" strokeWidth="4" />
           <circle cx="20" cy="20" r={r} fill="none" stroke="var(--accent)" strokeWidth="4"
             strokeDasharray={circ} strokeDashoffset={offset} strokeLinecap="round"
-            style={{ filter: "drop-shadow(0 0 4px rgba(13,148,136,0.5))" }}
+            style={{ filter: "drop-shadow(0 0 4px rgba(37,99,235,0.4))" }}
           />
         </svg>
         <span className="absolute mono text-[10px] font-bold" style={{ color: "var(--text1)" }}>{done}</span>
@@ -339,7 +339,7 @@ export default function DashboardPage() {
         <Link href="/coach">
           <div
             className="rounded-2xl px-4 py-4 flex items-center gap-3"
-            style={{ background: "linear-gradient(135deg, rgba(13,148,136,0.12), rgba(5,150,105,0.10))", border: "1px solid rgba(13,148,136,0.25)" }}
+            style={{ background: "linear-gradient(135deg, rgba(37,99,235,0.08), rgba(37,99,235,0.05))", border: "1px solid rgba(37,99,235,0.18)" }}
           >
             <div
               className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
