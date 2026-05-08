@@ -76,6 +76,7 @@ export async function POST(req: Request) {
     const {
       labPanel, wearableData, goals, patientName, biologicalSex,
       habits, medications, currentSupplements, timeHorizon, painPoint, symptoms,
+      activeConditions, allergies,
     }: {
       labPanel: LabPanel;
       wearableData?: WearableData;
