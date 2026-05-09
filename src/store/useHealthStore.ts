@@ -129,7 +129,7 @@ export const useHealthStore = create<HealthStore>()(
           const { data: { user } } = await supabase.auth.getUser();
           if (!user) return;
 
-          // Load patient profile
+          // Load patient profile linked to this auth user
           const { data: patient } = await supabase
             .from("patients")
             .select("*")
@@ -138,49 +138,42 @@ export const useHealthStore = create<HealthStore>()(
 
           if (!patient) return;
 
-          // Hydrate intake profile if we don't have one locally
-          const state = get();
-          if (!state.intakeProfile?.name && patient.name) {
+          // Always hydrate from DB — DB is source of truth after login
+          set({
+            patientId: patient.id,
+            intakeProfile: {
+              name: patient.name ?? undefined,
+              goals: patient.goals ?? undefined,
+              age: patient.age ?? undefined,
+              biologicalSex: patient.biological_sex ?? undefined,
+              heightFt: patient.height_ft ?? undefined,
+              heightIn: patient.height_in ?? undefined,
+              weightLbs: patient.weight_lbs ?? undefined,
+              symptoms: patient.symptoms ?? undefined,
+              wearableSource: patient.wearable_source ?? undefined,
+            },
+          });
+
+          // Load latest lab panel — always fetch fresh from DB
+          const { data: panels } = await supabase
+            .from("lab_panels")
+            .select("*")
+            .eq("patient_id", patient.id)
+            .order("panel_date", { ascending: false })
+            .limit(1);
+
+          if (panels && panels[0]) {
+            const panel = panels[0];
             set({
-              patientId: patient.id,
-              intakeProfile: {
-                name: patient.name ?? undefined,
-                goals: patient.goals ?? undefined,
-                age: patient.age ?? undefined,
-                biologicalSex: patient.biological_sex ?? undefined,
-                heightFt: patient.height_ft ?? undefined,
-                heightIn: patient.height_in ?? undefined,
-                weightLbs: patient.weight_lbs ?? undefined,
-                symptoms: patient.symptoms ?? undefined,
-                wearableSource: patient.wearable_source ?? undefined,
+              labPanel: {
+                id: panel.id,
+                source: panel.source ?? "uploaded",
+                date: panel.panel_date,
+                biomarkers: panel.biomarkers as LabPanel["biomarkers"],
               },
             });
-          } else if (patient.id) {
-            set({ patientId: patient.id });
           }
-
-          // Load latest lab panel
-          if (!state.labPanel) {
-            const { data: panels } = await supabase
-              .from("lab_panels")
-              .select("*")
-              .eq("patient_id", patient.id)
-              .order("panel_date", { ascending: false })
-              .limit(1);
-
-            if (panels && panels[0]) {
-              const panel = panels[0];
-              set({
-                labPanel: {
-                  id: panel.id,
-                  source: panel.source ?? "uploaded",
-                  date: panel.panel_date,
-                  biomarkers: panel.biomarkers as LabPanel["biomarkers"],
-                },
-              });
-            }
-          }
-        } catch { /* fail silently */ }
+        } catch { /* fail silently — app works without DB */ }
       },
 
       signOut: async () => {

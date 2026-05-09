@@ -1,35 +1,56 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase-browser";
+import { useHealthStore } from "@/store/useHealthStore";
 
 export default function LoginPage() {
+  const router = useRouter();
+  const { loadFromSupabase } = useHealthStore();
+
+  const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
-  const [sent, setSent] = useState(false);
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!email.trim()) return;
+    if (!email.trim() || !password) return;
     setLoading(true);
     setError("");
 
     const supabase = createClient();
-    const { error: err } = await supabase.auth.signInWithOtp({
-      email: email.trim(),
-      options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
-      },
-    });
 
-    setLoading(false);
-    if (err) {
-      setError(err.message);
+    if (mode === "signup") {
+      const { error: err } = await supabase.auth.signUp({ email: email.trim(), password });
+      if (err) { setError(err.message); setLoading(false); return; }
+      // After sign-up, sign them in immediately
+      const { error: signInErr } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+      if (signInErr) { setError(signInErr.message); setLoading(false); return; }
     } else {
-      setSent(true);
+      const { error: err } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+      if (err) { setError(err.message); setLoading(false); return; }
     }
+
+    // Fetch their data from Supabase and hydrate the store
+    await loadFromSupabase();
+
+    const next = new URLSearchParams(window.location.search).get("next") ?? "/";
+    router.replace(next);
   }
+
+  const inputStyle = {
+    color: "var(--text1)" as const,
+    background: "var(--surface2)" as const,
+    border: "1.5px solid var(--border)" as const,
+    borderRadius: 12,
+    padding: "12px 14px",
+    fontSize: 15,
+    width: "100%",
+    outline: "none",
+  };
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-6"
@@ -53,74 +74,71 @@ export default function LoginPage() {
           </p>
         </div>
 
-        {sent ? (
-          <div className="rounded-2xl px-5 py-6 text-center"
-            style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
-            <div className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4"
-              style={{ background: "rgba(52,199,89,0.1)" }}>
-              <svg width="20" height="16" viewBox="0 0 20 16" fill="none">
-                <path d="M2 8l5 5L18 2" stroke="var(--green)" strokeWidth="2.5"
-                  strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </div>
-            <p className="text-[16px] font-bold" style={{ color: "var(--text1)" }}>
-              Check your email
-            </p>
-            <p className="text-[13px] mt-2 leading-relaxed" style={{ color: "var(--text2)" }}>
-              We sent a sign-in link to <span className="font-semibold" style={{ color: "var(--text1)" }}>{email}</span>.
-              Tap it to open your account.
-            </p>
+        {/* Mode toggle */}
+        <div className="flex rounded-xl p-1 mb-5" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+          {(["signin", "signup"] as const).map(m => (
             <button
-              onClick={() => { setSent(false); setEmail(""); }}
-              className="mt-5 text-[13px] font-medium"
-              style={{ color: "var(--accent)" }}
+              key={m}
+              onClick={() => { setMode(m); setError(""); }}
+              className="flex-1 py-2 rounded-lg text-[13px] font-semibold transition-all"
+              style={{
+                background: mode === m ? "var(--accent)" : "transparent",
+                color: mode === m ? "#fff" : "var(--text2)",
+              }}
             >
-              Use a different email
+              {m === "signin" ? "Sign in" : "Create account"}
             </button>
-          </div>
-        ) : (
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="rounded-2xl px-5 py-5 space-y-4"
-              style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
-              <div>
-                <label className="block text-[12px] font-semibold mb-2"
-                  style={{ color: "var(--text2)" }}>
-                  Email address
-                </label>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  placeholder="you@example.com"
-                  required
-                  autoFocus
-                  className="w-full outline-none text-[15px] bg-transparent"
-                  style={{
-                    color: "var(--text1)",
-                    borderBottom: "1.5px solid var(--border)",
-                    paddingBottom: "8px",
-                  }}
-                />
-              </div>
+          ))}
+        </div>
 
-              {error && (
-                <p className="text-[12px]" style={{ color: "var(--red)" }}>{error}</p>
-              )}
-            </div>
+        <form onSubmit={handleSubmit} className="space-y-3">
+          <input
+            type="email"
+            value={email}
+            onChange={e => setEmail(e.target.value)}
+            placeholder="Email address"
+            required
+            autoFocus
+            style={inputStyle}
+          />
+          <input
+            type="password"
+            value={password}
+            onChange={e => setPassword(e.target.value)}
+            placeholder={mode === "signup" ? "Create a password" : "Password"}
+            required
+            minLength={6}
+            style={inputStyle}
+          />
 
-            <button
-              type="submit"
-              disabled={!email.trim() || loading}
-              className="btn-primary disabled:opacity-40"
-            >
-              {loading ? "Sending..." : "Send sign-in link"}
-            </button>
+          {error && (
+            <p className="text-[12px] px-1" style={{ color: "var(--red)" }}>{error}</p>
+          )}
 
-            <p className="text-center text-[12px]" style={{ color: "var(--text3)" }}>
-              No password needed. We email you a secure link.
-            </p>
-          </form>
-        )}
+          <button
+            type="submit"
+            disabled={!email.trim() || !password || loading}
+            className="btn-primary disabled:opacity-40"
+            style={{ marginTop: 8 }}
+          >
+            {loading
+              ? (mode === "signup" ? "Creating account..." : "Signing in...")
+              : (mode === "signup" ? "Create account" : "Sign in")}
+          </button>
+        </form>
+
+        <p className="text-center text-[12px] mt-5" style={{ color: "var(--text3)" }}>
+          {mode === "signup"
+            ? "Already have an account? "
+            : "New here? "}
+          <button
+            onClick={() => { setMode(mode === "signup" ? "signin" : "signup"); setError(""); }}
+            className="font-semibold"
+            style={{ color: "var(--accent)" }}
+          >
+            {mode === "signup" ? "Sign in" : "Create account"}
+          </button>
+        </p>
 
       </div>
     </div>
