@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Send, Loader2, ChevronLeft } from "lucide-react";
+import { Send, Loader2, ChevronLeft, RotateCcw } from "lucide-react";
 import { useHealthStore } from "@/store/useHealthStore";
 import { ChatMessage as ChatMessageType } from "@/lib/types";
 import ChatMessageComponent from "@/components/coach/ChatMessage";
@@ -15,10 +15,15 @@ const QUICK_QUESTIONS = [
 ];
 
 export default function CoachPage() {
-  const { messages, addMessage, labPanel, wearableData, actions, intakeProfile } = useHealthStore();
+  const { messages, addMessage, clearMessages, labPanel, wearableData, actions, intakeProfile } = useHealthStore();
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Reset conversation every time you leave this page
+  useEffect(() => {
+    return () => { clearMessages(); };
+  }, []);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
@@ -138,6 +143,18 @@ export default function CoachPage() {
             </span>
           </div>
         </div>
+
+        {/* Reset conversation */}
+        {messages.length > 0 && !isStreaming && (
+          <button
+            onClick={() => { clearMessages(); briefingFired.current = false; }}
+            className="w-8 h-8 flex items-center justify-center rounded-full flex-shrink-0"
+            style={{ background: "var(--bg)", border: "1px solid var(--border)" }}
+            title="New conversation"
+          >
+            <RotateCcw size={13} color="var(--text3)" />
+          </button>
+        )}
       </div>
 
       {/* Messages */}

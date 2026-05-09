@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import { ChatMessage as ChatMessageType } from "@/lib/types";
 import { formatTime } from "@/lib/utils";
 import { cn } from "@/lib/utils";
@@ -8,21 +9,33 @@ interface ChatMessageProps {
   message: ChatMessageType;
 }
 
-// Render basic markdown bold (**text**)
+// Render plain text — strip markdown headers, handle bold and newlines
+function renderLine(line: string, key: string) {
+  // Strip leading ## / ### markdown headers
+  const stripped = line.replace(/^#{1,4}\s+/, "");
+  // Split on **bold**
+  const parts = stripped.split(/(\*\*[^*]+\*\*)/g);
+  return (
+    <span key={key}>
+      {parts.map((part, i) =>
+        part.startsWith("**") && part.endsWith("**")
+          ? <strong key={i}>{part.slice(2, -2)}</strong>
+          : <span key={i}>{part}</span>
+      )}
+    </span>
+  );
+}
+
 function renderContent(content: string) {
-  const parts = content.split(/(\*\*[^*]+\*\*)/g);
-  return parts.map((part, i) => {
-    if (part.startsWith("**") && part.endsWith("**")) {
-      return <strong key={i}>{part.slice(2, -2)}</strong>;
-    }
-    // Handle newlines
-    return part.split("\n").map((line, j, arr) => (
-      <span key={`${i}-${j}`}>
-        {line}
-        {j < arr.length - 1 && <br />}
-      </span>
-    ));
+  const lines = content.split("\n");
+  const result: React.ReactNode[] = [];
+
+  lines.forEach((line, i) => {
+    if (i > 0) result.push(<br key={`br-${i}`} />);
+    result.push(renderLine(line, `line-${i}`));
   });
+
+  return result;
 }
 
 export default function ChatMessage({ message }: ChatMessageProps) {
