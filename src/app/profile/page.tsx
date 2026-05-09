@@ -56,7 +56,7 @@ function Row({ label, value, onPress, destructive }: {
 // ── Main ─────────────────────────────────────────────────────────────────────
 export default function ProfilePage() {
   const router = useRouter();
-  const { intakeProfile, setIntakeProfile, labPanel, actions, streak } = useHealthStore();
+  const { intakeProfile, setIntakeProfile, labPanel, actions, streak, signOut } = useHealthStore();
   const [editingGoals, setEditingGoals] = useState(false);
   const [selectedGoals, setSelectedGoals] = useState<string[]>(intakeProfile?.goals ?? []);
   const [confirmReset, setConfirmReset] = useState(false);
@@ -224,6 +224,14 @@ export default function ProfilePage() {
         <Section title="Account">
           <Row label="Privacy Policy" onPress={() => {}} />
           <Row label="Terms of Service" onPress={() => {}} />
+          <Row
+            label="Sign out"
+            onPress={async () => {
+              await signOut();
+              router.replace("/auth/login");
+            }}
+            destructive
+          />
           <Row
             label={confirmReset ? "Tap again to confirm reset" : "Reset account"}
             onPress={handleReset}

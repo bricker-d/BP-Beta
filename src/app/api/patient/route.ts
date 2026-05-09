@@ -1,30 +1,48 @@
-import { upsertPatient, getPatientByDeviceId, getLabPanels, getDailyLogs, getChatHistory } from "@/lib/supabase";
+import { NextRequest } from "next/server";
+import { createServerClient } from "@supabase/ssr";
+import { upsertPatient, upsertPatientByAuthId, getPatientByDeviceId, getLabPanels, getDailyLogs, getChatHistory } from "@/lib/supabase";
 
 // ── POST /api/patient — upsert patient, return full state ─────────────────────
-// Called by mobile on every app open. Creates patient if new, returns synced state.
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
     const { deviceId, profile } = await req.json();
 
-    if (!deviceId) {
-      return Response.json({ error: "deviceId required" }, { status: 400 });
-    }
+    // Try to identify via Supabase auth session first
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() { return req.cookies.getAll(); },
+          setAll() {},
+        },
+      }
+    );
+    const { data: { user } } = await supabase.auth.getUser();
 
-    // Upsert patient with latest profile data
-    const patient = await upsertPatient(deviceId, {
-      name:           profile?.name,
-      primary_focus:  profile?.primaryFocus,
-      goals:          profile?.goals,
-      age:            profile?.age,
-      biological_sex: profile?.biologicalSex,
-      height_ft:      profile?.heightFt,
-      height_in:      profile?.heightIn,
-      weight_lbs:     profile?.weightLbs,
-      symptoms:       profile?.symptoms,
-      habits:         profile?.habits,
+    const profileData = {
+      name:            profile?.name,
+      primary_focus:   profile?.primaryFocus,
+      goals:           profile?.goals,
+      age:             profile?.age,
+      biological_sex:  profile?.biologicalSex,
+      height_ft:       profile?.heightFt,
+      height_in:       profile?.heightIn,
+      weight_lbs:      profile?.weightLbs,
+      symptoms:        profile?.symptoms,
+      habits:          profile?.habits,
       wearable_source: profile?.wearableSource,
       lab_data_source: profile?.labDataSource,
-    });
+    };
+
+    // If authenticated, upsert by auth_user_id (cross-device identity)
+    const patient = user
+      ? await upsertPatientByAuthId(user.id, { device_id: deviceId, ...profileData })
+      : await upsertPatient(deviceId, profileData);
+
+    if (!deviceId && !user) {
+      return Response.json({ error: "deviceId or auth session required" }, { status: 400 });
+    }
 
     if (!patient) {
       return Response.json({ error: "Failed to upsert patient" }, { status: 500 });

@@ -1,4 +1,5 @@
 import React, { useState, useRef, useCallback, useMemo, useEffect } from 'react';
+import { useFocusEffect } from 'expo-router';
 import {
   View, Text, TextInput, TouchableOpacity,
   FlatList, StyleSheet, KeyboardAvoidingView,
@@ -223,6 +224,16 @@ export default function CoachScreen() {
   const listRef = useRef<FlatList>(null);
   const streamingIdRef = useRef<string | null>(null);
   const briefingFiredRef = useRef(false);
+
+  // Reset conversation every time you navigate away from this tab
+  useFocusEffect(
+    useCallback(() => {
+      return () => {
+        clearMessages();
+        briefingFiredRef.current = false;
+      };
+    }, [clearMessages])
+  );
 
   // Auto-briefing: fire a health snapshot on first open when labs are loaded
   useEffect(() => {

@@ -154,7 +154,13 @@ function CompletionRings({ done, total }: { done: number; total: number }) {
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { intakeProfile, labPanel, actions, isGeneratingActions, tutorialDismissed, dismissTutorial } = useHealthStore();
+  const { intakeProfile, labPanel, actions, isGeneratingActions, tutorialDismissed, dismissTutorial, loadFromSupabase } = useHealthStore();
+
+  // On mount: hydrate store from Supabase for returning users
+  useEffect(() => {
+    loadFromSupabase();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (!intakeProfile?.name) {

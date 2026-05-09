@@ -3,6 +3,7 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 // ── Types ─────────────────────────────────────────────────────────────────────
 export interface DbPatient {
   id: string;
+  auth_user_id: string | null;
   device_id: string | null;
   name: string | null;
   primary_focus: string | null;
@@ -68,6 +69,20 @@ export function getSupabase(): SupabaseClient {
 }
 
 // ── Patient operations ────────────────────────────────────────────────────────
+
+export async function upsertPatientByAuthId(
+  authUserId: string,
+  profile: Partial<Omit<DbPatient, 'id' | 'created_at' | 'updated_at'>>
+): Promise<DbPatient | null> {
+  const { data, error } = await getSupabase()
+    .from('patients')
+    .upsert({ auth_user_id: authUserId, ...profile }, { onConflict: 'auth_user_id' })
+    .select()
+    .single();
+
+  if (error) { console.error('[supabase] upsertPatientByAuthId:', error.message); return null; }
+  return data;
+}
 
 export async function upsertPatient(
   deviceId: string,

@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { LabPanel, WearableData, HealthAction, ChatMessage, UserProfile } from "@/lib/types";
+import { createClient } from "@/lib/supabase-browser";
 
 interface IntakeProfile {
   // Core
@@ -61,6 +62,8 @@ interface HealthStore {
 
   patientId: string | null;
   syncPatient: () => Promise<void>;
+  loadFromSupabase: () => Promise<void>;
+  signOut: () => Promise<void>;
 
   wearableData: WearableData | null;
   setWearableData: (data: WearableData) => void;
@@ -118,6 +121,86 @@ export const useHealthStore = create<HealthStore>()(
           const data = await res.json();
           if (data.patientId && data.patientId !== patientId) set({ patientId: data.patientId });
         } catch { /* fail silently — app works offline */ }
+      },
+
+      loadFromSupabase: async () => {
+        try {
+          const supabase = createClient();
+          const { data: { user } } = await supabase.auth.getUser();
+          if (!user) return;
+
+          // Load patient profile
+          const { data: patient } = await supabase
+            .from("patients")
+            .select("*")
+            .eq("auth_user_id", user.id)
+            .single();
+
+          if (!patient) return;
+
+          // Hydrate intake profile if we don't have one locally
+          const state = get();
+          if (!state.intakeProfile?.name && patient.name) {
+            set({
+              patientId: patient.id,
+              intakeProfile: {
+                name: patient.name ?? undefined,
+                goals: patient.goals ?? undefined,
+                age: patient.age ?? undefined,
+                biologicalSex: patient.biological_sex ?? undefined,
+                heightFt: patient.height_ft ?? undefined,
+                heightIn: patient.height_in ?? undefined,
+                weightLbs: patient.weight_lbs ?? undefined,
+                symptoms: patient.symptoms ?? undefined,
+                wearableSource: patient.wearable_source ?? undefined,
+              },
+            });
+          } else if (patient.id) {
+            set({ patientId: patient.id });
+          }
+
+          // Load latest lab panel
+          if (!state.labPanel) {
+            const { data: panels } = await supabase
+              .from("lab_panels")
+              .select("*")
+              .eq("patient_id", patient.id)
+              .order("panel_date", { ascending: false })
+              .limit(1);
+
+            if (panels && panels[0]) {
+              const panel = panels[0];
+              set({
+                labPanel: {
+                  id: panel.id,
+                  source: panel.source ?? "uploaded",
+                  date: panel.panel_date,
+                  biomarkers: panel.biomarkers as LabPanel["biomarkers"],
+                },
+              });
+            }
+          }
+        } catch { /* fail silently */ }
+      },
+
+      signOut: async () => {
+        const supabase = createClient();
+        await supabase.auth.signOut();
+        // Clear all patient data from store
+        set({
+          intakeProfile: null,
+          labPanel: null,
+          previousLabPanel: null,
+          labHistory: [],
+          actions: [],
+          messages: [],
+          patientId: null,
+          streak: 0,
+          lastCompletedDate: null,
+          completionHistory: [],
+          allOptimal: false,
+          tutorialDismissed: false,
+        });
       },
 
       setLabPanel: async (panel) => {
