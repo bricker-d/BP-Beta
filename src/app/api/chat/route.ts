@@ -37,6 +37,10 @@ interface IntakeProfile {
   dietStyle?: string;
   stressLevel?: number;
   alcoholFrequency?: string;
+  caffeineIntake?: string;
+  smokingStatus?: string;
+  occupation?: string;
+  sleepQuality?: number;
   currentSupplements?: string[];
   symptoms?: string[];
   symptomsOther?: string;
@@ -103,11 +107,14 @@ Your role: translate lab results and lifestyle data into specific, actionable gu
     const allergies  = intakeProfile.allergies?.join(", ") || "none reported";
 
     const habitLines = [
-      intakeProfile.sleepHours        ? `Sleep: ${intakeProfile.sleepHours} hrs/night` : null,
+      intakeProfile.sleepHours        ? `Sleep: ${intakeProfile.sleepHours} hrs/night${intakeProfile.sleepQuality ? ` (quality ${intakeProfile.sleepQuality}/5)` : ""}` : null,
       intakeProfile.exerciseDaysPerWeek ? `Exercise: ${intakeProfile.exerciseDaysPerWeek} days/week${intakeProfile.exerciseType ? ` (${intakeProfile.exerciseType})` : ""}` : null,
+      intakeProfile.occupation        ? `Occupation: ${intakeProfile.occupation}` : null,
       intakeProfile.dietStyle         ? `Diet: ${intakeProfile.dietStyle}` : null,
       intakeProfile.stressLevel       ? `Stress: ${intakeProfile.stressLevel}/5` : null,
       intakeProfile.alcoholFrequency  ? `Alcohol: ${intakeProfile.alcoholFrequency}` : null,
+      intakeProfile.caffeineIntake    ? `Caffeine: ${intakeProfile.caffeineIntake}` : null,
+      intakeProfile.smokingStatus && intakeProfile.smokingStatus !== "never" ? `Smoking: ${intakeProfile.smokingStatus}` : null,
     ].filter(Boolean).join(" | ");
 
     prompt += `

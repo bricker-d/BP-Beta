@@ -23,11 +23,15 @@ interface IntakeProfile {
   allergies?: string[];
   // Habits baseline
   sleepHours?: number;
+  sleepQuality?: number;
   exerciseDaysPerWeek?: string;
   exerciseType?: string;
   dietStyle?: string;
   stressLevel?: number;
   alcoholFrequency?: string;
+  caffeineIntake?: string;
+  smokingStatus?: string;
+  occupation?: string;
   currentSupplements?: string[];
   // Symptoms
   symptoms?: string[];
@@ -219,11 +223,15 @@ export const useHealthStore = create<HealthStore>()(
               patientName: state.intakeProfile?.name || state.user.name,
               habits: {
                 sleepHours:          state.intakeProfile?.sleepHours,
+                sleepQuality:        state.intakeProfile?.sleepQuality,
                 exerciseDaysPerWeek: state.intakeProfile?.exerciseDaysPerWeek,
                 exerciseType:        state.intakeProfile?.exerciseType,
                 dietStyle:           state.intakeProfile?.dietStyle,
                 stressLevel:         state.intakeProfile?.stressLevel,
                 alcoholFrequency:    state.intakeProfile?.alcoholFrequency,
+                caffeineIntake:      state.intakeProfile?.caffeineIntake,
+                smokingStatus:       state.intakeProfile?.smokingStatus,
+                occupation:          state.intakeProfile?.occupation,
               },
               medications: state.intakeProfile?.medications,
               currentSupplements: state.intakeProfile?.currentSupplements,

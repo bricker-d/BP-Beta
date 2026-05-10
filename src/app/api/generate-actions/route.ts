@@ -174,11 +174,14 @@ export async function POST(req: Request) {
       : "";
 
     const habitContext = habits ? [
-      habits.sleepHours         ? `Sleep: ${habits.sleepHours} hrs/night` : null,
+      habits.sleepHours         ? `Sleep: ${habits.sleepHours} hrs/night${habits.sleepQuality ? ` (quality ${habits.sleepQuality}/5)` : ""}` : null,
       habits.exerciseDaysPerWeek ? `Exercise: ${habits.exerciseDaysPerWeek} days/week${habits.exerciseType ? ` (${habits.exerciseType})` : ""}` : null,
+      habits.occupation         ? `Occupation: ${habits.occupation}` : null,
       habits.dietStyle          ? `Diet: ${habits.dietStyle}` : null,
       habits.stressLevel        ? `Stress: ${habits.stressLevel}/5` : null,
       habits.alcoholFrequency   ? `Alcohol: ${habits.alcoholFrequency}` : null,
+      habits.caffeineIntake     ? `Caffeine: ${habits.caffeineIntake}` : null,
+      habits.smokingStatus && habits.smokingStatus !== "never" ? `Smoking: ${habits.smokingStatus}` : null,
     ].filter(Boolean).join(" | ") : "";
     const supplementContext = currentSupplements?.length ? `Already taking: ${currentSupplements.join(", ")}` : "";
     const symptomContext = symptoms?.length ? `Reported symptoms: ${symptoms.join(", ")}` : "";
