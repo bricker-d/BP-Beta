@@ -255,18 +255,25 @@ export default function OnboardingPage() {
     setAuthError("");
     try {
       const supabase = createClient();
-      const { error } = await supabase.auth.signUp({ email: email.trim(), password });
-      if (error) {
-        // Already registered — try sign in instead
-        if (error.message.toLowerCase().includes("already")) {
-          const { error: signInErr } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
-          if (signInErr) { setAuthError("Wrong password for this email."); setAuthLoading(false); return; }
-        } else {
-          setAuthError(error.message);
-          setAuthLoading(false);
-          return;
+
+      // Check if already authenticated (e.g. returning user routed here after login)
+      const { data: { user: existingUser } } = await supabase.auth.getUser();
+
+      if (!existingUser) {
+        const { error } = await supabase.auth.signUp({ email: email.trim(), password });
+        if (error) {
+          // Already registered — try sign in instead
+          if (error.message.toLowerCase().includes("already") || error.message.toLowerCase().includes("registered")) {
+            const { error: signInErr } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+            if (signInErr) { setAuthError("Wrong password for this email."); setAuthLoading(false); return; }
+          } else {
+            setAuthError(error.message);
+            setAuthLoading(false);
+            return;
+          }
         }
       }
+
       // Save profile locally then sync to Supabase (syncPatient detects auth session)
       saveProfileLocally({ intakeSummary: summaryText });
       await syncPatient();

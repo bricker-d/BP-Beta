@@ -133,12 +133,31 @@ export const useHealthStore = create<HealthStore>()(
           const { data: { user } } = await supabase.auth.getUser();
           if (!user) return;
 
-          // Load patient profile linked to this auth user
-          const { data: patient } = await supabase
+          // 1. Try by auth_user_id first
+          let { data: patient } = await supabase
             .from("patients")
             .select("*")
             .eq("auth_user_id", user.id)
             .single();
+
+          // 2. Fallback: find by device_id and link auth_user_id
+          if (!patient) {
+            const { deviceId } = get();
+            if (deviceId) {
+              const { data: byDevice } = await supabase
+                .from("patients")
+                .select("*")
+                .eq("device_id", deviceId)
+                .maybeSingle();
+              if (byDevice) {
+                await supabase
+                  .from("patients")
+                  .update({ auth_user_id: user.id })
+                  .eq("id", byDevice.id);
+                patient = { ...byDevice, auth_user_id: user.id };
+              }
+            }
+          }
 
           if (!patient) return;
 

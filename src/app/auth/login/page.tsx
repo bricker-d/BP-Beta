@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase-browser";
 import { useHealthStore } from "@/store/useHealthStore";
 
@@ -9,7 +10,6 @@ export default function LoginPage() {
   const router = useRouter();
   const { loadFromSupabase } = useHealthStore();
 
-  const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -23,58 +23,30 @@ export default function LoginPage() {
 
     try {
       const supabase = createClient();
+      const { error: signInErr } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      });
 
-      if (mode === "signup") {
-        // Sign up — disable email confirmation requirement via options
-        const { data, error: signUpErr } = await supabase.auth.signUp({
-          email: email.trim(),
-          password,
-          options: { emailRedirectTo: undefined },
-        });
-        if (signUpErr) { setError(signUpErr.message); setLoading(false); return; }
-
-        // If session is immediately available (email confirm disabled), we're in
-        // If not, sign in manually
-        if (!data.session) {
-          const { error: signInErr } = await supabase.auth.signInWithPassword({
-            email: email.trim(),
-            password,
-          });
-          if (signInErr) {
-            // Email confirmation required — tell the user clearly
-            if (signInErr.message.toLowerCase().includes("confirm") ||
-                signInErr.message.toLowerCase().includes("not confirmed")) {
-              setError("Account created — check your email to confirm it, then sign in.");
-            } else {
-              setError(signInErr.message);
-            }
-            setLoading(false);
-            return;
-          }
-        }
-      } else {
-        const { error: signInErr } = await supabase.auth.signInWithPassword({
-          email: email.trim(),
-          password,
-        });
-        if (signInErr) {
-          setError(
-            signInErr.message === "Invalid login credentials"
-              ? "Wrong email or password. Try again."
-              : signInErr.message
-          );
-          setLoading(false);
-          return;
-        }
+      if (signInErr) {
+        setError(
+          signInErr.message === "Invalid login credentials"
+            ? "Wrong email or password. Try again."
+            : signInErr.message
+        );
+        setLoading(false);
+        return;
       }
 
-      // Auth succeeded — hydrate store from Supabase then navigate
+      // Auth succeeded — load profile from Supabase
       await loadFromSupabase();
-      const next = new URLSearchParams(window.location.search).get("next") ?? "/";
-      router.replace(next);
+
+      // If profile was loaded, go to dashboard. Otherwise go to onboarding to collect it.
+      const profile = useHealthStore.getState().intakeProfile;
+      const next = new URLSearchParams(window.location.search).get("next");
+      router.replace(next ?? (profile?.name ? "/" : "/onboarding"));
 
     } catch (err) {
-      // Network-level failures (Supabase unreachable, etc.)
       const msg = err instanceof Error ? err.message : String(err);
       setError(
         msg.toLowerCase().includes("fetch")
@@ -101,7 +73,6 @@ export default function LoginPage() {
       style={{ background: "var(--bg)" }}>
       <div className="w-full max-w-sm">
 
-        {/* Logo */}
         <div className="flex flex-col items-center mb-10">
           <div className="w-12 h-12 rounded-2xl flex items-center justify-center mb-4"
             style={{ background: "var(--accent-lo)", border: "1px solid var(--accent-mid)" }}>
@@ -114,26 +85,8 @@ export default function LoginPage() {
             BioPrecision
           </h1>
           <p className="text-[13px] mt-1" style={{ color: "var(--text2)" }}>
-            Your personal health intelligence
+            Welcome back
           </p>
-        </div>
-
-        {/* Mode toggle */}
-        <div className="flex rounded-xl p-1 mb-5"
-          style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
-          {(["signin", "signup"] as const).map(m => (
-            <button
-              key={m}
-              onClick={() => { setMode(m); setError(""); }}
-              className="flex-1 py-2 rounded-lg text-[13px] font-semibold transition-all"
-              style={{
-                background: mode === m ? "var(--accent)" : "transparent",
-                color: mode === m ? "#fff" : "var(--text2)",
-              }}
-            >
-              {m === "signin" ? "Sign in" : "Create account"}
-            </button>
-          ))}
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-3">
@@ -150,7 +103,7 @@ export default function LoginPage() {
             type="password"
             value={password}
             onChange={e => setPassword(e.target.value)}
-            placeholder={mode === "signup" ? "Create a password (6+ chars)" : "Password"}
+            placeholder="Password"
             required
             minLength={6}
             style={inputStyle}
@@ -169,21 +122,15 @@ export default function LoginPage() {
             className="btn-primary disabled:opacity-40"
             style={{ marginTop: 8 }}
           >
-            {loading
-              ? (mode === "signup" ? "Creating account..." : "Signing in...")
-              : (mode === "signup" ? "Create account" : "Sign in")}
+            {loading ? "Signing in..." : "Sign in"}
           </button>
         </form>
 
         <p className="text-center text-[12px] mt-5" style={{ color: "var(--text3)" }}>
-          {mode === "signup" ? "Already have an account? " : "New here? "}
-          <button
-            onClick={() => { setMode(mode === "signup" ? "signin" : "signup"); setError(""); }}
-            className="font-semibold"
-            style={{ color: "var(--accent)" }}
-          >
-            {mode === "signup" ? "Sign in" : "Create account"}
-          </button>
+          New here?{" "}
+          <Link href="/onboarding" className="font-semibold" style={{ color: "var(--accent)" }}>
+            Create your profile
+          </Link>
         </p>
 
       </div>
