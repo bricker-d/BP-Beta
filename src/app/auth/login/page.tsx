@@ -21,24 +21,68 @@ export default function LoginPage() {
     setLoading(true);
     setError("");
 
-    const supabase = createClient();
+    try {
+      const supabase = createClient();
 
-    if (mode === "signup") {
-      const { error: err } = await supabase.auth.signUp({ email: email.trim(), password });
-      if (err) { setError(err.message); setLoading(false); return; }
-      // After sign-up, sign them in immediately
-      const { error: signInErr } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
-      if (signInErr) { setError(signInErr.message); setLoading(false); return; }
-    } else {
-      const { error: err } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
-      if (err) { setError(err.message); setLoading(false); return; }
+      if (mode === "signup") {
+        // Sign up — disable email confirmation requirement via options
+        const { data, error: signUpErr } = await supabase.auth.signUp({
+          email: email.trim(),
+          password,
+          options: { emailRedirectTo: undefined },
+        });
+        if (signUpErr) { setError(signUpErr.message); setLoading(false); return; }
+
+        // If session is immediately available (email confirm disabled), we're in
+        // If not, sign in manually
+        if (!data.session) {
+          const { error: signInErr } = await supabase.auth.signInWithPassword({
+            email: email.trim(),
+            password,
+          });
+          if (signInErr) {
+            // Email confirmation required — tell the user clearly
+            if (signInErr.message.toLowerCase().includes("confirm") ||
+                signInErr.message.toLowerCase().includes("not confirmed")) {
+              setError("Account created — check your email to confirm it, then sign in.");
+            } else {
+              setError(signInErr.message);
+            }
+            setLoading(false);
+            return;
+          }
+        }
+      } else {
+        const { error: signInErr } = await supabase.auth.signInWithPassword({
+          email: email.trim(),
+          password,
+        });
+        if (signInErr) {
+          setError(
+            signInErr.message === "Invalid login credentials"
+              ? "Wrong email or password. Try again."
+              : signInErr.message
+          );
+          setLoading(false);
+          return;
+        }
+      }
+
+      // Auth succeeded — hydrate store from Supabase then navigate
+      await loadFromSupabase();
+      const next = new URLSearchParams(window.location.search).get("next") ?? "/";
+      router.replace(next);
+
+    } catch (err) {
+      // Network-level failures (Supabase unreachable, etc.)
+      const msg = err instanceof Error ? err.message : String(err);
+      setError(
+        msg.toLowerCase().includes("fetch")
+          ? "Cannot reach the server. Check your connection and try again."
+          : msg
+      );
+      setLoading(false);
     }
-
-    // Fetch their data from Supabase and hydrate the store
-    await loadFromSupabase();
-
-    const next = new URLSearchParams(window.location.search).get("next") ?? "/";
-    router.replace(next);
   }
 
   const inputStyle = {
@@ -75,7 +119,8 @@ export default function LoginPage() {
         </div>
 
         {/* Mode toggle */}
-        <div className="flex rounded-xl p-1 mb-5" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+        <div className="flex rounded-xl p-1 mb-5"
+          style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
           {(["signin", "signup"] as const).map(m => (
             <button
               key={m}
@@ -105,19 +150,22 @@ export default function LoginPage() {
             type="password"
             value={password}
             onChange={e => setPassword(e.target.value)}
-            placeholder={mode === "signup" ? "Create a password" : "Password"}
+            placeholder={mode === "signup" ? "Create a password (6+ chars)" : "Password"}
             required
             minLength={6}
             style={inputStyle}
           />
 
           {error && (
-            <p className="text-[12px] px-1" style={{ color: "var(--red)" }}>{error}</p>
+            <div className="rounded-xl px-3 py-2.5"
+              style={{ background: "rgba(255,59,48,0.08)", border: "1px solid rgba(255,59,48,0.2)" }}>
+              <p className="text-[12px] leading-relaxed" style={{ color: "var(--red)" }}>{error}</p>
+            </div>
           )}
 
           <button
             type="submit"
-            disabled={!email.trim() || !password || loading}
+            disabled={!email.trim() || password.length < 6 || loading}
             className="btn-primary disabled:opacity-40"
             style={{ marginTop: 8 }}
           >
@@ -128,9 +176,7 @@ export default function LoginPage() {
         </form>
 
         <p className="text-center text-[12px] mt-5" style={{ color: "var(--text3)" }}>
-          {mode === "signup"
-            ? "Already have an account? "
-            : "New here? "}
+          {mode === "signup" ? "Already have an account? " : "New here? "}
           <button
             onClick={() => { setMode(mode === "signup" ? "signin" : "signup"); setError(""); }}
             className="font-semibold"
