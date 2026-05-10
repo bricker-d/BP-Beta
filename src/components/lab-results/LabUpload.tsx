@@ -69,7 +69,7 @@ function BiomarkerRow({ b, onChange }: {
       <div className="flex-1 min-w-0">
         <p className="text-[13px] font-medium truncate" style={{ color: "var(--text1)" }}>{b.name}</p>
         <p className="text-[11px]" style={{ color: "var(--text3)" }}>
-          Optimal: {b.optimalMin}–{b.optimalMax} {b.unit}
+          Functional optimal: {b.optimalMin}–{b.optimalMax} {b.unit}
         </p>
       </div>
 
@@ -254,9 +254,12 @@ export default function LabUpload() {
           </div>
         )}
       </div>
-      <div className="flex gap-4 text-[11px]" style={{ color: "var(--text3)" }}>
-        <div className="flex items-center gap-1"><FileText size={11} /><span>PDF reports</span></div>
-        <div className="flex items-center gap-1"><FileSpreadsheet size={11} /><span>Excel / CSV</span></div>
+      <div className="flex items-center justify-between">
+        <div className="flex gap-4 text-[11px]" style={{ color: "var(--text3)" }}>
+          <div className="flex items-center gap-1"><FileText size={11} /><span>PDF reports</span></div>
+          <div className="flex items-center gap-1"><FileSpreadsheet size={11} /><span>Excel / CSV</span></div>
+        </div>
+        <p className="text-[11px]" style={{ color: "var(--text3)" }}>🔒 Encrypted · never sold</p>
       </div>
 
       <div className="flex items-center gap-3">
@@ -323,6 +326,13 @@ export default function LabUpload() {
             <X size={16} color="var(--text3)" />
           </button>
         </div>
+      </div>
+
+      {/* Functional medicine range notice */}
+      <div className="rounded-xl px-3 py-2.5" style={{ background: "rgba(37,99,235,0.06)", border: "1px solid rgba(37,99,235,0.15)" }}>
+        <p className="text-[11px] leading-relaxed" style={{ color: "var(--accent)" }}>
+          Ranges shown are <strong>functional medicine optimal ranges</strong> — stricter than conventional lab reference ranges. A marker may read "normal" on your report but "borderline" here. That&apos;s intentional.
+        </p>
       </div>
 
       {/* Instruction */}

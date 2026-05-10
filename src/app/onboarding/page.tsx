@@ -110,8 +110,8 @@ const EVENING_TIMES  = ["6:00 pm", "7:00 pm", "8:00 pm", "9:00 pm"];
 
 // ─── Steps ────────────────────────────────────────────────────────────────────
 
-type Step = "welcome" | "pain" | "goal" | "basics" | "medical" | "habits" | "symptoms" | "accountability" | "labs" | "summary" | "account";
-const STEPS: Step[] = ["welcome", "pain", "goal", "basics", "medical", "habits", "symptoms", "accountability", "labs", "summary", "account"];
+type Step = "welcome" | "pain" | "goal" | "labs" | "basics" | "medical" | "habits" | "symptoms" | "accountability" | "summary" | "account";
+const STEPS: Step[] = ["welcome", "pain", "goal", "labs", "basics", "medical", "habits", "symptoms", "accountability", "summary", "account"];
 const DATA_STEPS = STEPS.slice(1, -2); // excludes welcome, summary, account from progress
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -416,7 +416,7 @@ export default function OnboardingPage() {
         {/* ── BASICS ───────────────────────────────────────────────────── */}
         {step === "basics" && (
           <div className="flex-1 flex flex-col gap-6 step-enter">
-            <StepHeader n={3} total={totalDataSteps} title="About you" sub="Personalizes your reference ranges and protocol." />
+            <StepHeader n={4} total={totalDataSteps} title="About you" sub="Personalizes your reference ranges and protocol." />
             <div className="flex-1 space-y-5 overflow-y-auto">
               <Field label="First name">
                 <input type="text" value={name} onChange={e => setName(e.target.value)}
@@ -465,7 +465,7 @@ export default function OnboardingPage() {
         {/* ── MEDICAL ──────────────────────────────────────────────────── */}
         {step === "medical" && (
           <div className="flex-1 flex flex-col gap-5 step-enter">
-            <StepHeader n={4} total={totalDataSteps} title="Medical context" sub="Helps us recommend safely — conditions and medications prevent inappropriate suggestions." />
+            <StepHeader n={5} total={totalDataSteps} title="Medical context" sub="Helps us recommend safely — conditions and medications prevent inappropriate suggestions." />
             <div className="flex-1 space-y-5 overflow-y-auto">
               <ChipGroup label="Active medical conditions" items={ACTIVE_CONDITIONS}
                 selected={activeConditions} onToggle={c => {
@@ -492,7 +492,7 @@ export default function OnboardingPage() {
         {/* ── HABITS ───────────────────────────────────────────────────── */}
         {step === "habits" && (
           <div className="flex-1 flex flex-col gap-5 step-enter">
-            <StepHeader n={5} total={totalDataSteps} title="Your daily habits" sub="Your baseline — the protocol builds on top of this." />
+            <StepHeader n={6} total={totalDataSteps} title="Your daily habits" sub="Your baseline — the protocol builds on top of this." />
             <div className="flex-1 space-y-5 overflow-y-auto">
 
               <HabitSection label="Hours of sleep per night">
@@ -605,7 +605,7 @@ export default function OnboardingPage() {
         {/* ── SYMPTOMS ─────────────────────────────────────────────────── */}
         {step === "symptoms" && (
           <div className="flex-1 flex flex-col gap-5 step-enter">
-            <StepHeader n={6} total={totalDataSteps} title="What are you dealing with?" sub="Be thorough — the more you select, the more targeted your protocol." />
+            <StepHeader n={7} total={totalDataSteps} title="What are you dealing with?" sub="Be thorough — the more you select, the more targeted your protocol." />
             <div className="flex-1 space-y-5 overflow-y-auto">
               {SYMPTOM_GROUPS.map(group => (
                 <div key={group.group}>
@@ -634,7 +634,7 @@ export default function OnboardingPage() {
         {/* ── ACCOUNTABILITY ───────────────────────────────────────────── */}
         {step === "accountability" && (
           <div className="flex-1 flex flex-col gap-5 step-enter">
-            <StepHeader n={7} total={totalDataSteps} title="Check-in preferences" sub="When should we prompt you each day?" />
+            <StepHeader n={8} total={totalDataSteps} title="Check-in preferences" sub="When should we prompt you each day?" />
             <div className="space-y-6">
               <div>
                 <p className="text-[13px] font-semibold mb-2.5" style={{ color: "var(--text2)" }}>Coaching style</p>
@@ -680,7 +680,7 @@ export default function OnboardingPage() {
         {/* ── LABS ─────────────────────────────────────────────────────── */}
         {step === "labs" && !showLabUpload && (
           <div className="flex-1 flex flex-col gap-6 step-enter">
-            <StepHeader n={8} total={totalDataSteps} title="Connect your lab results" sub="Upload a PDF from Quest, LabCorp, or your doctor." />
+            <StepHeader n={3} total={totalDataSteps} title="Connect your lab results" sub="Upload a PDF from Quest, LabCorp, or your doctor — or try sample data." />
             <div className="flex-1 flex flex-col gap-3">
               <div className="card px-4 py-4 space-y-3">
                 <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: "var(--text3)" }}>Why it matters</p>

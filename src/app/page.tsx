@@ -259,34 +259,29 @@ export default function DashboardPage() {
 
         {/* No labs CTA */}
         {!labPanel && !isGeneratingActions && (
-          <div className="space-y-2">
-            <Link href="/lab-results">
-              <div
-                className="rounded-2xl px-4 py-5 flex items-center gap-4"
-                style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
-              >
-                <div
-                  className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0"
-                  style={{ background: "var(--accent-lo)" }}
-                >
-                  <FlaskConical size={22} color="var(--accent)" />
+          <div className="rounded-2xl overflow-hidden" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+            <div className="px-5 pt-5 pb-4">
+              <p className="text-[11px] font-semibold uppercase tracking-widest mb-2" style={{ color: "var(--accent)" }}>Step 1</p>
+              <p className="text-[17px] font-bold" style={{ color: "var(--text1)", letterSpacing: "-0.02em" }}>
+                Connect your labs to get your protocol
+              </p>
+              <p className="text-[13px] mt-1.5" style={{ color: "var(--text2)", lineHeight: 1.6 }}>
+                BioPrecision parses every biomarker and generates 3–4 daily actions tied to your specific out-of-range values.
+              </p>
+            </div>
+            <div className="px-4 pb-4 space-y-2">
+              <Link href="/lab-results?upload=1">
+                <div className="btn-primary flex items-center gap-2">
+                  <FlaskConical size={15} /> Upload labs (PDF, Quest, LabCorp)
                 </div>
-                <div className="flex-1">
-                  <p className="text-[14px] font-semibold" style={{ color: "var(--text1)" }}>Upload your labs</p>
-                  <p className="text-[12px] mt-0.5" style={{ color: "var(--text2)" }}>
-                    PDF from Quest, LabCorp, or your doctor
-                  </p>
+              </Link>
+              <Link href="/lab-results">
+                <div className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-[13px] font-semibold"
+                  style={{ background: "var(--surface2)", border: "1px solid var(--border)", color: "var(--text2)" }}>
+                  See a demo with 14 sample biomarkers
                 </div>
-                <ChevronRight size={16} color="var(--text3)" />
-              </div>
-            </Link>
-            <Link href="/lab-results">
-              <div className="text-center py-2">
-                <span className="text-[12px] font-semibold" style={{ color: "var(--accent)" }}>
-                  No labs yet? Try with sample data →
-                </span>
-              </div>
-            </Link>
+              </Link>
+            </div>
           </div>
         )}
 

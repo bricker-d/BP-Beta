@@ -161,6 +161,11 @@ export default function ActionCard({ action, onToggle }: Props) {
               </div>
             </div>
           )}
+
+          {/* Liability note */}
+          <p className="text-[10px]" style={{ color: "var(--text3)" }}>
+            AI-generated suggestion based on your lab values. Verify with your provider before changing medications or supplements.
+          </p>
         </div>
       )}
     </div>

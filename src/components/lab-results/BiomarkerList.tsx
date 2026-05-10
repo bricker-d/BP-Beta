@@ -77,7 +77,7 @@ function BiomarkerCard({ b, onSelect }: { b: Biomarker; onSelect: () => void }) 
       </div>
       <RangeBar value={b.value} min={b.optimalMin} max={b.optimalMax} color={cfg.color} />
       <div className="flex justify-between text-[11px]" style={{ color: "var(--text3)" }}>
-        <span>Optimal: {b.optimalMin}–{b.optimalMax} {b.unit}</span>
+        <span>Functional optimal: {b.optimalMin}–{b.optimalMax} {b.unit}</span>
         {b.status !== "optimal" && (
           <span style={{ color: "var(--accent)" }}>See protocol</span>
         )}
@@ -110,6 +110,12 @@ export default function BiomarkerList({ biomarkers }: BiomarkerListProps) {
       )}
 
       <div className="space-y-6">
+        {/* Functional medicine range explanation */}
+        <div className="rounded-xl px-3 py-2.5" style={{ background: "rgba(37,99,235,0.06)", border: "1px solid rgba(37,99,235,0.15)" }}>
+          <p className="text-[11px] leading-relaxed" style={{ color: "var(--accent)" }}>
+            Ranges use <strong>functional medicine optimal thresholds</strong> — stricter than standard lab reference ranges. A marker flagged here may read "normal" on your lab report.
+          </p>
+        </div>
 
         {/* ── Priority: out-of-range ─────────────────────────────────── */}
         {outOfRange.length > 0 && (
