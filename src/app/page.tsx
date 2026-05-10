@@ -156,7 +156,7 @@ export default function DashboardPage() {
   const router = useRouter();
   const { intakeProfile, labPanel, actions, isGeneratingActions, tutorialDismissed, dismissTutorial, loadFromSupabase } = useHealthStore();
 
-  // On mount: hydrate store from Supabase for returning users
+  // On mount: hydrate store from Supabase, then gate on auth+profile
   useEffect(() => {
     loadFromSupabase();
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -164,7 +164,16 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!intakeProfile?.name) {
-      router.replace("/onboarding");
+      // Check if there's a Supabase session before deciding where to send them
+      import("@/lib/supabase-browser").then(({ createClient }) => {
+        createClient().auth.getUser().then(({ data: { user } }) => {
+          if (!user) {
+            router.replace("/auth/login");
+          } else {
+            router.replace("/onboarding");
+          }
+        });
+      });
     }
   }, [intakeProfile, router]);
 
