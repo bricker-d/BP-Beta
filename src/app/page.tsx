@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useHealthStore } from "@/store/useHealthStore";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -10,6 +10,12 @@ import {
 } from "lucide-react";
 import { Biomarker } from "@/lib/types";
 import NotificationBanner from "@/components/notifications/NotificationBanner";
+import BiometricLock from "@/components/BiometricLock";
+import {
+  isBiometricEnrolled,
+  isBiometricSessionActive,
+  setBiometricSessionActive,
+} from "@/lib/webauthn";
 
 // ── Category definitions ──────────────────────────────────────────────────────
 
@@ -154,36 +160,31 @@ function CompletionRings({ done, total }: { done: number; total: number }) {
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { intakeProfile, labPanel, actions, isGeneratingActions, tutorialDismissed, dismissTutorial, loadFromSupabase } = useHealthStore();
+  const { intakeProfile, labPanel, actions, isGeneratingActions, tutorialDismissed, dismissTutorial } = useHealthStore();
+  const [locked, setLocked] = useState(false);
 
-  // Only load from Supabase if there's no local profile already.
-  // Calling it unconditionally overwrites the full intake with only the
-  // subset of fields stored in DB, wiping medications, habits, etc.
-  // Returning users on a fresh device hit login first, which calls
-  // loadFromSupabase there — so the dashboard never needs to re-run it.
   useEffect(() => {
     if (!intakeProfile?.name) {
-      loadFromSupabase();
+      router.replace("/onboarding");
+      return;
+    }
+    // Show biometric lock if enrolled and not yet verified this session
+    if (isBiometricEnrolled() && !isBiometricSessionActive()) {
+      setLocked(true);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  useEffect(() => {
-    if (!intakeProfile?.name) {
-      // Check if there's a Supabase session before deciding where to send them
-      import("@/lib/supabase-browser").then(({ createClient }) => {
-        createClient().auth.getUser().then(({ data: { user } }) => {
-          if (!user) {
-            router.replace("/auth/login");
-          } else {
-            router.replace("/onboarding");
-          }
-        });
-      });
-    }
-  }, [intakeProfile, router]);
-
   if (!intakeProfile?.name) return null;
+
+  if (locked) {
+    return (
+      <BiometricLock onUnlock={() => {
+        setBiometricSessionActive();
+        setLocked(false);
+      }} />
+    );
+  }
 
   const name = intakeProfile.name;
   const done = actions.filter(a => a.completed).length;

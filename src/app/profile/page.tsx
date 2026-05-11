@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useHealthStore } from "@/store/useHealthStore";
 import Header from "@/components/layout/Header";
-import { Edit3, ChevronRight, Bell, BellOff, Check } from "lucide-react";
+import { Edit3, ChevronRight, Bell, BellOff, Check, Fingerprint, ShieldCheck, ShieldOff } from "lucide-react";
 import {
   isNotificationsSupported,
   isNotificationsGranted,
@@ -12,6 +12,12 @@ import {
   registerServiceWorker,
   scheduleDailyNotifications,
 } from "@/lib/notifications";
+import {
+  isBiometricSupported,
+  isBiometricEnrolled,
+  enrollBiometric,
+  clearBiometricEnrollment,
+} from "@/lib/webauthn";
 
 const GOAL_META: Record<string, { label: string }> = {
   longevity:       { label: "Longevity"       },
@@ -69,11 +75,31 @@ export default function ProfilePage() {
   const [confirmReset, setConfirmReset] = useState(false);
   const [notifPermission, setNotifPermission] = useState<NotificationPermission | "unsupported">("default");
   const [notifLoading, setNotifLoading] = useState(false);
+  const [biometricEnrolled, setBiometricEnrolled] = useState(false);
+  const [biometricLoading, setBiometricLoading] = useState(false);
+  const [biometricSupported, setBiometricSupported] = useState(false);
 
   useEffect(() => {
     if (!isNotificationsSupported()) { setNotifPermission("unsupported"); return; }
     setNotifPermission(Notification.permission);
   }, []);
+
+  useEffect(() => {
+    setBiometricSupported(isBiometricSupported());
+    setBiometricEnrolled(isBiometricEnrolled());
+  }, []);
+
+  async function handleEnrollBiometric() {
+    setBiometricLoading(true);
+    const ok = await enrollBiometric(name);
+    if (ok) setBiometricEnrolled(true);
+    setBiometricLoading(false);
+  }
+
+  function handleDisableBiometric() {
+    clearBiometricEnrollment();
+    setBiometricEnrolled(false);
+  }
 
   async function handleEnableNotifications() {
     setNotifLoading(true);
@@ -315,6 +341,58 @@ export default function ProfilePage() {
             </div>
           )}
         </Section>
+
+        {/* Security */}
+        {biometricSupported && (
+          <Section title="Security">
+            {biometricEnrolled ? (
+              <>
+                <div className="flex items-center justify-between px-4 py-3.5" style={{ borderBottom: "1px solid var(--border)" }}>
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck size={14} color="var(--green)" />
+                    <span className="text-[14px] font-medium" style={{ color: "var(--text1)" }}>Face ID / Biometrics on</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 px-2 py-1 rounded-full" style={{ background: "rgba(52,199,89,0.1)" }}>
+                    <Check size={11} color="var(--green)" />
+                    <span className="text-[11px] font-semibold" style={{ color: "var(--green)" }}>Active</span>
+                  </div>
+                </div>
+                <div className="px-4 py-3.5">
+                  <p className="text-[12px] leading-relaxed mb-3" style={{ color: "var(--text3)" }}>
+                    Your health data is locked behind Face ID / Touch ID each session. Tap below to disable.
+                  </p>
+                  <button
+                    onClick={handleDisableBiometric}
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-[13px] font-semibold"
+                    style={{ border: "1px solid var(--red)", color: "var(--red)" }}
+                  >
+                    <ShieldOff size={14} />
+                    Disable biometric lock
+                  </button>
+                </div>
+              </>
+            ) : (
+              <div className="px-4 py-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <ShieldOff size={14} color="var(--text3)" />
+                  <span className="text-[14px] font-medium" style={{ color: "var(--text1)" }}>Biometric lock off</span>
+                </div>
+                <p className="text-[13px] leading-relaxed mb-3" style={{ color: "var(--text2)" }}>
+                  Lock your health data behind Face ID or Touch ID. You'll verify once per session.
+                </p>
+                <button
+                  onClick={handleEnrollBiometric}
+                  disabled={biometricLoading}
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-[13px] font-semibold disabled:opacity-50"
+                  style={{ background: "var(--accent)", color: "#fff" }}
+                >
+                  <Fingerprint size={14} />
+                  {biometricLoading ? "Setting up…" : "Enable Face ID / Touch ID"}
+                </button>
+              </div>
+            )}
+          </Section>
+        )}
 
         {/* Account */}
         <Section title="Account">
