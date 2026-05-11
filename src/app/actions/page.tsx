@@ -186,17 +186,22 @@ export default function ActionsPage() {
 
         {/* Action cards grouped by time of day */}
         {!isGeneratingActions && total > 0 && (
-          <div className="space-y-5">
+          <div className="space-y-6">
             {(["morning", "midday", "evening"] as const).map(slot => {
               const slotActions = actions.filter(a => (a.timeOfDay ?? "morning") === slot);
               if (slotActions.length === 0) return null;
               const labels = { morning: "Morning", midday: "Midday", evening: "Evening" };
+              const icons  = { morning: "☀", midday: "🌤", evening: "🌙" };
               return (
                 <div key={slot}>
-                  <p className="text-[11px] font-semibold uppercase tracking-widest mb-2" style={{ color: "var(--text3)" }}>
-                    {labels[slot]}
-                  </p>
-                  <div className="space-y-2.5">
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="text-[12px]">{icons[slot]}</span>
+                    <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: "var(--text3)" }}>
+                      {labels[slot]}
+                    </p>
+                    <div className="flex-1 h-px" style={{ background: "var(--border)" }} />
+                  </div>
+                  <div className="space-y-3">
                     {slotActions.map(action => (
                       <ActionCard key={action.id} action={action} onToggle={toggleAction} />
                     ))}
