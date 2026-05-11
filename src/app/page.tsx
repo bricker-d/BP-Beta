@@ -156,9 +156,15 @@ export default function DashboardPage() {
   const router = useRouter();
   const { intakeProfile, labPanel, actions, isGeneratingActions, tutorialDismissed, dismissTutorial, loadFromSupabase } = useHealthStore();
 
-  // On mount: hydrate store from Supabase, then gate on auth+profile
+  // Only load from Supabase if there's no local profile already.
+  // Calling it unconditionally overwrites the full intake with only the
+  // subset of fields stored in DB, wiping medications, habits, etc.
+  // Returning users on a fresh device hit login first, which calls
+  // loadFromSupabase there — so the dashboard never needs to re-run it.
   useEffect(() => {
-    loadFromSupabase();
+    if (!intakeProfile?.name) {
+      loadFromSupabase();
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
