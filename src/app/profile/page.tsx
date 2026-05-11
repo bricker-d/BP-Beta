@@ -1,10 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useHealthStore } from "@/store/useHealthStore";
 import Header from "@/components/layout/Header";
-import { Edit3, ChevronRight } from "lucide-react";
+import { Edit3, ChevronRight, Bell, BellOff, Check } from "lucide-react";
+import {
+  isNotificationsSupported,
+  isNotificationsGranted,
+  requestNotificationPermission,
+  registerServiceWorker,
+  scheduleDailyNotifications,
+} from "@/lib/notifications";
 
 const GOAL_META: Record<string, { label: string }> = {
   longevity:       { label: "Longevity"       },
@@ -60,6 +67,41 @@ export default function ProfilePage() {
   const [editingGoals, setEditingGoals] = useState(false);
   const [selectedGoals, setSelectedGoals] = useState<string[]>(intakeProfile?.goals ?? []);
   const [confirmReset, setConfirmReset] = useState(false);
+  const [notifPermission, setNotifPermission] = useState<NotificationPermission | "unsupported">("default");
+  const [notifLoading, setNotifLoading] = useState(false);
+
+  useEffect(() => {
+    if (!isNotificationsSupported()) { setNotifPermission("unsupported"); return; }
+    setNotifPermission(Notification.permission);
+  }, []);
+
+  async function handleEnableNotifications() {
+    setNotifLoading(true);
+    const perm = await requestNotificationPermission();
+    setNotifPermission(perm);
+    if (perm === "granted") {
+      const reg = await registerServiceWorker();
+      const pending = actions.filter(a => !a.completed);
+      const top = pending[0] ?? actions[0];
+      if (top) {
+        scheduleDailyNotifications({
+          name: intakeProfile?.name?.split(" ")[0] ?? "there",
+          style: (intakeProfile?.notificationStyle as "gentle" | "direct" | "blunt") ?? "direct",
+          topActionTitle: top.title,
+          topActionTarget: top.biomarkerTarget ?? "",
+          completedCount: actions.filter(a => a.completed).length,
+          totalActions: actions.length,
+          streak,
+          topBiomarker: top.targetBiomarkers?.[0] ?? "",
+        }, {
+          morningTime: intakeProfile?.checkInTime ?? "7:00 am",
+          eveningTime: intakeProfile?.eveningReminderTime ?? "7:00 pm",
+          reg,
+        });
+      }
+    }
+    setNotifLoading(false);
+  }
 
   const profile = intakeProfile;
   const name = profile?.name ?? "Your Profile";
@@ -218,6 +260,60 @@ export default function ProfilePage() {
             label="Upload new labs"
             onPress={() => router.push("/lab-results")}
           />
+        </Section>
+
+        {/* Notifications */}
+        <Section title="Notifications">
+          {notifPermission === "unsupported" ? (
+            <div className="px-4 py-3">
+              <p className="text-[13px]" style={{ color: "var(--text3)" }}>Not supported in this browser.</p>
+            </div>
+          ) : notifPermission === "granted" ? (
+            <>
+              <div className="flex items-center justify-between px-4 py-3.5" style={{ borderBottom: "1px solid var(--border)" }}>
+                <div className="flex items-center gap-2">
+                  <Bell size={14} color="var(--green)" />
+                  <span className="text-[14px] font-medium" style={{ color: "var(--text1)" }}>Reminders enabled</span>
+                </div>
+                <div className="flex items-center gap-1.5 px-2 py-1 rounded-full" style={{ background: "rgba(52,199,89,0.1)" }}>
+                  <Check size={11} color="var(--green)" />
+                  <span className="text-[11px] font-semibold" style={{ color: "var(--green)" }}>On</span>
+                </div>
+              </div>
+              <Row label="Morning check-in" value={intakeProfile?.checkInTime ?? "7:00 am"} />
+              <Row label="Evening nudge" value={intakeProfile?.eveningReminderTime ?? "7:00 pm"} />
+              <div className="px-4 py-3" style={{ borderBottom: "1px solid var(--border)" }}>
+                <p className="text-[11px] leading-relaxed" style={{ color: "var(--text3)" }}>
+                  To disable, go to your browser or device notification settings and block BioPrecision.
+                </p>
+              </div>
+            </>
+          ) : notifPermission === "denied" ? (
+            <div className="px-4 py-3.5">
+              <div className="flex items-center gap-2 mb-1">
+                <BellOff size={14} color="var(--red)" />
+                <span className="text-[14px] font-medium" style={{ color: "var(--text1)" }}>Notifications blocked</span>
+              </div>
+              <p className="text-[12px] leading-relaxed" style={{ color: "var(--text3)" }}>
+                To enable, open your browser settings → Site permissions → Notifications → allow BioPrecision.
+              </p>
+            </div>
+          ) : (
+            <div className="px-4 py-4">
+              <p className="text-[13px] leading-relaxed mb-3" style={{ color: "var(--text2)" }}>
+                Get a morning check-in at <strong>{intakeProfile?.checkInTime ?? "7:00 am"}</strong> and an evening nudge at <strong>{intakeProfile?.eveningReminderTime ?? "7:00 pm"}</strong> — personalized to your protocol.
+              </p>
+              <button
+                onClick={handleEnableNotifications}
+                disabled={notifLoading}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-[13px] font-semibold disabled:opacity-50"
+                style={{ background: "var(--accent)", color: "#fff" }}
+              >
+                <Bell size={14} />
+                {notifLoading ? "Requesting…" : "Enable reminders"}
+              </button>
+            </div>
+          )}
         </Section>
 
         {/* Account */}
