@@ -171,14 +171,23 @@ export default function OnboardingPage() {
     ? 1
     : dataIdx >= 0 ? (dataIdx + 1) / DATA_STEPS.length : 0;
 
-  // When labPanel changes (new upload during onboarding), save + go home
+  // When labPanel changes after an upload:
+  // - Labs step (showLabUpload): advance to next step — profile is incomplete, keep collecting
+  // - Summary step (showUpload): profile is complete, go home
   const prevPanelId = useRef(labPanel?.id ?? null);
   useEffect(() => {
     const newId = labPanel?.id ?? null;
-    if (newId && newId !== prevPanelId.current && (showUpload || showLabUpload)) {
+    if (newId && newId !== prevPanelId.current) {
       prevPanelId.current = newId;
-      saveProfileLocally();
-      router.push("/");
+      if (showLabUpload) {
+        // Mid-onboarding upload — continue collecting the rest of the profile
+        setShowLabUpload(false);
+        setStep(STEPS[STEPS.indexOf("labs") + 1]); // advance to "basics"
+      } else if (showUpload) {
+        // Post-summary upload — full profile already saved, go to dashboard
+        saveProfileLocally();
+        router.push("/");
+      }
     }
     prevPanelId.current = newId;
   // eslint-disable-next-line react-hooks/exhaustive-deps
