@@ -50,8 +50,8 @@ export function clearBiometricEnrollment() {
 export async function enrollBiometric(displayName: string): Promise<boolean> {
   if (!isBiometricSupported()) return false;
   try {
-    const challenge = crypto.getRandomValues(new Uint8Array(32));
-    const userId    = crypto.getRandomValues(new Uint8Array(16));
+    const challenge = crypto.getRandomValues(new Uint8Array(32)) as unknown as ArrayBuffer;
+    const userId    = crypto.getRandomValues(new Uint8Array(16)) as unknown as ArrayBuffer;
 
     const credential = await navigator.credentials.create({
       publicKey: {
@@ -93,14 +93,14 @@ export async function verifyBiometric(): Promise<boolean> {
   if (!isBiometricSupported() || !isBiometricEnrolled()) return false;
   try {
     const credentialId = localStorage.getItem(CREDENTIAL_KEY)!;
-    const challenge    = crypto.getRandomValues(new Uint8Array(32));
+    const challenge    = crypto.getRandomValues(new Uint8Array(32)) as unknown as ArrayBuffer;
 
     const assertion = await navigator.credentials.get({
       publicKey: {
         challenge,
         allowCredentials: [{
           type: "public-key",
-          id: fromB64url(credentialId),
+          id: fromB64url(credentialId).buffer as ArrayBuffer,
           transports: ["internal"],
         }],
         userVerification: "required",
