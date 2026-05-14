@@ -165,6 +165,7 @@ export default function OnboardingPage() {
   const [summaryText,    setSummaryText]    = useState("");
   const [summaryLoading, setSummaryLoading] = useState(false);
 
+  const [stepDir, setStepDir] = useState<"forward" | "back">("forward");
   const stepIdx  = STEPS.indexOf(step);
   const dataIdx  = DATA_STEPS.indexOf(step as never);
   const progress = step === "summary" || step === "account"
@@ -197,8 +198,8 @@ export default function OnboardingPage() {
     setter(list.includes(item) ? list.filter(x => x !== item) : [...list, item]);
   }
 
-  function next() { setStep(STEPS[stepIdx + 1]); }
-  function back() { if (stepIdx > 0) setStep(STEPS[stepIdx - 1]); }
+  function next() { setStepDir("forward"); setStep(STEPS[stepIdx + 1]); }
+  function back() { if (stepIdx > 0) { setStepDir("back"); setStep(STEPS[stepIdx - 1]); } }
 
   function buildProfile(extra?: Record<string, string>) {
     return {
@@ -325,7 +326,10 @@ export default function OnboardingPage() {
         </button>
       )}
 
-      <div className="flex-1 flex flex-col px-6 pt-16 pb-10">
+      <div
+        key={step}
+        className={`flex-1 flex flex-col px-6 pt-16 pb-10 ${stepDir === "back" ? "step-enter-back" : "step-enter"}`}
+      >
 
         {/* ── WELCOME ──────────────────────────────────────────────────── */}
         {step === "welcome" && (

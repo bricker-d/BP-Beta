@@ -101,21 +101,35 @@ body {
 /* ── Page transitions ──────────────────────────────────────────────────────── */
 
 @keyframes page-in {
-  from { opacity: 0; transform: translateY(10px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 
-@keyframes step-in {
-  from { opacity: 0; transform: translateX(10px); }
+@keyframes step-in-forward {
+  from { opacity: 0; transform: translateX(20px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes step-in-back {
+  from { opacity: 0; transform: translateX(-20px); }
   to   { opacity: 1; transform: translateX(0); }
 }
 
 .page-enter {
-  animation: page-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: page-in 0.18s ease both;
 }
 
 .step-enter {
-  animation: step-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: step-in-forward 0.22s cubic-bezier(0.25, 1, 0.5, 1) both;
+}
+
+.step-enter-back {
+  animation: step-in-back 0.22s cubic-bezier(0.25, 1, 0.5, 1) both;
+}
+
+/* Smooth scroll within mobile container */
+.mobile-container {
+  scroll-behavior: smooth;
 }
 
 /* ── Legacy compat ─────────────────────────────────────────────────────────── */

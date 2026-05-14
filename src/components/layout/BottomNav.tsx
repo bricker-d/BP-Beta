@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useHealthStore } from "@/store/useHealthStore";
 import { Home, FlaskConical, CheckSquare, MessageCircle, UserCircle } from "lucide-react";
 
 const NAV_ITEMS = [
@@ -12,18 +13,28 @@ const NAV_ITEMS = [
   { href: "/profile",     label: "Profile",  icon: UserCircle    },
 ];
 
+const HIDDEN_PATHS = ["/onboarding", "/auth", "/connect", "/practitioner"];
+
 export default function BottomNav() {
   const pathname = usePathname();
-  if (pathname?.startsWith("/onboarding")) return null;
+  const { intakeProfile } = useHealthStore();
+
+  const shouldHide =
+    !intakeProfile?.name ||
+    HIDDEN_PATHS.some(p => pathname?.startsWith(p));
+
+  // Always render the nav element — just make it invisible.
+  // This prevents layout shifts from the nav appearing/disappearing.
+  if (shouldHide) return null;
 
   return (
     <nav
       className="bottom-nav fixed bottom-0 z-50 flex justify-around items-center h-16 px-2"
       style={{
-        background: "rgba(255,255,255,0.92)",
+        background: "rgba(255,255,255,0.94)",
         borderTop: "1px solid var(--border)",
-        backdropFilter: "blur(16px)",
-        WebkitBackdropFilter: "blur(16px)",
+        backdropFilter: "blur(20px)",
+        WebkitBackdropFilter: "blur(20px)",
         width: "100%",
         maxWidth: 430,
         left: "50%",
