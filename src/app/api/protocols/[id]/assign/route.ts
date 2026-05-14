@@ -4,7 +4,8 @@ import Anthropic from "@anthropic-ai/sdk";
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const supabase = await createClient();
   const { patient_id, notes } = await req.json();
 
@@ -14,7 +15,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   const { data: protocol, error: pErr } = await supabase
     .from("protocols")
     .select("*, protocol_actions(*)")
-    .eq("id", params.id)
+    .eq("id", id)
     .single();
 
   if (pErr || !protocol) return NextResponse.json({ error: "Protocol not found" }, { status: 404 });
@@ -110,7 +111,7 @@ Return ONLY a JSON array of HealthAction objects with fields: id, title, descrip
     .from("patient_protocols")
     .upsert({
       patient_id,
-      protocol_id: params.id,
+      protocol_id: id,
       is_active: true,
       notes: notes ?? null,
       personalized_actions: personalizedActions,
