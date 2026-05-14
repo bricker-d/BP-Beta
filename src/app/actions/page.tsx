@@ -30,13 +30,17 @@ const GOAL_LABELS: Record<string, string> = {
 };
 
 export default function ActionsPage() {
-  const { actions, toggleAction, isGeneratingActions, streak, completionHistory, intakeProfile, allOptimal, labPanel, setLabPanel } = useHealthStore();
-  const completed = actions.filter(a => a.completed).length;
-  const total     = actions.length;
+  const { actions, assignedProtocolActions, toggleAction, isGeneratingActions, streak, completionHistory, intakeProfile, allOptimal, labPanel, setLabPanel } = useHealthStore();
+
+  // Use practitioner-assigned protocol if available, otherwise fall back to AI-generated
+  const displayActions = assignedProtocolActions ?? actions;
+  const hasAssignedProtocol = !!assignedProtocolActions?.length;
+
+  const completed = displayActions.filter(a => a.completed).length;
+  const total     = displayActions.length;
   const pct       = total ? (completed / total) * 100 : 0;
   const allDone   = total > 0 && completed === total;
 
-  // Build goal explanation
   const goals = intakeProfile?.goals ?? [];
   const primaryGoal = goals[0];
   const goalLabel   = primaryGoal ? GOAL_LABELS[primaryGoal] : null;
@@ -52,10 +56,12 @@ export default function ActionsPage() {
         <div className="flex items-start justify-between">
           <div>
             <h1 className="text-[22px] font-bold" style={{ color: "var(--text1)", letterSpacing: "-0.02em" }}>
-              Today&apos;s Protocol
+              {hasAssignedProtocol ? "Your Frame Protocol" : "Today's Protocol"}
             </h1>
             <p className="text-[13px] mt-0.5" style={{ color: "var(--text2)" }}>
-              Evidence-based actions for your biomarkers
+              {hasAssignedProtocol
+                ? "Assigned by Frame Longevity · personalized to your labs"
+                : "Evidence-based actions for your biomarkers"}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -66,7 +72,7 @@ export default function ActionsPage() {
                 <span className="text-[13px] font-bold" style={{ color: "#F59E0B" }}>{streak}d</span>
               </div>
             )}
-            {labPanel && !isGeneratingActions && (
+            {labPanel && !isGeneratingActions && !hasAssignedProtocol && (
               <button
                 onClick={() => setLabPanel(labPanel)}
                 className="flex items-center gap-1.5 px-3 py-2 rounded-xl"
@@ -80,8 +86,8 @@ export default function ActionsPage() {
           </div>
         </div>
 
-        {/* Goal → protocol explanation */}
-        {goalLabel && targetList && total > 0 && !isGeneratingActions && (
+        {/* Goal → protocol explanation (only when not on assigned protocol) */}
+        {!hasAssignedProtocol && goalLabel && targetList && total > 0 && !isGeneratingActions && (
           <div className="rounded-2xl px-4 py-3 flex items-start gap-3"
             style={{ background: "var(--accent-lo)", border: "1px solid var(--accent-mid)" }}>
             <Target size={14} color="var(--accent)" className="mt-0.5 flex-shrink-0" />
@@ -188,7 +194,7 @@ export default function ActionsPage() {
         {!isGeneratingActions && total > 0 && (
           <div className="space-y-6">
             {(["morning", "midday", "evening"] as const).map(slot => {
-              const slotActions = actions.filter(a => (a.timeOfDay ?? "morning") === slot);
+              const slotActions = displayActions.filter(a => (a.timeOfDay ?? "morning") === slot);
               if (slotActions.length === 0) return null;
               const labels = { morning: "Morning", midday: "Midday", evening: "Evening" };
               const icons  = { morning: "☀", midday: "🌤", evening: "🌙" };

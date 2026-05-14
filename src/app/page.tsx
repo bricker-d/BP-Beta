@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   CheckCircle2, Circle, FlaskConical, MessageCircle,
-  Watch, ChevronRight, Loader2, AlertTriangle, TrendingUp, Zap, X, BookOpen,
+  ChevronRight, Loader2, AlertTriangle, TrendingUp, Zap, X, BookOpen, Send,
 } from "lucide-react";
 import { Biomarker } from "@/lib/types";
 import NotificationBanner from "@/components/notifications/NotificationBanner";
@@ -16,8 +16,6 @@ import {
   isBiometricSessionActive,
   setBiometricSessionActive,
 } from "@/lib/webauthn";
-
-// ── Category definitions ──────────────────────────────────────────────────────
 
 const HEALTH_CATEGORIES = [
   { label: "Metabolic",      color: "#F59E0B", ids: ["glucose","hba1c","fastingInsulin","uricAcid"] },
@@ -33,8 +31,6 @@ function categoryScore(ids: string[], biomarkers: Biomarker[]): number | null {
   return Math.round(relevant.reduce((s, b) => s + (w[b.status] ?? 50), 0) / relevant.length);
 }
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
-
 function getGreeting(name?: string) {
   const h = new Date().getHours();
   const time = h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
@@ -47,24 +43,18 @@ function computeScore(biomarkers: { status: string }[]): number {
   return Math.round(biomarkers.reduce((s, b) => s + (w[b.status] ?? 50), 0) / biomarkers.length);
 }
 
-// ── Sub-components ────────────────────────────────────────────────────────────
-
 function ScoreRing({ score }: { score: number }) {
   const r = 52, circ = 2 * Math.PI * r;
   const offset = circ - (score / 100) * circ;
   const color = score >= 80 ? "#10b981" : score >= 60 ? "#f59e0b" : "#ef4444";
   const label = score >= 80 ? "Optimal" : score >= 60 ? "Needs work" : "Action needed";
-
   return (
     <div className="flex flex-col items-center gap-1">
       <div className="relative w-32 h-32 flex items-center justify-center">
         <svg className="absolute inset-0 -rotate-90" width="128" height="128" viewBox="0 0 128 128">
           <circle cx="64" cy="64" r={r} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="8" />
-          <circle
-            cx="64" cy="64" r={r} fill="none"
-            stroke={color} strokeWidth="8"
-            strokeDasharray={circ} strokeDashoffset={offset}
-            strokeLinecap="round"
+          <circle cx="64" cy="64" r={r} fill="none" stroke={color} strokeWidth="8"
+            strokeDasharray={circ} strokeDashoffset={offset} strokeLinecap="round"
             style={{ transition: "stroke-dashoffset 1.2s cubic-bezier(.4,0,.2,1)", filter: `drop-shadow(0 0 6px ${color})` }}
           />
         </svg>
@@ -80,17 +70,12 @@ function ScoreRing({ score }: { score: number }) {
 
 function CategoryScores({ biomarkers }: { biomarkers: Biomarker[] }) {
   const scores = HEALTH_CATEGORIES.map(cat => ({
-    ...cat,
-    score: categoryScore(cat.ids, biomarkers),
+    ...cat, score: categoryScore(cat.ids, biomarkers),
   })).filter(c => c.score !== null);
-
   if (!scores.length) return null;
-
   return (
     <div>
-      <p className="text-[11px] font-semibold uppercase tracking-wider mb-3" style={{ color: "var(--text3)" }}>
-        Health breakdown
-      </p>
+      <p className="text-[11px] font-semibold uppercase tracking-wider mb-3" style={{ color: "var(--text3)" }}>Health breakdown</p>
       <div className="grid grid-cols-2 gap-2">
         {scores.map(cat => {
           const s = cat.score!;
@@ -104,12 +89,9 @@ function CategoryScores({ biomarkers }: { biomarkers: Biomarker[] }) {
                 <div className="relative flex-shrink-0" style={{ width: 48, height: 48 }}>
                   <svg width="48" height="48" viewBox="0 0 48 48" className="-rotate-90">
                     <circle cx="24" cy="24" r={r} fill="none" stroke="var(--border)" strokeWidth="4" />
-                    <circle cx="24" cy="24" r={r} fill="none"
-                      stroke={cat.color} strokeWidth="4"
-                      strokeDasharray={circ} strokeDashoffset={offset}
-                      strokeLinecap="round"
-                      style={{ transition: "stroke-dashoffset 1s ease" }}
-                    />
+                    <circle cx="24" cy="24" r={r} fill="none" stroke={cat.color} strokeWidth="4"
+                      strokeDasharray={circ} strokeDashoffset={offset} strokeLinecap="round"
+                      style={{ transition: "stroke-dashoffset 1s ease" }} />
                   </svg>
                   <div className="absolute inset-0 flex items-center justify-center">
                     <span className="mono text-[12px] font-bold" style={{ color: "var(--text1)" }}>{s}</span>
@@ -130,74 +112,137 @@ function CategoryScores({ biomarkers }: { biomarkers: Biomarker[] }) {
   );
 }
 
-function CompletionRings({ done, total }: { done: number; total: number }) {
-  if (!total) return null;
-  const pct = done / total;
-  const r = 18, circ = 2 * Math.PI * r;
-  const offset = circ - pct * circ;
+// ── Care team message widget ──────────────────────────────────────────────────
+
+function CareTeamWidget() {
+  const { practitionerMessages, sendMessageToPractitioner, patientId } = useHealthStore();
+  const [msg, setMsg] = useState("");
+  const [sending, setSending] = useState(false);
+  const [open, setOpen] = useState(false);
+
+  if (!patientId) return null;
+
+  const unread = practitionerMessages.filter(m => m.sender === "practitioner" && !m.read).length;
+  const last = practitionerMessages[practitionerMessages.length - 1];
+
+  async function send() {
+    if (!msg.trim()) return;
+    setSending(true);
+    await sendMessageToPractitioner(msg.trim());
+    setMsg("");
+    setSending(false);
+  }
 
   return (
-    <div className="flex items-center gap-2">
-      <div className="relative w-10 h-10 flex items-center justify-center">
-        <svg className="-rotate-90" width="40" height="40" viewBox="0 0 40 40">
-          <circle cx="20" cy="20" r={r} fill="none" stroke="var(--accent-mid)" strokeWidth="4" />
-          <circle cx="20" cy="20" r={r} fill="none" stroke="var(--accent)" strokeWidth="4"
-            strokeDasharray={circ} strokeDashoffset={offset} strokeLinecap="round"
-            style={{ filter: "drop-shadow(0 0 4px rgba(37,99,235,0.4))" }}
-          />
-        </svg>
-        <span className="absolute mono text-[10px] font-bold" style={{ color: "var(--text1)" }}>{done}</span>
-      </div>
-      <div>
-        <p className="text-[13px] font-semibold" style={{ color: "var(--text1)" }}>{done}/{total} done</p>
-        <p className="text-[11px]" style={{ color: "var(--text2)" }}>Today&apos;s protocol</p>
-      </div>
+    <div className="rounded-2xl overflow-hidden" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center gap-3 px-4 py-3.5"
+      >
+        <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+          style={{ background: "rgba(16,185,129,0.1)" }}>
+          <MessageCircle size={16} color="#10b981" />
+        </div>
+        <div className="flex-1 text-left min-w-0">
+          <p className="text-[13px] font-semibold" style={{ color: "var(--text1)" }}>
+            Frame Longevity Care Team
+          </p>
+          <p className="text-[11px] truncate" style={{ color: "var(--text3)" }}>
+            {last ? last.body : "Send your care team a message"}
+          </p>
+        </div>
+        {unread > 0 && (
+          <span className="w-5 h-5 rounded-full bg-emerald-500 text-white text-[10px] font-bold flex items-center justify-center flex-shrink-0">
+            {unread}
+          </span>
+        )}
+        <ChevronRight size={14} color="var(--text3)" className={open ? "rotate-90" : ""} style={{ transition: "transform 0.2s" }} />
+      </button>
+
+      {open && (
+        <div style={{ borderTop: "1px solid var(--border)" }}>
+          <div className="px-4 py-3 space-y-2 max-h-48 overflow-y-auto">
+            {practitionerMessages.length === 0 && (
+              <p className="text-[12px] text-center py-2" style={{ color: "var(--text3)" }}>No messages yet</p>
+            )}
+            {practitionerMessages.map(m => (
+              <div key={m.id} className={`flex ${m.sender === "patient" ? "justify-end" : "justify-start"}`}>
+                <div className={`max-w-[80%] px-3 py-2 rounded-xl text-[12px] leading-relaxed ${
+                  m.sender === "patient"
+                    ? "text-white rounded-br-sm"
+                    : "rounded-bl-sm"
+                }`} style={{
+                  background: m.sender === "patient" ? "var(--accent)" : "var(--surface2)",
+                  color: m.sender === "patient" ? "#fff" : "var(--text1)",
+                }}>
+                  {m.body}
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="flex gap-2 px-4 py-3" style={{ borderTop: "1px solid var(--border)" }}>
+            <input
+              value={msg}
+              onChange={e => setMsg(e.target.value)}
+              onKeyDown={e => { if (e.key === "Enter") send(); }}
+              placeholder="Message your care team..."
+              className="flex-1 px-3 py-2 text-[13px] rounded-xl focus:outline-none"
+              style={{ background: "var(--surface2)", border: "1px solid var(--border)", color: "var(--text1)" }}
+            />
+            <button
+              onClick={send}
+              disabled={!msg.trim() || sending}
+              className="w-9 h-9 rounded-xl flex items-center justify-center disabled:opacity-40"
+              style={{ background: "var(--accent)" }}
+            >
+              <Send size={14} color="#fff" />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-// ── Page ──────────────────────────────────────────────────────────────────────
+// ── Main ──────────────────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { intakeProfile, labPanel, actions, isGeneratingActions, tutorialDismissed, dismissTutorial } = useHealthStore();
+  const {
+    intakeProfile, labPanel, actions, isGeneratingActions,
+    tutorialDismissed, dismissTutorial,
+    assignedProtocolActions, loadAssignedProtocol,
+    patientId, loadPractitionerMessages,
+  } = useHealthStore();
   const [locked, setLocked] = useState(false);
 
   useEffect(() => {
-    if (!intakeProfile?.name) {
-      router.replace("/onboarding");
-      return;
-    }
-    // Show biometric lock if enrolled and not yet verified this session
-    if (isBiometricEnrolled() && !isBiometricSessionActive()) {
-      setLocked(true);
+    if (!intakeProfile?.name) { router.replace("/onboarding"); return; }
+    if (isBiometricEnrolled() && !isBiometricSessionActive()) { setLocked(true); return; }
+    if (patientId) {
+      loadAssignedProtocol();
+      loadPractitionerMessages();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   if (!intakeProfile?.name) return null;
-
-  if (locked) {
-    return (
-      <BiometricLock onUnlock={() => {
-        setBiometricSessionActive();
-        setLocked(false);
-      }} />
-    );
-  }
+  if (locked) return <BiometricLock onUnlock={() => { setBiometricSessionActive(); setLocked(false); }} />;
 
   const name = intakeProfile.name;
-  const done = actions.filter(a => a.completed).length;
-  const total = actions.length;
+  const displayActions = assignedProtocolActions ?? actions;
+  const done  = displayActions.filter(a => a.completed).length;
+  const total = displayActions.length;
   const score = labPanel ? computeScore(labPanel.biomarkers) : null;
   const outOfRange = labPanel ? labPanel.biomarkers.filter(b => b.status !== "optimal") : [];
-  const topAction = actions.find(a => !a.completed);
+  const topAction = displayActions.find(a => !a.completed);
+  const hasAssignedProtocol = !!assignedProtocolActions?.length;
 
   return (
     <div className="page-content page-enter min-h-screen" style={{ background: "var(--bg)" }}>
       <div className="px-5 pt-12 pb-6 space-y-5">
 
-        {/* Header row */}
+        {/* Header */}
         <div className="flex items-start justify-between">
           <div>
             <p className="text-[13px]" style={{ color: "var(--text2)" }}>
@@ -210,16 +255,34 @@ export default function DashboardPage() {
           {score !== null && <ScoreRing score={score} />}
         </div>
 
-        {/* Category health scores */}
+        {/* Frame protocol banner — only when practitioner has assigned one */}
+        {hasAssignedProtocol && (
+          <div className="rounded-2xl px-4 py-3.5 flex items-center gap-3"
+            style={{ background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)" }}>
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+              style={{ background: "rgba(16,185,129,0.15)" }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2.5" strokeLinecap="round">
+                <path d="M2 12h3l3-8 3 16 3-10 3 5 2-3h3" />
+              </svg>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[12px] font-bold" style={{ color: "#10b981" }}>Frame Longevity Protocol</p>
+              <p className="text-[11px]" style={{ color: "var(--text2)" }}>
+                Your personalized protocol is active — {total} daily actions
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Category scores */}
         {labPanel && labPanel.biomarkers.length > 0 && (
           <CategoryScores biomarkers={labPanel.biomarkers} />
         )}
 
-        {/* Notification banner — shown after first protocol is generated */}
         {actions.length > 0 && <NotificationBanner />}
 
-        {/* Tutorial card */}
-        {!tutorialDismissed && (
+        {/* Tutorial */}
+        {!tutorialDismissed && !hasAssignedProtocol && (
           <div className="rounded-2xl px-4 py-4" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
             <div className="flex items-start justify-between mb-3">
               <div className="flex items-center gap-2">
@@ -232,12 +295,13 @@ export default function DashboardPage() {
             </div>
             <div className="space-y-3">
               {[
-                { n: "1", t: "Upload your labs",         s: "Tap Lab Results → Upload New. We parse every biomarker in seconds.", href: "/lab-results?upload=1" },
-                { n: "2", t: "Review your protocol",     s: "5 daily actions ranked by clinical impact — tap each to see the evidence.", href: "/actions" },
-                { n: "3", t: "Ask your coach anything",  s: "It knows your exact numbers. Ask why a marker is off or how to fix it.", href: "/coach" },
+                { n: "1", t: "Upload your labs",        s: "We parse every biomarker and build your clinical protocol.", href: "/lab-results?upload=1" },
+                { n: "2", t: "Follow your protocol",    s: "Daily actions ranked by clinical impact with the evidence behind each.", href: "/actions" },
+                { n: "3", t: "Ask your health coach",   s: "It knows your exact numbers. Ask why a marker is off or how to fix it.", href: "/coach" },
               ].map(item => (
                 <Link key={item.n} href={item.href} onClick={dismissTutorial} className="flex items-start gap-3 active:opacity-60 transition-opacity">
-                  <span className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 text-[11px] font-bold" style={{ background: "var(--accent-lo)", color: "var(--accent)" }}>{item.n}</span>
+                  <span className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 text-[11px] font-bold"
+                    style={{ background: "var(--accent-lo)", color: "var(--accent)" }}>{item.n}</span>
                   <div>
                     <p className="text-[13px] font-semibold" style={{ color: "var(--text1)" }}>{item.t}</p>
                     <p className="text-[12px] mt-0.5" style={{ color: "var(--text2)", lineHeight: 1.45 }}>{item.s}</p>
@@ -250,17 +314,13 @@ export default function DashboardPage() {
 
         {/* Alert strip */}
         {outOfRange.length > 0 && (
-          <div
-            className="flex items-center gap-2.5 rounded-2xl px-4 py-3"
-            style={{ background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.25)" }}
-          >
+          <div className="flex items-center gap-2.5 rounded-2xl px-4 py-3"
+            style={{ background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.25)" }}>
             <AlertTriangle size={14} color="#f59e0b" />
             <p className="text-[13px] font-medium" style={{ color: "#f59e0b" }}>
               {outOfRange.length} marker{outOfRange.length !== 1 ? "s" : ""} need attention
             </p>
-            <Link href="/lab-results" className="ml-auto text-[12px] font-semibold" style={{ color: "#f59e0b" }}>
-              View →
-            </Link>
+            <Link href="/lab-results" className="ml-auto text-[12px] font-semibold" style={{ color: "#f59e0b" }}>View →</Link>
           </div>
         )}
 
@@ -270,10 +330,10 @@ export default function DashboardPage() {
             <div className="px-5 pt-5 pb-4">
               <p className="text-[11px] font-semibold uppercase tracking-widest mb-2" style={{ color: "var(--accent)" }}>Step 1</p>
               <p className="text-[17px] font-bold" style={{ color: "var(--text1)", letterSpacing: "-0.02em" }}>
-                Connect your labs to get your protocol
+                Upload your labs to activate your protocol
               </p>
               <p className="text-[13px] mt-1.5" style={{ color: "var(--text2)", lineHeight: 1.6 }}>
-                BioPrecision parses every biomarker and generates 3–4 daily actions tied to your specific out-of-range values.
+                We parse every biomarker and personalize your clinical protocol to your specific values.
               </p>
             </div>
             <div className="px-4 pb-4 space-y-2">
@@ -292,12 +352,9 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* Today's #1 action */}
+        {/* Top action */}
         {(topAction || isGeneratingActions) && (
-          <div
-            className="rounded-2xl px-4 py-4"
-            style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
-          >
+          <div className="rounded-2xl px-4 py-4" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <Zap size={14} color="var(--accent)" />
@@ -305,9 +362,20 @@ export default function DashboardPage() {
                   Your #1 right now
                 </span>
               </div>
-              <CompletionRings done={done} total={total} />
+              <div className="flex items-center gap-2">
+                <div className="relative w-8 h-8 flex items-center justify-center">
+                  <svg className="-rotate-90" width="32" height="32" viewBox="0 0 32 32">
+                    <circle cx="16" cy="16" r="12" fill="none" stroke="var(--accent-mid)" strokeWidth="3" />
+                    <circle cx="16" cy="16" r="12" fill="none" stroke="var(--accent)" strokeWidth="3"
+                      strokeDasharray={2 * Math.PI * 12}
+                      strokeDashoffset={2 * Math.PI * 12 - (total ? done / total : 0) * 2 * Math.PI * 12}
+                      strokeLinecap="round" />
+                  </svg>
+                  <span className="absolute mono text-[9px] font-bold" style={{ color: "var(--text1)" }}>{done}</span>
+                </div>
+                <span className="text-[11px]" style={{ color: "var(--text3)" }}>{done}/{total}</span>
+              </div>
             </div>
-
             {isGeneratingActions ? (
               <div className="flex items-center gap-2" style={{ color: "var(--text2)" }}>
                 <Loader2 size={14} className="animate-spin" />
@@ -315,17 +383,11 @@ export default function DashboardPage() {
               </div>
             ) : topAction ? (
               <div>
-                <p className="text-[16px] font-semibold" style={{ color: "var(--text1)", lineHeight: 1.4 }}>
-                  {topAction.title}
-                </p>
+                <p className="text-[16px] font-semibold" style={{ color: "var(--text1)", lineHeight: 1.4 }}>{topAction.title}</p>
                 {topAction.biomarkerTarget && (
-                  <p className="text-[11px] mt-1 font-medium" style={{ color: "var(--accent)" }}>
-                    {topAction.biomarkerTarget}
-                  </p>
+                  <p className="text-[11px] mt-1 font-medium" style={{ color: "var(--accent)" }}>{topAction.biomarkerTarget}</p>
                 )}
-                <p className="text-[13px] mt-2" style={{ color: "var(--text2)", lineHeight: 1.5 }}>
-                  {topAction.description}
-                </p>
+                <p className="text-[13px] mt-2" style={{ color: "var(--text2)", lineHeight: 1.5 }}>{topAction.description}</p>
                 <Link href="/actions" className="mt-3 inline-flex items-center gap-1 text-[13px] font-semibold" style={{ color: "var(--accent)" }}>
                   See full protocol <ChevronRight size={13} />
                 </Link>
@@ -335,68 +397,38 @@ export default function DashboardPage() {
         )}
 
         {/* Protocol preview */}
-        {actions.length > 1 && (
-          <div
-            className="rounded-2xl overflow-hidden"
-            style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
-          >
+        {displayActions.length > 1 && (
+          <div className="rounded-2xl overflow-hidden" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
             <div className="px-4 pt-4 pb-2 flex items-center justify-between">
-              <p className="text-[13px] font-semibold" style={{ color: "var(--text1)" }}>Today&apos;s protocol</p>
-              <Link href="/actions" className="text-[12px] font-medium" style={{ color: "var(--accent)" }}>
-                View all →
-              </Link>
+              <p className="text-[13px] font-semibold" style={{ color: "var(--text1)" }}>
+                {hasAssignedProtocol ? "Your Frame Protocol" : "Today's protocol"}
+              </p>
+              <Link href="/actions" className="text-[12px] font-medium" style={{ color: "var(--accent)" }}>View all →</Link>
             </div>
-            {actions.slice(0, 4).map((a, i) => (
-              <ActionRow key={a.id} action={a} showDivider={i < Math.min(actions.length, 4) - 1} />
+            {displayActions.slice(0, 4).map((a, i) => (
+              <ActionRow key={a.id} action={a} showDivider={i < Math.min(displayActions.length, 4) - 1} />
             ))}
           </div>
         )}
 
-        {/* Coach CTA */}
-        <Link href="/coach">
-          <div
-            className="rounded-2xl px-4 py-4 flex items-center gap-3"
-            style={{ background: "linear-gradient(135deg, rgba(37,99,235,0.08), rgba(37,99,235,0.05))", border: "1px solid rgba(37,99,235,0.18)" }}
-          >
-            <div
-              className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-              style={{ background: "var(--accent-lo)" }}
-            >
-              <MessageCircle size={18} color="var(--accent)" />
-            </div>
-            <div className="flex-1">
-              <p className="text-[14px] font-semibold" style={{ color: "var(--text1)" }}>
-                Ask your health coach
-              </p>
-              <p className="text-[12px] mt-0.5" style={{ color: "var(--text2)" }}>
-                {labPanel ? `${outOfRange.length} markers analyzed — ask me anything` : "Get guidance based on your goals"}
-              </p>
-            </div>
-            <ChevronRight size={15} color="var(--text3)" />
-          </div>
-        </Link>
+        {/* Care team messaging */}
+        <CareTeamWidget />
 
         {/* Bottom row */}
         <div className="grid grid-cols-2 gap-3">
-          <div
-            className="rounded-2xl px-3 py-4 flex flex-col gap-2"
-            style={{ background: "var(--surface)", border: "1px solid var(--border)", opacity: 0.6 }}
-          >
-            <div className="flex items-center justify-between">
-              <Watch size={18} color="var(--text3)" />
-              <span className="text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-full"
-                style={{ background: "var(--surface2)", color: "var(--text3)" }}>
-                Coming soon
-              </span>
+          <Link href="/coach">
+            <div className="rounded-2xl px-3 py-4 flex flex-col gap-2"
+              style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+              <MessageCircle size={18} color="var(--accent)" />
+              <p className="text-[13px] font-semibold" style={{ color: "var(--text1)" }}>AI Coach</p>
+              <p className="text-[11px]" style={{ color: "var(--text3)" }}>
+                {labPanel ? `${outOfRange.length} markers analyzed` : "Ask anything"}
+              </p>
             </div>
-            <p className="text-[13px] font-semibold" style={{ color: "var(--text1)" }}>Wearable</p>
-            <p className="text-[11px]" style={{ color: "var(--text3)" }}>Oura · WHOOP · Apple</p>
-          </div>
+          </Link>
           <Link href="/lab-results">
-            <div
-              className="rounded-2xl px-3 py-4 flex flex-col gap-2"
-              style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
-            >
+            <div className="rounded-2xl px-3 py-4 flex flex-col gap-2"
+              style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
               <TrendingUp size={18} color="var(--text3)" />
               <p className="text-[13px] font-semibold" style={{ color: "var(--text1)" }}>Lab results</p>
               <p className="text-[11px]" style={{ color: "var(--text3)" }}>
@@ -418,20 +450,13 @@ function ActionRow({ action, showDivider }: {
   const { toggleAction } = useHealthStore();
   return (
     <>
-      <button
-        onClick={() => toggleAction(action.id)}
+      <button onClick={() => toggleAction(action.id)}
         className="w-full flex items-center gap-3 px-4 py-3 text-left transition-opacity"
-        style={{ opacity: action.completed ? 0.45 : 1 }}
-      >
-        {action.completed
-          ? <CheckCircle2 size={18} color="var(--green)" />
-          : <Circle size={18} color="var(--text3)" />
-        }
+        style={{ opacity: action.completed ? 0.45 : 1 }}>
+        {action.completed ? <CheckCircle2 size={18} color="var(--green)" /> : <Circle size={18} color="var(--text3)" />}
         <div className="flex-1 min-w-0">
-          <p
-            className="text-[13px] font-medium truncate"
-            style={{ color: "var(--text1)", textDecoration: action.completed ? "line-through" : "none" }}
-          >
+          <p className="text-[13px] font-medium truncate"
+            style={{ color: "var(--text1)", textDecoration: action.completed ? "line-through" : "none" }}>
             {action.title}
           </p>
           {action.biomarkerTarget && (
