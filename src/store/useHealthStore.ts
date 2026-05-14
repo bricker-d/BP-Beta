@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
-import { LabPanel, WearableData, HealthAction, ChatMessage, UserProfile } from "@/lib/types";
+import { LabPanel, WearableData, HealthAction, ChatMessage, UserProfile, Message } from "@/lib/types";
 import { createClient } from "@/lib/supabase-browser";
 
 interface IntakeProfile {
@@ -81,6 +81,13 @@ interface HealthStore {
   messages: ChatMessage[];
   addMessage: (msg: ChatMessage) => void;
   clearMessages: () => void;
+
+  practitionerMessages: Message[];
+  loadPractitionerMessages: () => Promise<void>;
+  sendMessageToPractitioner: (body: string) => Promise<void>;
+
+  assignedProtocolActions: HealthAction[] | null;
+  loadAssignedProtocol: () => Promise<void>;
 
   isProcessingUpload: boolean;
   uploadProgress: number;
@@ -316,6 +323,49 @@ export const useHealthStore = create<HealthStore>()(
         set((state) => ({ messages: [...state.messages, msg] })),
       clearMessages: () => set({ messages: [] }),
 
+      practitionerMessages: [],
+      loadPractitionerMessages: async () => {
+        const { patientId } = get();
+        if (!patientId) return;
+        try {
+          const res = await fetch(`/api/messages?patient_id=${patientId}`);
+          if (res.ok) set({ practitionerMessages: await res.json() });
+        } catch { /* offline */ }
+      },
+      sendMessageToPractitioner: async (body: string) => {
+        const { patientId } = get();
+        if (!patientId) return;
+        try {
+          const res = await fetch("/api/messages", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ patient_id: patientId, sender: "patient", body }),
+          });
+          if (res.ok) {
+            const msg = await res.json();
+            set(s => ({ practitionerMessages: [...s.practitionerMessages, msg] }));
+          }
+        } catch { /* offline */ }
+      },
+
+      assignedProtocolActions: null,
+      loadAssignedProtocol: async () => {
+        const { patientId } = get();
+        if (!patientId) return;
+        try {
+          const supabase = createClient();
+          const { data } = await supabase
+            .from("patient_protocols")
+            .select("personalized_actions")
+            .eq("patient_id", patientId)
+            .eq("is_active", true)
+            .maybeSingle();
+          if (data?.personalized_actions) {
+            set({ assignedProtocolActions: data.personalized_actions as HealthAction[] });
+          }
+        } catch { /* offline */ }
+      },
+
       isProcessingUpload: false,
       uploadProgress: 0,
       setUploadState: (processing, progress = 0) =>
@@ -353,6 +403,7 @@ export const useHealthStore = create<HealthStore>()(
         lastCompletedDate: state.lastCompletedDate,
         completionHistory: state.completionHistory,
         allOptimal: state.allOptimal,
+        assignedProtocolActions: state.assignedProtocolActions,
       }),
     }
   )

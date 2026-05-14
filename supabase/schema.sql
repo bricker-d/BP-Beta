@@ -106,6 +106,82 @@ create trigger patients_updated_at
   before update on patients
   for each row execute function update_updated_at();
 
+-- ── Auth user link (add if missing) ──────────────────────────────────────────
+alter table patients add column if not exists auth_user_id text;
+create index if not exists patients_auth_user_idx on patients(auth_user_id);
+
+-- ── Protocols ─────────────────────────────────────────────────────────────────
+-- Practitioner-authored protocol templates
+create table if not exists protocols (
+  id           uuid primary key default gen_random_uuid(),
+  name         text not null,
+  description  text,
+  focus_areas  text[] default '{}',
+  target_conditions text[] default '{}', -- ['T2D', 'cognitive_decline', etc.]
+  target_age_min int,
+  target_age_max int,
+  is_active    boolean default true,
+  created_at   timestamptz default now(),
+  updated_at   timestamptz default now()
+);
+
+-- ── Protocol actions ──────────────────────────────────────────────────────────
+-- Individual action steps within a protocol template
+create table if not exists protocol_actions (
+  id                  uuid primary key default gen_random_uuid(),
+  protocol_id         uuid references protocols(id) on delete cascade,
+  title               text not null,
+  description         text,
+  mechanism           text,
+  category            text not null default 'Lifestyle',
+  time_of_day         text default 'morning',
+  biomarker_targets   text[] default '{}',
+  evidence_grade      text,
+  effect_size         text,
+  time_to_effect      text,
+  citations           text[] default '{}',
+  is_conditional      boolean default false,
+  condition_biomarker text,
+  condition_operator  text,  -- 'below' | 'above'
+  condition_threshold float,
+  sort_order          int default 0,
+  created_at          timestamptz default now()
+);
+
+create index if not exists protocol_actions_protocol_idx on protocol_actions(protocol_id, sort_order);
+
+-- ── Patient protocol assignments ──────────────────────────────────────────────
+create table if not exists patient_protocols (
+  id                   uuid primary key default gen_random_uuid(),
+  patient_id           uuid references patients(id) on delete cascade,
+  protocol_id          uuid references protocols(id),
+  assigned_at          timestamptz default now(),
+  is_active            boolean default true,
+  notes                text,
+  personalized_actions jsonb,  -- AI-personalized HealthAction[] for this patient
+  unique(patient_id)           -- one active protocol per patient
+);
+
+create index if not exists patient_protocols_patient_idx on patient_protocols(patient_id);
+
+-- ── Practitioner <-> Patient messages ─────────────────────────────────────────
+create table if not exists messages (
+  id           uuid primary key default gen_random_uuid(),
+  patient_id   uuid references patients(id) on delete cascade,
+  sender       text not null check (sender in ('practitioner', 'patient')),
+  body         text not null,
+  read         boolean default false,
+  created_at   timestamptz default now()
+);
+
+create index if not exists messages_patient_idx on messages(patient_id, created_at asc);
+
+-- Disable RLS on new tables
+alter table protocols disable row level security;
+alter table protocol_actions disable row level security;
+alter table patient_protocols disable row level security;
+alter table messages disable row level security;
+
 -- ── Views for clinician dashboard ─────────────────────────────────────────────
 -- Quick overview of each patient for Frame Longevity clinician view
 create or replace view patient_overview as

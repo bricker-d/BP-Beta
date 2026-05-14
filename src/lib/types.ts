@@ -72,3 +72,61 @@ export interface UserProfile {
   name: string;
   avatarInitials: string;
 }
+
+// ─── Protocols ─────────────────────────────────────────────────────────────────
+
+export interface ProtocolAction {
+  id: string;
+  protocol_id: string;
+  title: string;
+  description?: string;
+  mechanism?: string;
+  category: ActionCategory;
+  time_of_day?: "morning" | "midday" | "evening";
+  biomarker_targets?: string[];
+  evidence_grade?: string;
+  effect_size?: string;
+  time_to_effect?: string;
+  citations?: string[];
+  is_conditional?: boolean;
+  condition_biomarker?: string;
+  condition_operator?: "below" | "above";
+  condition_threshold?: number;
+  sort_order?: number;
+}
+
+export interface Protocol {
+  id: string;
+  name: string;
+  description?: string;
+  focus_areas?: string[];
+  target_conditions?: string[];
+  target_age_min?: number;
+  target_age_max?: number;
+  is_active?: boolean;
+  created_at?: string;
+  updated_at?: string;
+  actions?: ProtocolAction[];
+}
+
+export interface PatientProtocol {
+  id: string;
+  patient_id: string;
+  protocol_id: string;
+  assigned_at: string;
+  is_active: boolean;
+  notes?: string;
+  personalized_actions?: HealthAction[];
+  protocol?: Protocol;
+}
+
+// ─── Messages ──────────────────────────────────────────────────────────────────
+
+export interface Message {
+  id: string;
+  patient_id: string;
+  sender: "practitioner" | "patient";
+  body: string;
+  read: boolean;
+  created_at: string;
+}
