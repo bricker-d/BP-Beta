@@ -402,7 +402,7 @@ export default function ProfilePage() {
             label="Sign out"
             onPress={async () => {
               await signOut();
-              router.replace("/auth/login");
+              router.replace("/onboarding");
             }}
             destructive
           />

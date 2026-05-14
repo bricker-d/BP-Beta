@@ -878,10 +878,7 @@ export default function OnboardingPage() {
               </div>
 
               <p className="text-center text-[11px]" style={{ color: "var(--text3)" }}>
-                Already have an account?{" "}
-                <button onClick={() => router.push("/auth/login")} className="font-semibold" style={{ color: "var(--accent)" }}>
-                  Sign in
-                </button>
+                Your profile is saved locally on this device.
               </p>
             </div>
           </div>
