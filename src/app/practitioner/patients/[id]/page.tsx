@@ -3,8 +3,8 @@
 import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase-browser";
-import { Protocol, Message } from "@/lib/types";
-import { Send, CheckCircle, Circle, FlaskConical } from "lucide-react";
+import { Protocol, Message, HealthAction } from "@/lib/types";
+import { Send, FlaskConical, Plus, Trash2, ChevronDown, ChevronUp, Save, X } from "lucide-react";
 
 interface Patient {
   id: string; name: string | null; age: number | null; biological_sex: string | null;
@@ -12,32 +12,154 @@ interface Patient {
   weight_lbs: number | null; symptoms: string[] | null; created_at: string;
 }
 interface LabPanel { id: string; panel_date: string; source: string; biomarkers: Array<{ name: string; value: number; unit: string; status: string }> }
-interface AssignedProtocol { protocol_id: string; notes: string | null; personalized_actions: unknown[] | null; protocol: Protocol | null }
+interface AssignedProtocol { protocol_id: string; notes: string | null; personalized_actions: HealthAction[] | null; protocol: Protocol | null }
 
 const STATUS_COLOR: Record<string, string> = {
-  optimal: "text-emerald-600 bg-emerald-50",
-  low:     "text-amber-600 bg-amber-50",
-  elevated:"text-red-600 bg-red-50",
+  optimal:    "text-emerald-600 bg-emerald-50",
+  low:        "text-amber-600 bg-amber-50",
+  elevated:   "text-red-600 bg-red-50",
   borderline: "text-orange-600 bg-orange-50",
 };
+
+const CATEGORIES = ["Nutrition", "Supplement", "Exercise", "Sleep", "Lifestyle", "Movement"];
+const TIMES = ["morning", "midday", "evening"];
+
+// ── Inline action editor ──────────────────────────────────────────────────────
+
+function ActionEditor({
+  action, index, total,
+  onChange, onRemove, onMove,
+}: {
+  action: HealthAction; index: number; total: number;
+  onChange: (a: HealthAction) => void;
+  onRemove: () => void;
+  onMove: (dir: -1 | 1) => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+
+  return (
+    <div className="border border-gray-200 rounded-xl bg-white overflow-hidden">
+      <div className="flex items-center gap-2 px-3 py-2.5 bg-gray-50">
+        {/* Reorder */}
+        <div className="flex flex-col gap-0.5 flex-shrink-0">
+          <button onClick={() => onMove(-1)} disabled={index === 0} className="disabled:opacity-20 text-gray-400 hover:text-gray-600">
+            <ChevronUp size={12} />
+          </button>
+          <button onClick={() => onMove(1)} disabled={index === total - 1} className="disabled:opacity-20 text-gray-400 hover:text-gray-600">
+            <ChevronDown size={12} />
+          </button>
+        </div>
+
+        <span className="w-5 h-5 rounded-full bg-emerald-600 text-white text-[10px] font-bold flex items-center justify-center flex-shrink-0">
+          {index + 1}
+        </span>
+
+        {/* Title — editable inline */}
+        <input
+          value={action.title}
+          onChange={e => onChange({ ...action, title: e.target.value })}
+          className="flex-1 text-sm font-medium bg-transparent focus:outline-none text-gray-900 placeholder-gray-400 min-w-0"
+          placeholder="Action title"
+        />
+
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          <select
+            value={action.category}
+            onChange={e => onChange({ ...action, category: e.target.value as HealthAction["category"] })}
+            className="text-xs border border-gray-200 rounded px-1.5 py-1 bg-white focus:outline-none"
+          >
+            {CATEGORIES.map(c => <option key={c}>{c}</option>)}
+          </select>
+          <select
+            value={action.timeOfDay ?? "morning"}
+            onChange={e => onChange({ ...action, timeOfDay: e.target.value as HealthAction["timeOfDay"] })}
+            className="text-xs border border-gray-200 rounded px-1.5 py-1 bg-white focus:outline-none"
+          >
+            {TIMES.map(t => <option key={t}>{t}</option>)}
+          </select>
+          <button onClick={() => setExpanded(x => !x)} className="text-gray-400 hover:text-gray-600 p-1">
+            {expanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+          </button>
+          <button onClick={onRemove} className="text-gray-400 hover:text-red-500 p-1">
+            <Trash2 size={13} />
+          </button>
+        </div>
+      </div>
+
+      {expanded && (
+        <div className="px-3 py-3 space-y-2.5">
+          <div>
+            <label className="block text-[10px] font-semibold text-gray-400 mb-1 uppercase tracking-wide">Patient description</label>
+            <textarea
+              value={action.description}
+              onChange={e => onChange({ ...action, description: e.target.value })}
+              rows={2}
+              placeholder="What the patient sees and does — include specific dose, timing, product if relevant"
+              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-emerald-400 resize-none"
+            />
+          </div>
+          <div>
+            <label className="block text-[10px] font-semibold text-gray-400 mb-1 uppercase tracking-wide">Mechanism / why it works</label>
+            <textarea
+              value={action.why}
+              onChange={e => onChange({ ...action, why: e.target.value })}
+              rows={2}
+              placeholder="Biological rationale for this patient's specific case"
+              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-emerald-400 resize-none"
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="block text-[10px] font-semibold text-gray-400 mb-1 uppercase tracking-wide">Biomarker target</label>
+              <input
+                value={action.biomarkerTarget ?? ""}
+                onChange={e => onChange({ ...action, biomarkerTarget: e.target.value })}
+                placeholder="e.g. Vitamin D: 28 → 50-80 ng/mL"
+                className="w-full px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-emerald-400"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] font-semibold text-gray-400 mb-1 uppercase tracking-wide">Expected effect</label>
+              <input
+                value={action.effectSize ?? ""}
+                onChange={e => onChange({ ...action, effectSize: e.target.value })}
+                placeholder="e.g. +15–20 ng/mL in 8 weeks"
+                className="w-full px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-emerald-400"
+              />
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function PatientDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const supabase = createClient();
 
-  const [patient,  setPatient]  = useState<Patient | null>(null);
-  const [labs,     setLabs]     = useState<LabPanel[]>([]);
-  const [assigned, setAssigned] = useState<AssignedProtocol | null>(null);
+  const [patient,   setPatient]   = useState<Patient | null>(null);
+  const [labs,      setLabs]      = useState<LabPanel[]>([]);
+  const [assigned,  setAssigned]  = useState<AssignedProtocol | null>(null);
   const [protocols, setProtocols] = useState<Protocol[]>([]);
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [tab, setTab]           = useState<"overview" | "labs" | "messages">("overview");
-  const [assigning, setAssigning] = useState(false);
+  const [messages,  setMessages]  = useState<Message[]>([]);
+  const [tab, setTab]             = useState<"protocol" | "labs" | "messages">("protocol");
+
+  // Protocol editing state
+  const [editActions, setEditActions]   = useState<HealthAction[]>([]);
+  const [isDirty, setIsDirty]           = useState(false);
+  const [saving, setSaving]             = useState(false);
+  const [assigning, setAssigning]       = useState(false);
   const [selectedProtocol, setSelectedProtocol] = useState("");
-  const [assignNotes, setAssignNotes] = useState("");
+  const [assignNotes, setAssignNotes]   = useState("");
   const [assignLoading, setAssignLoading] = useState(false);
-  const [msgBody, setMsgBody]   = useState("");
-  const [sending, setSending]   = useState(false);
+
+  // Messaging state
+  const [msgBody, setMsgBody] = useState("");
+  const [sending, setSending] = useState(false);
   const msgEndRef = useRef<HTMLDivElement>(null);
 
   async function load() {
@@ -54,10 +176,59 @@ export default function PatientDetailPage() {
     setProtocols(proto ?? []);
     setMessages(m ?? []);
     if (a?.protocol_id) setSelectedProtocol(a.protocol_id);
+    if (a?.personalized_actions) {
+      setEditActions(a.personalized_actions);
+    }
   }
 
   useEffect(() => { load(); }, [id]);
   useEffect(() => { msgEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
+
+  function updateAction(i: number, a: HealthAction) {
+    const updated = editActions.map((x, j) => j === i ? a : x);
+    setEditActions(updated);
+    setIsDirty(true);
+  }
+
+  function removeAction(i: number) {
+    setEditActions(prev => prev.filter((_, j) => j !== i));
+    setIsDirty(true);
+  }
+
+  function moveAction(i: number, dir: -1 | 1) {
+    const arr = [...editActions];
+    const j = i + dir;
+    if (j < 0 || j >= arr.length) return;
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+    setEditActions(arr);
+    setIsDirty(true);
+  }
+
+  function addAction() {
+    const blank: HealthAction = {
+      id: `new-${Date.now()}`,
+      title: "",
+      description: "",
+      category: "Lifestyle",
+      why: "",
+      completed: false,
+      targetBiomarkers: [],
+      timeOfDay: "morning",
+    };
+    setEditActions(prev => [...prev, blank]);
+    setIsDirty(true);
+  }
+
+  async function saveActions() {
+    setSaving(true);
+    const res = await fetch(`/api/patient-protocols?patient_id=${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ actions: editActions }),
+    });
+    if (res.ok) setIsDirty(false);
+    setSaving(false);
+  }
 
   async function assignProtocol() {
     setAssignLoading(true);
@@ -97,32 +268,32 @@ export default function PatientDetailPage() {
 
   return (
     <div className="max-w-4xl mx-auto">
-      {/* Header */}
       <button onClick={() => router.back()} className="text-sm text-gray-400 hover:text-gray-600 mb-4">← Patients</button>
 
-      <div className="flex items-start gap-4 mb-6">
-        <div className="w-14 h-14 rounded-2xl bg-emerald-100 flex items-center justify-center text-xl font-bold text-emerald-700">
+      {/* Header */}
+      <div className="flex items-start gap-4 mb-5">
+        <div className="w-14 h-14 rounded-2xl bg-emerald-50 flex items-center justify-center text-xl font-bold text-emerald-700">
           {initials}
         </div>
         <div className="flex-1">
           <h1 className="text-2xl font-bold text-gray-900">{patient.name ?? "Anonymous"}</h1>
           <p className="text-sm text-gray-500">
-            {[patient.age && `${patient.age}y`, patient.biological_sex, patient.weight_lbs && `${patient.weight_lbs} lbs`]
-              .filter(Boolean).join(" · ")}
+            {[patient.age && `${patient.age}y`, patient.biological_sex, patient.weight_lbs && `${patient.weight_lbs} lbs`].filter(Boolean).join(" · ")}
           </p>
-          {(patient.goals ?? []).length > 0 && (
-            <div className="flex flex-wrap gap-1.5 mt-1.5">
-              {(patient.goals ?? []).map(g => (
-                <span key={g} className="text-xs bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full font-medium">
-                  {g.replace(/_/g, " ")}
-                </span>
-              ))}
-            </div>
-          )}
+          <div className="flex flex-wrap gap-1.5 mt-1.5">
+            {(patient.goals ?? []).map(g => (
+              <span key={g} className="text-xs bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full font-medium">
+                {g.replace(/_/g, " ")}
+              </span>
+            ))}
+            {(patient.symptoms ?? []).slice(0, 3).map(s => (
+              <span key={s} className="text-xs bg-red-50 text-red-600 px-2 py-0.5 rounded-full">
+                {s}
+              </span>
+            ))}
+          </div>
         </div>
-
-        {/* Assigned protocol badge */}
-        <div className="text-right">
+        <div className="text-right flex-shrink-0">
           {assigned?.protocol ? (
             <div>
               <p className="text-xs text-gray-400 mb-0.5">Active Protocol</p>
@@ -131,141 +302,171 @@ export default function PatientDetailPage() {
               </p>
             </div>
           ) : (
-            <span className="text-xs text-amber-600 bg-amber-50 px-3 py-1 rounded-full font-semibold">No protocol assigned</span>
+            <span className="text-xs text-amber-600 bg-amber-50 px-3 py-1 rounded-full font-semibold">No protocol</span>
           )}
         </div>
       </div>
 
+      {/* Latest lab snapshot */}
+      {latestLab && (
+        <div className="mb-5 bg-white rounded-xl border border-gray-100 p-4">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-sm font-semibold text-gray-900">Latest Panel</p>
+            <span className="text-xs text-gray-400">{new Date(latestLab.panel_date).toLocaleDateString()} · {latestLab.source}</span>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {latestLab.biomarkers.filter(b => b.status !== "optimal").map(b => (
+              <span key={b.name} className={`text-xs font-medium px-2 py-0.5 rounded-full ${STATUS_COLOR[b.status] ?? "text-gray-600 bg-gray-100"}`}>
+                {b.name} {b.value} {b.unit}
+              </span>
+            ))}
+            {latestLab.biomarkers.filter(b => b.status !== "optimal").length === 0 && (
+              <span className="text-xs text-emerald-600">All markers in optimal range</span>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Tabs */}
       <div className="flex gap-1 mb-5 bg-gray-100 p-1 rounded-xl w-fit">
-        {(["overview", "labs", "messages"] as const).map(t => (
-          <button
-            key={t}
-            onClick={() => setTab(t)}
+        {(["protocol", "labs", "messages"] as const).map(t => (
+          <button key={t} onClick={() => setTab(t)}
             className={`px-4 py-1.5 rounded-lg text-sm font-medium capitalize transition-all ${
               tab === t ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
-            }`}
-          >
+            }`}>
             {t}
           </button>
         ))}
       </div>
 
-      {/* Overview tab */}
-      {tab === "overview" && (
-        <div className="space-y-5">
-          {/* Protocol assignment */}
-          <div className="bg-white rounded-xl border border-gray-100 p-5">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="font-semibold text-gray-900">Protocol Assignment</h2>
+      {/* ── Protocol tab ── */}
+      {tab === "protocol" && (
+        <div>
+          {!assigned && !assigning && (
+            <div className="bg-white rounded-xl border border-gray-100 p-8 text-center">
+              <p className="text-sm text-gray-500 mb-4">No protocol assigned to this patient yet.</p>
               <button
-                onClick={() => setAssigning(x => !x)}
-                className="text-sm text-emerald-600 font-semibold hover:text-emerald-700"
+                onClick={() => setAssigning(true)}
+                className="px-5 py-2.5 bg-emerald-600 text-white text-sm font-semibold rounded-xl hover:bg-emerald-700"
               >
-                {assigning ? "Cancel" : assigned ? "Change Protocol" : "Assign Protocol"}
+                Assign Protocol
               </button>
             </div>
+          )}
 
-            {assigning ? (
+          {/* Assign new protocol form */}
+          {assigning && (
+            <div className="bg-white rounded-xl border border-gray-100 p-5 mb-4">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-semibold text-gray-900">
+                  {assigned ? "Switch Protocol" : "Assign Protocol"}
+                </h3>
+                <button onClick={() => setAssigning(false)} className="text-gray-400 hover:text-gray-600">
+                  <X size={16} />
+                </button>
+              </div>
               <div className="space-y-3">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-500 mb-1.5">Select Protocol</label>
-                  <select
-                    value={selectedProtocol}
-                    onChange={e => setSelectedProtocol(e.target.value)}
-                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-emerald-400 bg-white"
-                  >
-                    <option value="">Choose a protocol...</option>
-                    {protocols.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-500 mb-1.5">Notes for AI personalization (optional)</label>
-                  <textarea
-                    value={assignNotes}
-                    onChange={e => setAssignNotes(e.target.value)}
-                    placeholder="e.g. Patient is on metformin, prefers morning workouts, vegetarian diet..."
-                    rows={2}
-                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-emerald-400 resize-none"
-                  />
-                </div>
+                <select
+                  value={selectedProtocol}
+                  onChange={e => setSelectedProtocol(e.target.value)}
+                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-emerald-400 bg-white"
+                >
+                  <option value="">Choose a protocol template...</option>
+                  {protocols.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                </select>
+                <textarea
+                  value={assignNotes}
+                  onChange={e => setAssignNotes(e.target.value)}
+                  placeholder="Notes for AI personalization — medications, preferences, specific clinical context..."
+                  rows={2}
+                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-emerald-400 resize-none"
+                />
                 <button
                   onClick={assignProtocol}
                   disabled={!selectedProtocol || assignLoading}
-                  className="px-5 py-2.5 bg-emerald-600 text-white text-sm font-semibold rounded-xl hover:bg-emerald-700 disabled:opacity-40 transition-colors"
+                  className="px-5 py-2.5 bg-emerald-600 text-white text-sm font-semibold rounded-xl hover:bg-emerald-700 disabled:opacity-40"
                 >
-                  {assignLoading ? "Personalizing with AI..." : "Assign & Personalize"}
+                  {assignLoading ? "Personalizing with AI (~15s)..." : "Assign & Personalize with AI"}
                 </button>
-                {assignLoading && (
-                  <p className="text-xs text-gray-400">AI is personalizing the protocol to this patient's lab values. This takes ~15 seconds.</p>
-                )}
               </div>
-            ) : assigned?.personalized_actions ? (
-              <div className="space-y-2">
-                {(assigned.personalized_actions as Array<{ title: string; category: string; completed?: boolean; why?: string }>).map((a, i) => (
-                  <div key={i} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
-                    <Circle size={15} className="text-gray-300 mt-0.5 flex-shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900">{a.title}</p>
-                      {a.why && <p className="text-xs text-gray-500 mt-0.5 line-clamp-1">{a.why}</p>}
-                    </div>
-                    <span className="text-xs text-gray-400 flex-shrink-0">{a.category}</span>
-                  </div>
+            </div>
+          )}
+
+          {/* Protocol action editor */}
+          {assigned && editActions.length > 0 && (
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <h3 className="font-semibold text-gray-900">
+                    {assigned.protocol?.name ?? "Assigned Protocol"}
+                  </h3>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    {editActions.length} actions · Edit inline, changes save immediately
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  {isDirty && (
+                    <span className="text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded-full font-medium">
+                      Unsaved changes
+                    </span>
+                  )}
+                  <button
+                    onClick={() => setAssigning(true)}
+                    className="text-xs text-gray-500 hover:text-gray-700 px-3 py-1.5 border border-gray-200 rounded-lg"
+                  >
+                    Switch template
+                  </button>
+                  <button
+                    onClick={saveActions}
+                    disabled={!isDirty || saving}
+                    className="flex items-center gap-1.5 px-4 py-1.5 bg-emerald-600 text-white text-sm font-semibold rounded-lg hover:bg-emerald-700 disabled:opacity-40"
+                  >
+                    <Save size={13} />
+                    {saving ? "Saving..." : "Save to patient"}
+                  </button>
+                </div>
+              </div>
+
+              <div className="space-y-2 mb-3">
+                {editActions.map((a, i) => (
+                  <ActionEditor
+                    key={a.id}
+                    action={a}
+                    index={i}
+                    total={editActions.length}
+                    onChange={updated => updateAction(i, updated)}
+                    onRemove={() => removeAction(i)}
+                    onMove={dir => moveAction(i, dir)}
+                  />
                 ))}
               </div>
-            ) : (
-              <p className="text-sm text-gray-400">No protocol assigned. Assign one to generate a personalized action plan for this patient.</p>
-            )}
-          </div>
 
-          {/* Patient info */}
-          <div className="bg-white rounded-xl border border-gray-100 p-5">
-            <h2 className="font-semibold text-gray-900 mb-3">Health Profile</h2>
-            <div className="grid grid-cols-2 gap-y-2.5 text-sm">
-              {patient.habits && Object.entries(patient.habits as Record<string, unknown>).map(([k, v]) => (
-                v ? <div key={k} className="flex justify-between">
-                  <span className="text-gray-500 capitalize">{k.replace(/([A-Z])/g, " $1").toLowerCase()}</span>
-                  <span className="text-gray-900 font-medium">{String(v)}</span>
-                </div> : null
-              ))}
-              {(patient.symptoms ?? []).length > 0 && (
-                <div className="col-span-2">
-                  <span className="text-gray-500 block mb-1.5">Symptoms</span>
-                  <div className="flex flex-wrap gap-1.5">
-                    {(patient.symptoms ?? []).map(s => (
-                      <span key={s} className="text-xs bg-red-50 text-red-600 px-2 py-0.5 rounded-full">{s}</span>
-                    ))}
-                  </div>
+              <button
+                onClick={addAction}
+                className="w-full py-2.5 border-2 border-dashed border-gray-200 rounded-xl text-sm text-gray-500 hover:border-emerald-300 hover:text-emerald-600 transition-colors flex items-center justify-center gap-2"
+              >
+                <Plus size={14} /> Add action to this patient's protocol
+              </button>
+
+              {isDirty && (
+                <div className="mt-4 p-3 bg-amber-50 border border-amber-100 rounded-xl flex items-center justify-between">
+                  <p className="text-xs text-amber-700">Changes not yet saved — patient still sees the previous version.</p>
+                  <button
+                    onClick={saveActions}
+                    disabled={saving}
+                    className="flex items-center gap-1.5 px-4 py-1.5 bg-emerald-600 text-white text-xs font-semibold rounded-lg hover:bg-emerald-700 disabled:opacity-40"
+                  >
+                    <Save size={12} />
+                    {saving ? "Saving..." : "Save now"}
+                  </button>
                 </div>
               )}
-            </div>
-          </div>
-
-          {/* Latest lab snapshot */}
-          {latestLab && (
-            <div className="bg-white rounded-xl border border-gray-100 p-5">
-              <div className="flex items-center justify-between mb-3">
-                <h2 className="font-semibold text-gray-900">Latest Panel</h2>
-                <span className="text-xs text-gray-400">
-                  {new Date(latestLab.panel_date).toLocaleDateString()} · {latestLab.source}
-                </span>
-              </div>
-              <div className="grid grid-cols-3 gap-2">
-                {latestLab.biomarkers.filter(b => b.status !== "optimal").slice(0, 9).map(b => (
-                  <div key={b.name} className="flex items-center justify-between p-2 rounded-lg bg-gray-50">
-                    <span className="text-xs text-gray-600 truncate">{b.name}</span>
-                    <span className={`text-xs font-semibold px-1.5 py-0.5 rounded ${STATUS_COLOR[b.status] ?? "text-gray-600 bg-gray-100"}`}>
-                      {b.value} {b.unit}
-                    </span>
-                  </div>
-                ))}
-              </div>
             </div>
           )}
         </div>
       )}
 
-      {/* Labs tab */}
+      {/* ── Labs tab ── */}
       {tab === "labs" && (
         <div className="space-y-4">
           {labs.length === 0 ? (
@@ -297,12 +498,12 @@ export default function PatientDetailPage() {
         </div>
       )}
 
-      {/* Messages tab */}
+      {/* ── Messages tab ── */}
       {tab === "messages" && (
         <div className="bg-white rounded-xl border border-gray-100 flex flex-col" style={{ height: 520 }}>
           <div className="flex-1 overflow-y-auto p-4 space-y-3">
             {messages.length === 0 && (
-              <p className="text-center text-sm text-gray-400 pt-8">No messages yet. Send the patient a note.</p>
+              <p className="text-center text-sm text-gray-400 pt-8">No messages yet.</p>
             )}
             {messages.map(m => (
               <div key={m.id} className={`flex ${m.sender === "practitioner" ? "justify-end" : "justify-start"}`}>
@@ -328,11 +529,8 @@ export default function PatientDetailPage() {
               placeholder="Message patient..."
               className="flex-1 px-4 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-emerald-400"
             />
-            <button
-              onClick={sendMessage}
-              disabled={!msgBody.trim() || sending}
-              className="p-2.5 bg-emerald-600 text-white rounded-xl disabled:opacity-40 hover:bg-emerald-700"
-            >
+            <button onClick={sendMessage} disabled={!msgBody.trim() || sending}
+              className="p-2.5 bg-emerald-600 text-white rounded-xl disabled:opacity-40 hover:bg-emerald-700">
               <Send size={15} />
             </button>
           </div>
