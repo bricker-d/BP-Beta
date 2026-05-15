@@ -111,7 +111,7 @@ const EVENING_TIMES  = ["6:00 pm", "7:00 pm", "8:00 pm", "9:00 pm"];
 // ─── Steps ────────────────────────────────────────────────────────────────────
 
 type Step = "welcome" | "pain" | "goal" | "labs" | "basics" | "medical" | "habits" | "symptoms" | "accountability" | "summary" | "account";
-const STEPS: Step[] = ["welcome", "pain", "goal", "labs", "basics", "medical", "habits", "symptoms", "accountability", "summary", "account"];
+const STEPS: Step[] = ["welcome", "pain", "goal", "basics", "labs", "medical", "habits", "symptoms", "accountability", "summary", "account"];
 const DATA_STEPS = STEPS.slice(1, -2); // excludes welcome, summary, account from progress
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -429,7 +429,7 @@ export default function OnboardingPage() {
         {/* ── BASICS ───────────────────────────────────────────────────── */}
         {step === "basics" && (
           <div className="flex-1 flex flex-col gap-6 step-enter">
-            <StepHeader n={4} total={totalDataSteps} title="About you" sub="Personalizes your reference ranges and protocol." />
+            <StepHeader n={3} total={totalDataSteps} title="About you" sub="Personalizes your reference ranges and protocol." />
             <div className="flex-1 space-y-5 overflow-y-auto">
               <Field label="First name">
                 <input type="text" value={name} onChange={e => setName(e.target.value)}
@@ -693,7 +693,7 @@ export default function OnboardingPage() {
         {/* ── LABS ─────────────────────────────────────────────────────── */}
         {step === "labs" && !showLabUpload && (
           <div className="flex-1 flex flex-col gap-6 step-enter">
-            <StepHeader n={3} total={totalDataSteps} title="Connect your lab results" sub="Upload a PDF from Quest, LabCorp, or your doctor — or try sample data." />
+            <StepHeader n={4} total={totalDataSteps} title="Connect your lab results" sub="Upload a PDF from Quest, LabCorp, or your doctor — or try sample data." />
             <div className="flex-1 flex flex-col gap-3">
               <div className="card px-4 py-4 space-y-3">
                 <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: "var(--text3)" }}>Why it matters</p>
