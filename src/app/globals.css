@@ -31,26 +31,12 @@ html {
 }
 
 body {
-  background: var(--bg);
+  background: #f9fafb;
   color: var(--text1);
   min-height: 100dvh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
 }
-
-#device-frame { width: 100%; display: contents; }
 
 .mono { font-family: var(--font-geist-mono), ui-monospace, monospace; }
-
-.mobile-container {
-  width: 100%;
-  max-width: 430px;
-  min-height: 100dvh;
-  background: var(--bg);
-  position: relative;
-  overflow-x: hidden;
-}
 
 .page-content { padding-bottom: 5.5rem; }
 ::-webkit-scrollbar { width: 0; }
@@ -127,11 +113,6 @@ body {
   animation: step-in-back 0.22s cubic-bezier(0.25, 1, 0.5, 1) both;
 }
 
-/* Smooth scroll within mobile container */
-.mobile-container {
-  scroll-behavior: smooth;
-}
-
 /* ── Legacy compat ─────────────────────────────────────────────────────────── */
 
 .gradient-btn    { background: var(--accent); }
@@ -156,109 +137,3 @@ body {
   to { transform: rotate(360deg); }
 }
 
-/* ── Desktop: phone frame ──────────────────────────────────────────────────── */
-
-@media (min-width: 500px) {
-  html, body {
-    height: 100%;
-    overflow: hidden;
-  }
-
-  body {
-    background: #111113;
-    background-image:
-      radial-gradient(ellipse 80% 50% at 50% -5%, rgba(37,99,235,0.18) 0%, transparent 65%),
-      radial-gradient(ellipse 50% 40% at 85% 100%, rgba(37,99,235,0.08) 0%, transparent 60%);
-    justify-content: center;
-    align-items: center;
-    padding: 24px;
-    flex-direction: row;
-    gap: 48px;
-  }
-
-  #device-frame {
-    display: block;
-    position: relative;
-    width: 393px;
-    height: 852px;
-    border-radius: 50px;
-    /* Phone border */
-    box-shadow:
-      0 0 0 10px #1C1C1E,
-      0 0 0 11.5px #48484A,
-      0 0 0 12px #1C1C1E,
-      0 60px 160px rgba(0,0,0,0.95),
-      0 0 80px rgba(37,99,235,0.12);
-    overflow: hidden;
-    flex-shrink: 0;
-    background: var(--bg);
-  }
-
-  /* Dynamic Island */
-  #device-frame::before {
-    content: "";
-    position: absolute;
-    top: 13px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 126px;
-    height: 37px;
-    background: #000;
-    border-radius: 20px;
-    z-index: 9999;
-    pointer-events: none;
-  }
-
-  /* Home indicator */
-  #device-frame::after {
-    content: "";
-    position: absolute;
-    bottom: 8px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 134px;
-    height: 5px;
-    background: rgba(0,0,0,0.18);
-    border-radius: 3px;
-    z-index: 9999;
-    pointer-events: none;
-  }
-
-  .mobile-container {
-    max-width: 393px !important;
-    width: 393px;
-    height: 852px;
-    min-height: unset;
-    overflow-y: auto;
-    overflow-x: hidden;
-    scrollbar-width: none;
-    -ms-overflow-style: none;
-    padding-top: 54px; /* clear Dynamic Island */
-  }
-
-  .mobile-container::-webkit-scrollbar { display: none; }
-
-  /* BottomNav: sticky within scroll container on desktop */
-  nav.bottom-nav {
-    position: sticky !important;
-    bottom: 0 !important;
-    left: 0 !important;
-    transform: none !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    margin-top: auto;
-  }
-
-  /* Sidebar info panel next to phone */
-  .desktop-sidebar {
-    display: flex;
-    flex-direction: column;
-    gap: 24px;
-    width: 280px;
-    flex-shrink: 0;
-  }
-}
-
-@media (max-width: 499px) {
-  .desktop-sidebar { display: none; }
-}
