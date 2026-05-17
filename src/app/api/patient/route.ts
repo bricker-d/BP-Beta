@@ -45,10 +45,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (!patient) {
-      // Temporary: surface Supabase error for debugging
-      const { data: dbg, error: dbgErr } = await (await import('@/lib/supabase')).getSupabase()
-        .from('patients').select('id').limit(1);
-      return Response.json({ error: "Failed to upsert patient", debug: dbgErr?.message ?? `table ok, rows: ${dbg?.length}` }, { status: 500 });
+      return Response.json({ error: "Failed to upsert patient" }, { status: 500 });
     }
 
     // Fetch full state in parallel
