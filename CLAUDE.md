@@ -4,15 +4,85 @@
 
 ---
 
-## Standing Instructions
+## Agent Rules
 
-You are the autonomous engineering agent for BioPrecision. Dan Bricker is the founder. Your job is to build, debug, and ship — not to ask for permission on implementation decisions. Make the best call, document it here, push to main.
+### What the agent may do without asking
+- Create, edit, and delete files anywhere in `src/`, `mobile/`, `supabase/`
+- Refactor components, hooks, services, stores
+- Add new pages, routes, components, API routes, edge functions
+- Modify Tailwind config, TypeScript config, Expo config
+- Write and run migration SQL (additive only — never destructive)
+- Install new npm packages
+- Update this CLAUDE.md when architecture changes
 
-- **Push all changes directly to `main`** via the GitHub token in session
-- **Never ask Dan to copy-paste code** — you write it, you push it
-- **Never ask for clarification on obvious implementation details** — make a decision and note it in the changelog at the bottom of this file
-- **If something is broken**, fix it before moving to new features
-- **If you're unsure about product direction**, check the "Product North Star" section below before asking Dan
+### What the agent must stop and ask about
+- Deleting database tables or columns
+- Changing authentication flow or security model
+- Modifying any file containing secrets or keys
+- Changing Vercel deployment config (`vercel.json`)
+- Any action that touches production data directly
+- Architectural decisions that change the core data model substantially
+- Any change to organization, protocol, or user-role relationships
+
+### Decision protocol at forks
+- Pick the option closest to existing patterns in the codebase
+- If no pattern applies, pick the more testable and reversible option
+- Leave a `// AGENT DECISION:` comment explaining the choice and proceed
+
+### Never do
+- Mock data in production paths — use real Supabase queries or leave a clear TODO
+- Generate placeholder UI that obscures broken functionality
+- Add dependencies without checking if the capability already exists in the stack
+- Duplicate logic that already exists in a service or hook
+- Write comments that describe what the code does — only write comments that explain *why*
+- Surface BioPrecision branding in white-labeled organization contexts
+
+---
+
+## Mission
+
+BioPrecision is a protocol delivery and outcomes tracking platform with two distinct layers.
+
+**Consumer layer:** Individual users follow structured health protocols, generating longitudinal data on adherence and biomarker response. The experience is guided, not overwhelming — protocols surface the right action at the right time without requiring the user to understand the full system underneath.
+
+**Enterprise layer:** Clinics, longevity practices, corporate wellness programs, and research organizations license the platform to deploy their proprietary protocols to patient or employee populations. They see aggregate outcomes data on adherence, biomarker trajectory, and protocol efficacy. BioPrecision is their infrastructure — white-labeled, invisible, powering their patient relationship.
+
+The target individual user is the accountable minority — serious athletes, optimizing executives, patients who have chosen a clinic that takes performance medicine seriously. Every build decision serves that user, not the median.
+
+The target enterprise customer is a longevity clinic, functional medicine practice, or corporate wellness program that has existing protocols and no good way to deliver, track, or measure them at scale.
+
+---
+
+## Strategic Architecture Decisions
+
+### Protocol configuration model
+Protocols are backend-configured by the BioPrecision team, not self-served by clinic administrators. Clinics submit their existing protocol documents. The team configures them in the database. No admin UI is built until five or more clinic customers are requesting the same configuration capability.
+
+### White label model
+The enterprise experience is fully white-labeled. The end user sees the clinic's brand, not BioPrecision's. BioPrecision is the infrastructure layer.
+
+### Data as the sales loop
+Every user on a protocol generates a structured outcomes dataset: adherence rate, biomarker trajectory, deviation events, outcomes at 30/60/90 days. Across a clinic's patient population this becomes aggregate efficacy data the clinic cannot get anywhere else. Instrument everything from day one.
+
+### Beachhead
+Two affiliated clinics, targeting 15–50 initial users. Define the protocol being run. Ensure data is clean and attributable at 90 days.
+
+---
+
+## Confirmed Architecture Decisions (2026-05-16)
+
+| Decision | Choice | Rationale |
+|---|---|---|
+| Provider portal framework | **Next.js** | SSR, API routes, no CORS complexity with Supabase |
+| Consumer web framework | **Vite + React** | Separate frontend, not yet built |
+| Mobile | **Expo (React Native)** | Ship now. SwiftUI revisited when enterprise customers require native-grade iOS |
+| Data model | **Clean spec model** | `organizations`, `profiles`, Supabase Auth + RLS. `clinics` table and HMAC session approach discarded |
+| Auth | **Supabase Auth** | Email/password. Session cookie approach replaced |
+
+**Two separate frontends, one Supabase backend:**
+- `/` (provider portal) → Next.js at `bp-beta-beta.vercel.app`
+- Consumer web → Vite/React (not yet built)
+- Mobile → Expo in `/mobile/`
 
 ---
 
@@ -23,234 +93,168 @@ You are the autonomous engineering agent for BioPrecision. Dan Bricker is the fo
 | GitHub repo | `bricker-d/BP-Beta` |
 | Vercel project | `https://vercel.com/dan-brickers-projects/bp-beta` |
 | Vercel production URL | `https://bp-beta-beta.vercel.app` |
-| Anthropic API key | Set in Vercel env vars as `ANTHROPIC_API_KEY` — get from Dan |
+| Anthropic API key | Set in Vercel env vars as `ANTHROPIC_API_KEY` |
 | Supabase URL | `https://lrblvcixijbbfxiutgnp.supabase.co` |
 | Supabase anon key | `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxyYmx2Y2l4aWpiYmZ4aXV0Z25wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzczOTU0OTUsImV4cCI6MjA5Mjk3MTQ5NX0.WgBIwYNy16GF4_6pGP1lCURrV1AYAtvJasQlFL-r5IY` |
-| GitHub token (rotate when expired) | Set via `git remote set-url` at session start |
-
-**Session startup command:**
-```bash
-cd /home/claude/BP-Beta
-git remote set-url origin https://bricker-d:GITHUB_TOKEN@github.com/bricker-d/BP-Beta.git
-git pull origin main
-```
+| Session secret | Set in Vercel env vars as `SESSION_SECRET` |
 
 ---
 
-## Product North Star
+## Stack
 
-**What BioPrecision is:**
-An AI health intelligence platform that takes panel biomarkers and gives users daily ranked actions to fix what's insufficient. Think WHOOP — but the input is lab panels, not wearable signals. The output is daily accountability actions tied to specific deficient biomarkers, not strain/recovery scores.
+### Provider Portal (Web — Next.js)
+- Next.js 16, TypeScript, Tailwind CSS
+- Supabase JS (server-side, service role for provider API routes)
+- Supabase Auth for practitioner login
+- Deployed on Vercel
 
-**The core loop:**
-1. Patient uploads labs → Agent 1 parses every biomarker
-2. Agent 2 generates 5 ranked daily actions tied to out-of-range markers
-3. Patient checks off actions daily (accountability loop)
-4. Agent 3 (coach) knows exactly what they're working on, answers questions with their data
-5. Repeat at next lab panel → show delta
+### Consumer Web (not yet built)
+- React 18 + TypeScript + Vite
+- Tailwind CSS + shadcn/ui primitives
+- Recharts for data visualization
+- React Query for server state
+- React Router v6
+- Supabase JS client
 
-**Beachhead customer:** Frame Longevity clinic patients (Dan's own clinic). ~$45K average annual revenue per enrolled patient. Clinical use case first, then DTC.
+### Mobile (Expo — primary consumer surface)
+- Expo / React Native, TypeScript
+- Zustand + AsyncStorage for local state
+- Supabase JS client with AsyncStorage session persistence
+- `mobile/lib/supabase.ts` is the single Supabase client
 
-**Differentiator vs WHOOP:** WHOOP = wearable signals → recovery scores. BioPrecision = lab biomarkers → clinical protocol actions. WHOOP has no longitudinal lab accountability loop — that's the white space.
-
-**Primary input is lab upload.** Wearables are supplementary context, not required. The entire product works and delivers clinical value from a PDF upload alone.
-
-**What "done well" looks like:**
-- Lab → protocol output: something Dan would hand to a Frame Longevity patient without editing
-- Daily actions: specific, mechanism-cited, effect-size quantified, tied to actual values (not generic)
-- Coach: responds like a clinician who has reviewed the full chart, not a chatbot
-
----
-
-## Architecture
-
-### Stack
-- **Web app:** Next.js 16, TypeScript, Tailwind, deployed on Vercel
-- **Mobile app:** Expo / React Native (in `/mobile` directory)
-- **AI:** Anthropic API (`claude-opus-4-5` for agents, `claude-sonnet-4-20250514` for action ranking)
-- **State:** Zustand (web), Zustand + AsyncStorage (mobile)
-- **Database:** None yet — all in-memory. Supabase is the planned addition.
-
-### Directory Structure
-```
-BP-Beta/
-├── src/                          # Next.js web app
-│   ├── app/
-│   │   ├── page.tsx              # Dashboard
-│   │   ├── actions/page.tsx      # Daily actions (Agent 2 output)
-│   │   ├── coach/page.tsx        # AI coach (Agent 3)
-│   │   ├── lab-results/page.tsx  # Lab upload + biomarker view
-│   │   └── api/
-│   │       ├── parse-labs/       # Agent 1: lab ingestion
-│   │       ├── generate-actions/ # Agent 2: daily action generation
-│   │       └── chat/             # Agent 3: coach with full context
-│   ├── components/
-│   ├── lib/
-│   │   ├── biomarkers.ts         # Reference ranges, mock data
-│   │   ├── types.ts              # All TypeScript interfaces
-│   │   └── utils.ts
-│   └── store/useHealthStore.ts   # Web state (Zustand)
-│
-└── mobile/                       # Expo React Native app
-    ├── app/
-    │   ├── (onboarding)/index.tsx # 8-step onboarding flow
-    │   └── (tabs)/               # Home, Actions, Labs, Coach
-    ├── lib/
-    │   ├── store.ts              # Mobile state (Zustand + AsyncStorage)
-    │   ├── biomarkers.ts         # Mobile biomarker logic
-    │   ├── types.ts              # Mobile TypeScript interfaces
-    │   ├── DailyCheckIn.tsx      # Daily accountability component
-    │   └── onboarding/           # 8 onboarding step components
-    └── assets/
-```
-
-### The Three Agents
-
-**Agent 1 — Lab Intelligence** (`src/app/api/parse-labs/route.ts`)
-- Input: PDF or CSV lab file (multipart form)
-- Process: Claude vision extracts all biomarkers, assigns functional medicine optimal ranges
-- Output: `LabPanel` object with all biomarkers + status
-- Model: `claude-opus-4-5` (vision needed for PDFs)
-- Status: ✅ Built, deployed
-
-**Agent 2 — Daily Actions** (`src/app/api/generate-actions/route.ts`)
-- Input: `LabPanel`, optional `WearableData`, `goals[]`, `patientName`
-- Process: Ranks candidate actions from clinical knowledge base, uses Claude to select/personalize top 5
-- Output: 5 `HealthAction[]` ranked by clinical impact, specific to patient values
-- Model: `claude-sonnet-4-20250514`
-- Status: ✅ Built, deployed
-- Trigger: Auto-fires from `useHealthStore.setLabPanel()`
-
-**Agent 3 — Coach** (`src/app/api/chat/route.ts`)
-- Input: `messages[]`, `labPanel`, `wearableData`, `intakeProfile`, `todaysActions`
-- Process: Builds full clinical system prompt with patient data + today's action context
-- Output: SSE streaming response
-- Model: `claude-opus-4-5`
-- Status: ✅ Built, deployed
-- Key upgrade: Now receives `todaysActions` — knows exactly what patient is working on
+### Backend
+- Supabase (Postgres + Auth + Edge Functions)
+- Supabase Auth — email/password, JWT-based
+- RLS on every new table
+- Anthropic API for AI agents (called from Next.js API routes)
 
 ---
 
-## Onboarding Flow (Mobile, 8 Steps)
+## Database Schema
 
-| Step | Component | Collects | Status |
-|---|---|---|---|
-| 0 | `StepGoals` | Name, multi-goal select | ✅ |
-| 1 | `StepHealthFocus` | Primary focus (single), secondary goals | ✅ |
-| 2 | `StepBiometrics` | Age, sex, height, weight | ✅ |
-| 3 | `StepHabits` | Sleep, exercise, diet, stress, alcohol | ✅ |
-| 4 | `StepSymptoms` | 10-symptom multi-select + free text | ✅ |
-| 5 | `StepLabs` | Upload / demo / skip | ✅ |
-| 6 | `StepWearables` | Device connect (Oura/WHOOP/Garmin/skip) | ✅ |
-| 7 | `StepSummary` | AI intake summary using full profile | ✅ |
+### Active tables (new spec model — use these for all new code)
 
-**Daily accountability loop** (`mobile/lib/DailyCheckIn.tsx`):
-- Morning: check off yesterday's 5 actions (y/n)
-- Rate sleep quality, energy, stress (1-5)
-- Correlates completions to biomarker outcomes over time
-- Status: ✅ Component built, not yet wired to home tab trigger
+| Table | Purpose |
+|---|---|
+| `organizations` | Clinic and enterprise customers |
+| `profiles` | User profiles extending `auth.users` — onboarding state, org association, role |
+| `protocols_v2` | Protocol definitions owned by an org or BioPrecision default |
+| `protocol_steps` | Ordered steps within a protocol |
+| `user_protocols` | Assignment of a protocol to a user with status and current day |
+| `outcomes_snapshots` | 30/60/90 day aggregate snapshots per user per protocol |
 
----
+### Legacy tables (do not build new features on these)
+`patients`, `clinics`, `protocols` (old structure), `protocol_actions`, `patient_protocols`, `messages`, `lab_panels`, `daily_actions`, `daily_logs`, `chat_messages`, `wearable_connections`
 
-## Open Tasks (Priority Order)
+### Role system
+| Role | Access |
+|---|---|
+| `user` | Own data only |
+| `org_admin` | Organization aggregate outcomes, no individual PII |
+| `bp_admin` | Full platform access |
 
-### 🔴 Critical (blocks clinical use)
-1. ~~**Wire DailyCheckIn to home tab**~~ ✅ Done 2026-04-28 — morning modal, 800ms delay, 90-day log history, skippable
-2. ~~**Supabase integration**~~ ✅ Done 2026-04-28 — schema, client, patient/daily-log API routes, mobile sync, clinician dashboard at /clinician
-   - Project: `lrblvcixijbbfxiutgnp` | URL: `https://lrblvcixijbbfxiutgnp.supabase.co`
-   - Schema: run `supabase/schema.sql` in SQL editor ✅ (confirm after Dan runs it)
-   - Vercel env vars: need `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `ANTHROPIC_API_KEY`
-3. ~~**Vercel env vars**~~ ✅ Done 2026-04-28 — ANTHROPIC_API_KEY + Supabase vars set
-   - Still needed: OURA_CLIENT_ID, OURA_CLIENT_SECRET, WHOOP_CLIENT_ID, WHOOP_CLIENT_SECRET, NEXT_PUBLIC_APP_URL
-   - Oura app: cloud.ouraring.com/oauth/applications
-   - WHOOP app: developer.whoop.com
-
-### 🟡 High value (next sprint)
-4. ~~**Weekly progress summary**~~ ✅ Done 2026-04-28 — /api/weekly-summary, Sunday trigger, coach tab banner, completion rates + wellbeing trends: "Here's what moved this week and what to focus on next." Triggered by cron or on app open Sunday.
-5. ~~**Real wearable API connections**~~ ✅ Done 2026-04-28 — Oura + WHOOP OAuth2, token refresh, real 7-day data sync, /connect/success page
-6. ~~**Lab delta tracking**~~ ✅ Done 2026-04-28 — DeltaBadge on labs tab, previousValue stored, improved/worsened/stable classification
-
-### 🔴 Beta blockers (do before first Frame Longevity patient)
-10. ~~**Auth gate on /clinician**~~ ✅ Done — /clinician/login, cookie session, middleware redirect. Default pw: 'FrameLongevity2024!' — set CLINICIAN_PASSWORD in Vercel to change.
-11. ~~**Longitudinal biomarker trends**~~ ✅ Done — SVG sparklines, optimal zone band, improving/worsening/stable classification, labHistory[] store.
-
-### 🟢 Good to have
-7. ~~**Frame Longevity clinician view**~~ ✅ Done 2026-04-28 — /clinician page, patient_overview DB view, completion rates, check-in status
-8. ~~**Push notifications**~~ ✅ Done 2026-04-28 — 8am check-in, 7pm action nudge, 9am Sunday summary, tap routing
-9. ~~**PDF report generation**~~ ✅ Done 2026-04-28 — /api/report, print-ready HTML, Claude narrative, biomarker table, download button on lab page
-
+### Migration files
+- `supabase/migrations/20260516_spec_data_model.sql` — Run this to create all new tables. **Dan must run this in Supabase SQL Editor.**
 
 ---
 
-## Remaining One-Time Setup (Dan must do)
+## Three-Agent Architecture (AI)
 
-### Wearable OAuth apps (to activate Oura + WHOOP connections)
-1. **Oura:** go to cloud.ouraring.com/oauth/applications → Create app → set redirect URI to `https://bp-beta-9fdp-git-main-dan-brickers-projects.vercel.app/api/wearables/oura/callback` → copy Client ID + Secret → add to Vercel as `OURA_CLIENT_ID` + `OURA_CLIENT_SECRET`
-2. **WHOOP:** go to developer.whoop.com → Create app → same redirect pattern for `/api/wearables/whoop/callback` → add to Vercel as `WHOOP_CLIENT_ID` + `WHOOP_CLIENT_SECRET`
-3. Add `NEXT_PUBLIC_APP_URL=https://bp-beta-9fdp-git-main-dan-brickers-projects.vercel.app` to Vercel env vars
+**Agent 1 — Lab Parser** (`/api/parse-labs`)
+- Input: PDF or CSV lab file
+- Output: Structured biomarker readings
+- Model: `claude-opus-4-5` (vision for PDFs)
 
-### Supabase wearable_connections table
-Run in SQL editor (supabase.com/dashboard/project/lrblvcixijbbfxiutgnp/sql/new):
-```sql
-CREATE TABLE IF NOT EXISTS wearable_connections (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  patient_id uuid REFERENCES patients(id) ON DELETE CASCADE,
-  provider text NOT NULL CHECK (provider IN ('oura', 'whoop', 'garmin')),
-  access_token text NOT NULL,
-  refresh_token text,
-  token_expires_at timestamptz,
-  connected_at timestamptz DEFAULT now(),
-  UNIQUE(patient_id, provider)
-);
-CREATE INDEX IF NOT EXISTS wearable_connections_patient_idx ON wearable_connections(patient_id);
-ALTER TABLE wearable_connections DISABLE ROW LEVEL SECURITY;
-```
+**Agent 2 — Recommendation Engine** (`/api/generate-actions`)
+- Trigger: New reading OR daily cron
+- Rule: Protocol steps take priority. Agent fills remaining slots up to 5 total.
+- Every action must reference the specific biomarker targeted and evidence basis.
+
+**Agent 3 — AI Coach** (`/api/chat`)
+- Grounded in user's actual readings + active protocol context
+- In white-labeled contexts: speaks as the organization's coach, never mentions BioPrecision
 
 ---
 
-## Supabase Setup (One-time, Dan must do)
+## Mobile Onboarding Flow (Expo)
 
-1. Go to https://app.supabase.com → New project → name it `bioprecision`
-2. SQL Editor → New Query → paste contents of `supabase/schema.sql` → Run
-3. Settings → API → copy `Project URL` and `anon public` key
-4. Vercel dashboard → bp-beta project → Settings → Environment Variables → add:
-   - `NEXT_PUBLIC_SUPABASE_URL` = your project URL
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY` = your anon key
-   - `ANTHROPIC_API_KEY` = sk-ant-... (from Dan)
-5. Redeploy on Vercel (or push any commit to trigger)
+| Step | Component | Collects |
+|---|---|---|
+| 0 | `StepAuth` | Email + password (Supabase Auth sign-up or sign-in) |
+| 1 | `StepGoals` | Name, multi-goal select |
+| 2 | `StepHealthFocus` | Primary focus |
+| 3 | `StepBiometrics` | Age, sex, height, weight |
+| 4 | `StepHabits` | Sleep, exercise, diet, stress, alcohol |
+| 5 | `StepSymptoms` | Symptom multi-select |
+| 6 | `StepLabs` | Upload / demo / skip |
+| 7 | `StepWearables` | Device connect or skip |
+| 8 | `StepSummary` | AI welcome + writes `onboarding_complete: true` to `profiles` |
 
-Once done: patients persist across sessions, clinician dashboard at /clinician is live, daily logs sync automatically.
-
----
-
-## Key Decisions Made
-
-- **No app needed to make money** — service-first approach. Frame Longevity is paying customer, product gets validated clinically before DTC.
-- **Functional medicine ranges, not lab ranges** — optimal ranges in `BIOMARKER_META` are set to functional medicine standards (e.g., glucose 70-99 not 70-125), which is Dan's clinical philosophy.
-- **5 actions per day max** — deliberate constraint. More = overwhelm = no completion. Quality over quantity.
-- **Mechanism + effect size required on every action** — generic actions ("eat better") are explicitly prohibited in Agent 2 prompt. Every action must cite the biological mechanism and expected effect size.
-- **claude-opus-4-5 for lab parsing and coaching, sonnet for action ranking** — opus needed for PDF vision and clinical reasoning depth; sonnet is fast enough for action selection.
-- **Mobile store (Zustand) generates actions locally** — mobile app has its own `generateActionsFromPanel()` in `mobile/lib/biomarkers.ts` so it works offline. Web app hits the API.
+**Route guard (\_layout.tsx):** Checks Supabase session + `profiles.onboarding_complete` on mount. No session → onboarding step 0. Session + incomplete → onboarding step 1 (skip auth). Session + complete → tabs.
 
 ---
 
-## Biomarker Coverage
+## Immediate Execution Queue
 
-**Clinical library:** `src/lib/clinicalLibrary.ts` — single source of truth for all biomarker metadata.
-All agents import from this library. To add a new biomarker, add it to `BIOMARKER_LIBRARY` in clinicalLibrary.ts only.
+### ✅ Done
+- Multi-clinic auth scaffolding (discarded — replaced by Supabase Auth)
+- `supabase/migrations/20260516_spec_data_model.sql` written
+- `mobile/lib/supabase.ts` — Supabase client for mobile
+- `mobile/lib/onboarding/StepAuth.tsx` — auth step
+- Mobile onboarding wired to Supabase Auth + profiles write
+- Route guard uses Supabase session as source of truth
 
-**40+ biomarkers with full clinical context, peer citations, and evidence grades:**
-- Metabolic: `glucose`, `hba1c`, `fastingInsulin`, `uricAcid`
-- Lipids: `ldl`, `hdl`, `triglycerides`, `totalCholesterol`, `apoB`, `lpa`
-- Inflammatory: `hscrp`, `homocysteine`
-- Hormones: `testosterone`, `freeTesto`, `shbg`, `estradiol`, `progesterone`, `dheas`, `cortisol`, `igf1`
-- Thyroid: `tsh`, `freeT3`, `reverseT3`, `tpoAntibodies`
-- Vitamins: `vitaminD`, `vitaminB12`, `folate`, `vitaminB6`, `ferritin`, `magnesium`, `zinc`, `omega3Index`
-- Liver: `alt`, `ast`
-- CBC: `hemoglobin`
-- Kidney: `creatinine`, `egfr`
+### 🔴 Priority 1 — One remaining step
+- **Dan must run `supabase/migrations/20260516_spec_data_model.sql` in Supabase SQL Editor**
 
-**Evidence standard:** Every intervention has Grade A/B/C, named citations with PMID, effect size, time-to-effect, contraindications.
+### 🔴 Priority 2 — Protocol data model
+- Seed one BioPrecision default protocol in `protocols_v2` with `protocol_steps`
+- Wire `user_protocols` assignment on the provider portal
+
+### 🟡 Priority 3 — Ground the coach
+- In `health-coach-chat` (or `/api/chat`): fetch 10 most recent readings + active protocol steps before prompt
+- White-labeled contexts: strip BioPrecision from system prompt
+
+### 🟡 Priority 4 — Recommendation trigger
+- Postgres trigger on readings insert → call generate-health-recommendations
+- Protocol steps take priority, agent fills remaining slots up to 5
+
+### 🟡 Priority 5 — Protocol progress UI (mobile)
+- `ProtocolProgress` component — protocol name, current day, completion ring
+- `DailyProtocolActions` — today's steps, max 5, not overwhelming
+- Surface on home tab above the fold
+
+### 🟢 Priority 6 — Outcomes snapshot
+- Trigger at day 30, 60, 90 per active user_protocols record
+- Calculate adherence rate and biomarker deltas against baseline
+- Provider portal: org admin aggregate outcomes view
+
+### 🟢 Priority 7 — White label theming
+- `WhiteLabelProvider` loads `organizations.branding` on auth
+- Apply as CSS custom properties
+- BioPrecision branding when `white_label_slug` is null
+
+### 🟢 Priority 8 — Oura Ring integration (real OAuth, not stub)
+
+---
+
+## One-Time Setup Dan Must Do
+
+1. **Run migration SQL:** Go to `https://app.supabase.com/project/lrblvcixijbbfxiutgnp/sql/new` → paste contents of `supabase/migrations/20260516_spec_data_model.sql` → Run
+2. **Add `SESSION_SECRET` to Vercel env vars** — any long random string (e.g. `openssl rand -hex 32`)
+3. **After onboarding a clinic:** `UPDATE profiles SET organization_id = '<org_id>', role = 'org_admin' WHERE id = '<practitioner_user_id>';`
+
+---
+
+## Tone and Standards
+
+BioPrecision is a serious platform for serious people. Every surface — copy, UI, coach responses, error messages — reflects that. No wellness platitudes. No vague encouragement. Specific, rigorous, direct. The user is an adult who wants accurate information and precise guidance.
+
+In white-labeled contexts, the platform speaks as the organization. BioPrecision is invisible.
+
+The interpretation layer is the primary defensible advantage. Every recommendation must be mechanistically grounded. If evidence is weak, say so. If an intervention is well-established, cite it.
+
+The outcomes data is the enterprise sales asset. Instrument everything. Keep it clean. At 90 days it closes the next clinic customer.
 
 ---
 
@@ -258,23 +262,5 @@ All agents import from this library. To add a new biomarker, add it to `BIOMARKE
 
 | Date | What changed |
 |---|---|
-| 2026-04-28 | Initial CLAUDE.md created |
-| 2026-04-28 | Agent 1 (parse-labs) hardened — functional medicine ranges, all biomarkers, higher token limit |
-| 2026-04-28 | Agent 2 (generate-actions) built from scratch — full clinical knowledge base, wearable signals, Claude ranking |
-| 2026-04-28 | Agent 3 (chat) upgraded — receives `todaysActions` context, knows what patient is working on |
-| 2026-04-28 | Store upgraded — `setLabPanel` auto-triggers Agent 2, `isGeneratingActions` loading state |
-| 2026-04-28 | Onboarding expanded to 8 steps — `StepHealthFocus`, `StepHabits` added |
-| 2026-04-28 | `DailyCheckIn` component built — action completion log + sleep/energy/stress ratings |
-| 2026-04-28 | `IntakeProfile` updated — `primaryFocus`, `habits`, `DailyLog` types added |
-| 2026-04-28 | DailyCheckIn wired to home tab — morning modal, `needsCheckIn()`, `submitDailyLog()`, 90-day log |
-| 2026-04-28 | Supabase integration — schema, client, API routes, mobile sync, clinician dashboard |
-| 2026-04-28 | Task 3 (Vercel env vars) — instructions added to CLAUDE.md, requires Dan to action |
-| 2026-04-28 | Weekly summary agent — /api/weekly-summary, Sunday trigger, coach tab banner |
-| 2026-04-28 | Lab delta tracking — DeltaBadge, previousLabPanel, improved/worsened/stable |
-| 2026-04-28 | Wearable OAuth2 — Oura + WHOOP full auth flow, real data sync, token refresh, /connect/success |
-| 2026-04-28 | Push notifications — morning/evening/weekly schedule, permission request, tap routing |
-| 2026-04-28 | PDF clinical report — /api/report, Claude narrative, biomarker table, download button |
-| 2026-04-28 | Lab upload refocus — real file picker in onboarding + labs tab, error handling, parsedLabPanel wired through |
-| 2026-04-28 | Clinical library — 40+ biomarkers, peer citations with PMIDs, evidence grades, liability disclaimer baked in |
-| 2026-04-28 | Auth gate — /clinician/login, httpOnly cookie, Next.js middleware, CLINICIAN_PASSWORD env var |
-| 2026-04-28 | Longitudinal trends — BiomarkerTrends SVG sparklines, optimal zone, direction classification |
+| 2026-04-28 | Initial build: agents, onboarding, Supabase sync, clinician dashboard, push notifications, PDF reports |
+| 2026-05-16 | Architecture decision: Next.js (provider portal) + Vite (consumer web, TBD) + Expo (mobile). Clean data model: organizations/profiles/Supabase Auth/RLS. Migration SQL written. Mobile onboarding wired to Supabase Auth. Discarded: clinics table, HMAC session cookies. AI-assisted protocol drafting added to provider portal. |

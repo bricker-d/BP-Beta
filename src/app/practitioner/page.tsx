@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase-browser";
+import { useClinic } from "@/lib/useClinic";
 import { Plus, Search, RefreshCw, MessageSquare, AlertCircle, CheckCircle2, Clock } from "lucide-react";
 
 interface PatientRow {
@@ -131,15 +132,19 @@ function PatientCard({ p, onClick }: { p: PatientRow; onClick: () => void }) {
 
 export default function PractitionerDashboard() {
   const router = useRouter();
+  const clinic = useClinic();
   const [patients, setPatients] = useState<PatientRow[]>([]);
   const [loading, setLoading]   = useState(true);
   const [search, setSearch]     = useState("");
   const [filter, setFilter]     = useState<"all" | "attention" | "no_protocol">("all");
 
-  async function load() {
+  async function load(clinicId: string) {
     setLoading(true);
     const supabase = createClient();
-    const { data: overview } = await supabase.from("patient_overview").select("*");
+    const { data: overview } = await supabase
+      .from("patient_overview")
+      .select("*")
+      .eq("clinic_id", clinicId);
     if (!overview) { setLoading(false); return; }
 
     const { data: assignments } = await supabase
@@ -170,7 +175,7 @@ export default function PractitionerDashboard() {
     setLoading(false);
   }
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { if (clinic) load(clinic.id); }, [clinic]);
 
   const filtered = patients.filter(p => {
     const matchSearch = !search || p.name?.toLowerCase().includes(search.toLowerCase());
@@ -196,10 +201,10 @@ export default function PractitionerDashboard() {
       <div className="flex items-start justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Patient Panel</h1>
-          <p className="text-sm text-gray-500 mt-0.5">{patients.length} enrolled · Frame Longevity</p>
+          <p className="text-sm text-gray-500 mt-0.5">{patients.length} enrolled · {clinic?.name ?? ""}</p>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={load} disabled={loading}
+          <button onClick={() => clinic && load(clinic.id)} disabled={loading}
             className="flex items-center gap-1.5 px-3 py-2 text-sm text-gray-500 bg-white border border-gray-200 rounded-lg hover:bg-gray-50">
             <RefreshCw size={13} className={loading ? "animate-spin" : ""} />
           </button>

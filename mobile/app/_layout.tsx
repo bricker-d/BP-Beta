@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { Stack, useRouter, useSegments, SplashScreen } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useHealthStore } from '../lib/store';
+import { supabase } from '../lib/supabase';
 import { ErrorBoundary } from '../lib/ErrorBoundary';
 import { configureRevenueCat } from '../lib/paywall';
 import { identify } from '../lib/analytics';
@@ -32,15 +33,44 @@ function OnboardingGuard() {
   const toggleAction            = useHealthStore((s) => s.toggleAction);
   const notifSetup = useRef(false);
 
-  // Route guard
+  // Route guard — checks Supabase session as source of truth
   useEffect(() => {
-    const inOnboarding = segments[0] === '(onboarding)';
-    if (!hasCompletedOnboarding && !inOnboarding) {
-      router.replace('/(onboarding)');
-    } else if (hasCompletedOnboarding && inOnboarding) {
-      router.replace('/(tabs)');
+    async function checkAuth() {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        // No session — send to onboarding (which starts at auth step)
+        if (segments[0] !== '(onboarding)') router.replace('/(onboarding)');
+        return;
+      }
+
+      // Session exists — check profile
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('onboarding_complete')
+        .eq('id', session.user.id)
+        .single();
+
+      const complete = profile?.onboarding_complete ?? false;
+
+      if (complete && segments[0] === '(onboarding)') {
+        router.replace('/(tabs)');
+      } else if (!complete && segments[0] !== '(onboarding)') {
+        router.replace('/(onboarding)');
+      }
     }
-  }, [hasCompletedOnboarding, segments]);
+
+    checkAuth();
+  }, [segments]);
+
+  // Listen for auth state changes (logout, new login)
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_OUT') {
+        router.replace('/(onboarding)');
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, []);
 
   // Setup notifications once after onboarding completes
   useEffect(() => {

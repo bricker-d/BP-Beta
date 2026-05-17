@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useClinic } from "@/lib/useClinic";
 
 const NAV = [
   { href: "/practitioner",           label: "Patients",   icon: "M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 7a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" },
@@ -10,6 +11,7 @@ const NAV = [
 
 export default function PractitionerLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const clinic = useClinic();
 
   // Login page renders without the sidebar
   if (pathname === "/practitioner/login") {
@@ -28,7 +30,7 @@ export default function PractitionerLayout({ children }: { children: React.React
             </svg>
           </div>
           <div>
-            <p className="text-[13px] font-bold text-gray-900 leading-tight">Frame Longevity</p>
+            <p className="text-[13px] font-bold text-gray-900 leading-tight">{clinic?.name ?? "Loading..."}</p>
             <p className="text-[10px] text-gray-400">Practitioner Portal</p>
           </div>
         </div>
@@ -56,7 +58,7 @@ export default function PractitionerLayout({ children }: { children: React.React
             onClick={async (e) => {
               e.preventDefault();
               await fetch("/api/clinician/auth", { method: "DELETE" });
-              window.location.href = "/practitioner/login";
+              window.location.href = "/";
             }}
             className="flex items-center gap-2 text-xs text-gray-400 hover:text-gray-600 transition-colors"
           >

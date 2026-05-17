@@ -1,36 +1,39 @@
 import { cookies } from "next/headers";
+import { createClient } from "@/lib/supabase-server";
+import { SESSION_COOKIE, signClinicId } from "@/lib/session";
 
-const SESSION_COOKIE = "bp_clinician_session";
-const SESSION_VALUE  = "authenticated";
-const MAX_AGE        = 60 * 60 * 8; // 8 hours
+const MAX_AGE = 60 * 60 * 8; // 8 hours
 
 export async function POST(req: Request) {
-  const { password } = await req.json();
+  const { slug, password } = await req.json();
 
-  const correctPassword = process.env.CLINICIAN_PASSWORD;
-
-  if (!correctPassword) {
-    // If env var not set, use a default (remind Dan to set it)
-    console.warn("[clinician/auth] CLINICIAN_PASSWORD env var not set — using default");
+  if (!slug?.trim() || !password) {
+    return Response.json({ error: "Clinic ID and password required" }, { status: 400 });
   }
 
-  const expected = correctPassword ?? "FrameLongevity2024!";
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("verify_clinic_login", {
+    p_slug: slug.toLowerCase().trim(),
+    p_password: password,
+  });
 
-  if (password !== expected) {
-    return Response.json({ error: "Invalid password" }, { status: 401 });
+  if (error || !data || data.length === 0) {
+    return Response.json({ error: "Invalid clinic ID or password" }, { status: 401 });
   }
 
-  // Set session cookie
+  const clinic = data[0] as { id: string; name: string; slug: string };
+  const sessionValue = signClinicId(clinic.id);
+
   const cookieStore = await cookies();
-  cookieStore.set(SESSION_COOKIE, SESSION_VALUE, {
+  cookieStore.set(SESSION_COOKIE, sessionValue, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
     maxAge: MAX_AGE,
-    path: "/clinician",
+    path: "/",
   });
 
-  return Response.json({ success: true });
+  return Response.json({ success: true, clinicName: clinic.name });
 }
 
 export async function DELETE() {
