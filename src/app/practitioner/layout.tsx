@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 const NAV = [
   { href: "/practitioner",           label: "Patients",   icon: "M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 7a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" },
@@ -8,6 +9,13 @@ const NAV = [
 ];
 
 export default function PractitionerLayout({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+
+  // Login page renders without the sidebar
+  if (pathname === "/practitioner/login") {
+    return <>{children}</>;
+  }
+
   return (
     <div className="flex min-h-screen bg-gray-50">
       {/* Sidebar */}
