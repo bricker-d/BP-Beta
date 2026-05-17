@@ -94,7 +94,7 @@ export async function upsertPatient(
     .select()
     .single();
 
-  if (error) { console.error('[supabase] upsertPatient:', error.message); return null; }
+  if (error) { console.error('[supabase] upsertPatient:', error.message, error.code, error.details); return null; }
   return data;
 }
 
