@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2, ChevronDown, ChevronUp, Save } from "lucide-react";
+import { Plus, Trash2, ChevronDown, ChevronUp, Save, Sparkles, Loader } from "lucide-react";
 import { ProtocolAction } from "@/lib/types";
 
 const CATEGORIES = ["Nutrition", "Supplement", "Exercise", "Sleep", "Lifestyle", "Movement"];
@@ -199,6 +199,13 @@ export default function NewProtocolPage() {
   const [actions, setActions] = useState<DraftAction[]>([emptyAction()]);
   const [saving, setSaving] = useState(false);
 
+  // AI draft state
+  const [aiGoal, setAiGoal] = useState("");
+  const [aiContext, setAiContext] = useState("");
+  const [drafting, setDrafting] = useState(false);
+  const [draftError, setDraftError] = useState("");
+  const [showAi, setShowAi] = useState(true);
+
   const toggleFocus = (f: string) =>
     setFocusAreas(prev => prev.includes(f) ? prev.filter(x => x !== f) : [...prev, f]);
 
@@ -215,6 +222,47 @@ export default function NewProtocolPage() {
     [arr[i], arr[j]] = [arr[j], arr[i]];
     setActions(arr);
   };
+
+  async function draftWithAI() {
+    if (!aiGoal.trim()) return;
+    setDrafting(true);
+    setDraftError("");
+    try {
+      const res = await fetch("/api/protocols/draft", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ goal: aiGoal.trim(), context: aiContext.trim() || undefined }),
+      });
+      if (!res.ok) throw new Error("Draft failed");
+      const draft = await res.json();
+
+      setName(draft.name ?? "");
+      setDescription(draft.description ?? "");
+      setFocusAreas(draft.focus_areas ?? []);
+      setTargetConditions((draft.target_conditions ?? []).join(", "));
+      setActions(
+        (draft.actions ?? []).map((a: Record<string, unknown>, i: number): DraftAction => ({
+          _key: `ai-${i}`,
+          title: (a.title as string) ?? "",
+          description: (a.description as string) ?? "",
+          mechanism: (a.mechanism as string) ?? "",
+          category: (a.category as ProtocolAction["category"]) ?? "Lifestyle",
+          time_of_day: (a.time_of_day as ProtocolAction["time_of_day"]) ?? "morning",
+          biomarker_targets: (a.biomarker_targets as string[]) ?? [],
+          evidence_grade: (a.evidence_grade as string) ?? "B",
+          effect_size: (a.effect_size as string) ?? "",
+          time_to_effect: (a.time_to_effect as string) ?? "",
+          citations: (a.citations as string[]) ?? [],
+          is_conditional: false,
+          sort_order: i,
+        }))
+      );
+      setShowAi(false);
+    } catch {
+      setDraftError("AI draft failed. Try again or build manually.");
+    }
+    setDrafting(false);
+  }
 
   async function save() {
     if (!name.trim()) return;
@@ -257,6 +305,57 @@ export default function NewProtocolPage() {
           {saving ? "Saving..." : "Save Protocol"}
         </button>
       </div>
+
+      {/* AI Draft panel */}
+      {showAi ? (
+        <div className="bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-100 rounded-xl p-5 mb-5">
+          <div className="flex items-center gap-2 mb-3">
+            <Sparkles size={16} className="text-emerald-600" />
+            <h2 className="text-sm font-bold text-emerald-900">Draft with AI</h2>
+            <button
+              onClick={() => setShowAi(false)}
+              className="ml-auto text-xs text-emerald-600 hover:text-emerald-800"
+            >
+              Build manually instead
+            </button>
+          </div>
+          <p className="text-xs text-emerald-700 mb-3">
+            Describe the clinical goal and AI will generate a full evidence-based protocol with mechanisms, effect sizes, and citations.
+          </p>
+          <textarea
+            value={aiGoal}
+            onChange={e => setAiGoal(e.target.value)}
+            placeholder="e.g. Reverse insulin resistance in a 52-year-old male with HbA1c of 6.1 and fasting glucose of 112..."
+            rows={2}
+            className="w-full px-4 py-3 text-sm bg-white border border-emerald-200 rounded-xl focus:outline-none focus:border-emerald-400 resize-none mb-2"
+          />
+          <textarea
+            value={aiContext}
+            onChange={e => setAiContext(e.target.value)}
+            placeholder="Additional context (optional): patient age range, contraindications, preferred intervention types..."
+            rows={1}
+            className="w-full px-4 py-2.5 text-sm bg-white border border-emerald-200 rounded-xl focus:outline-none focus:border-emerald-400 resize-none mb-3"
+          />
+          {draftError && (
+            <p className="text-xs text-red-600 mb-2">{draftError}</p>
+          )}
+          <button
+            onClick={draftWithAI}
+            disabled={!aiGoal.trim() || drafting}
+            className="flex items-center gap-2 px-5 py-2.5 bg-emerald-600 text-white text-sm font-semibold rounded-xl hover:bg-emerald-700 disabled:opacity-40 transition-colors"
+          >
+            {drafting ? <Loader size={14} className="animate-spin" /> : <Sparkles size={14} />}
+            {drafting ? "Generating protocol (~20s)..." : "Generate Protocol with AI"}
+          </button>
+        </div>
+      ) : (
+        <button
+          onClick={() => setShowAi(true)}
+          className="flex items-center gap-1.5 text-xs text-emerald-600 hover:text-emerald-700 mb-4"
+        >
+          <Sparkles size={12} /> Re-draft with AI
+        </button>
+      )}
 
       {/* Protocol metadata */}
       <div className="bg-white rounded-xl border border-gray-100 p-5 mb-5 space-y-4">
