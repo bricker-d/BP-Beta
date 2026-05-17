@@ -9,6 +9,7 @@ export default function PractitionerLogin() {
   const [password, setPassword] = useState("");
   const [error,    setError]    = useState("");
   const [loading,  setLoading]  = useState(false);
+  const [resetSent, setResetSent] = useState(false);
   const router = useRouter();
 
   async function handleSubmit(e: React.FormEvent) {
@@ -96,9 +97,28 @@ export default function PractitionerLogin() {
           </button>
         </form>
 
-        <p className="text-xs text-gray-400 text-center mt-6">
-          BioPrecision · Practitioner Portal
-        </p>
+        <div className="mt-6 text-center">
+          {resetSent ? (
+            <p className="text-xs text-emerald-600">Check your email for a password reset link.</p>
+          ) : (
+            <button
+              type="button"
+              onClick={async () => {
+                if (!email.trim()) { setError("Enter your email first."); return; }
+                setLoading(true);
+                const supabase = createClient();
+                await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
+                  redirectTo: `${window.location.origin}/practitioner/login`,
+                });
+                setResetSent(true);
+                setLoading(false);
+              }}
+              className="text-xs text-gray-400 hover:text-gray-600 underline"
+            >
+              No password? Send reset email
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
