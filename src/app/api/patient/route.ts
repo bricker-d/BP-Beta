@@ -45,8 +45,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (!patient) {
-      const testRead = await (await import('@/lib/supabase')).getSupabase().from('patients').select('id').limit(1);
-      return Response.json({ error: "Failed to upsert patient", supabaseReadable: !testRead.error, readError: testRead.error?.message }, { status: 500 });
+      return Response.json({ error: "Failed to upsert patient" }, { status: 500 });
     }
 
     // Fetch full state in parallel
