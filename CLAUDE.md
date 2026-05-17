@@ -97,6 +97,7 @@ Two affiliated clinics, targeting 15–50 initial users. Define the protocol bei
 | Supabase URL | `https://lrblvcixijbbfxiutgnp.supabase.co` |
 | Supabase anon key | `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxyYmx2Y2l4aWpiYmZ4aXV0Z25wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzczOTU0OTUsImV4cCI6MjA5Mjk3MTQ5NX0.WgBIwYNy16GF4_6pGP1lCURrV1AYAtvJasQlFL-r5IY` |
 | Session secret | Set in Vercel env vars as `SESSION_SECRET` |
+| Supabase service role key | Set in Vercel env vars as `SUPABASE_SERVICE_ROLE_KEY` — required for `/api/protocols/[id]/assign` |
 
 ---
 
@@ -198,33 +199,28 @@ Two affiliated clinics, targeting 15–50 initial users. Define the protocol bei
 
 ### ✅ Done
 - Multi-clinic auth scaffolding (discarded — replaced by Supabase Auth)
-- `supabase/migrations/20260516_spec_data_model.sql` written
+- `supabase/migrations/20260516_spec_data_model.sql` written and run
+- `supabase/migrations/20260516_providers_and_seed.sql` written and run
 - `mobile/lib/supabase.ts` — Supabase client for mobile
 - `mobile/lib/onboarding/StepAuth.tsx` — auth step
 - Mobile onboarding wired to Supabase Auth + profiles write
 - Route guard uses Supabase session as source of truth
+- Protocol delivery: `fetchProtocol` pulls from `user_protocols`/`protocol_steps`
+- `ProtocolCard` on home tab (now split into `ProtocolProgress` + `DailyProtocolActions`)
+- **Priority 3:** AI coach grounded in active protocol + steps via JWT propagation (`/api/chat`)
+- **Priority 4:** `lab_readings` table + Postgres trigger → `generate-recommendations` edge function (protocol steps fill first, AI fills remaining slots up to 5). `parse-labs` persists to `lab_readings` via JWT.
+- **Priority 5:** `step_completions` table. `toggleProtocolStep` persists to Supabase. `fetchProtocol` loads completion state from Supabase. `ProtocolProgress` (ring) + `DailyProtocolActions` (step list) surfaced above the fold.
 
-### 🔴 Priority 1 — One remaining step
-- **Dan must run `supabase/migrations/20260516_spec_data_model.sql` in Supabase SQL Editor**
+### 🔴 Dan must run these migrations in Supabase SQL Editor
+1. `supabase/migrations/20260517_lab_readings_completions_actions.sql`
+2. After running: `SELECT vault.create_secret('<service-role-key>', 'supabase_service_role_key');` — required for the Postgres trigger to call the edge function. Get service role key from Supabase dashboard → Settings → API.
+3. Deploy edge function: `supabase functions deploy generate-recommendations` (requires Supabase CLI + `ANTHROPIC_API_KEY` set in edge function secrets)
 
-### 🔴 Priority 2 — Protocol data model
-- Seed one BioPrecision default protocol in `protocols_v2` with `protocol_steps`
-- Wire `user_protocols` assignment on the provider portal
+### 🔴 Provider portal — protocol assignment
+- Practitioner needs UI to assign a protocol to a patient (writes `user_protocols` row)
+- Until this exists, auto-assignment at onboarding handles it for the default protocol
 
-### 🟡 Priority 3 — Ground the coach
-- In `health-coach-chat` (or `/api/chat`): fetch 10 most recent readings + active protocol steps before prompt
-- White-labeled contexts: strip BioPrecision from system prompt
-
-### 🟡 Priority 4 — Recommendation trigger
-- Postgres trigger on readings insert → call generate-health-recommendations
-- Protocol steps take priority, agent fills remaining slots up to 5
-
-### 🟡 Priority 5 — Protocol progress UI (mobile)
-- `ProtocolProgress` component — protocol name, current day, completion ring
-- `DailyProtocolActions` — today's steps, max 5, not overwhelming
-- Surface on home tab above the fold
-
-### 🟢 Priority 6 — Outcomes snapshot
+### 🟡 Priority 6 — Outcomes snapshot
 - Trigger at day 30, 60, 90 per active user_protocols record
 - Calculate adherence rate and biomarker deltas against baseline
 - Provider portal: org admin aggregate outcomes view
@@ -264,3 +260,4 @@ The outcomes data is the enterprise sales asset. Instrument everything. Keep it 
 |---|---|
 | 2026-04-28 | Initial build: agents, onboarding, Supabase sync, clinician dashboard, push notifications, PDF reports |
 | 2026-05-16 | Architecture decision: Next.js (provider portal) + Vite (consumer web, TBD) + Expo (mobile). Clean data model: organizations/profiles/Supabase Auth/RLS. Migration SQL written. Mobile onboarding wired to Supabase Auth. Discarded: clinics table, HMAC session cookies. AI-assisted protocol drafting added to provider portal. |
+| 2026-05-17 | Priority 3: AI coach grounded in active protocol context via JWT passthrough. Priority 4: lab_readings table + Postgres trigger → generate-recommendations edge function (protocol steps first, AI fills remaining slots). Priority 5: step_completions table, toggleProtocolStep persists to Supabase, ProtocolProgress + DailyProtocolActions components on home tab. Auth token propagation pattern established — all edge function calls use Bearer JWT. |

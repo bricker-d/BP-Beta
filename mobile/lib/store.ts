@@ -362,19 +362,24 @@ export const useHealthStore = create<HealthStore>()(
             .eq('day_number', 1)
             .order('sort_order', { ascending: true });
 
-          const existing = new Set(
-            get().protocolSteps.filter(s => s.completed).map(s => s.id)
-          );
+          // Load today's completion state from Supabase (authoritative source)
+          const { data: completions } = await supabase
+            .from('step_completions')
+            .select('step_id')
+            .eq('user_id', session.user.id)
+            .eq('completed_on', today());
+
+          const completedIds = new Set((completions ?? []).map(c => c.step_id));
 
           const steps: ProtocolStep[] = (rawSteps ?? []).map(s => ({
             id:               s.id,
             title:            s.title,
             description:      s.description ?? '',
             mechanism:        s.evidence_summary ?? '',
-            category:         s.step_type === 'check_in' ? 'Lifestyle' : 'Lifestyle',
+            category:         'Lifestyle' as const,
             timeOfDay:        'morning' as const,
             biomarkerTargets: [],
-            completed:        existing.has(s.id),
+            completed:        completedIds.has(s.id),
           }));
 
           const proto = up.protocol as { id: string; name: string; description: string | null; duration_days: number | null };
@@ -399,12 +404,42 @@ export const useHealthStore = create<HealthStore>()(
         }
       },
 
-      toggleProtocolStep: (stepId: string) =>
+      toggleProtocolStep: (stepId: string) => {
+        const currentStep = get().protocolSteps.find(s => s.id === stepId);
+        const nowCompleted = !currentStep?.completed;
+
+        // Optimistic local update
         set((state) => ({
           protocolSteps: state.protocolSteps.map(s =>
-            s.id === stepId ? { ...s, completed: !s.completed } : s
+            s.id === stepId ? { ...s, completed: nowCompleted } : s
           ),
-        })),
+        }));
+
+        // Persist to Supabase in background — consistent JWT pattern
+        (async () => {
+          try {
+            const { supabase } = await import('./supabase');
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) return;
+            const todayDate = today();
+            if (nowCompleted) {
+              await supabase
+                .from('step_completions')
+                .upsert(
+                  { user_id: session.user.id, step_id: stepId, completed_on: todayDate },
+                  { onConflict: 'user_id,step_id,completed_on' }
+                );
+            } else {
+              await supabase
+                .from('step_completions')
+                .delete()
+                .eq('user_id', session.user.id)
+                .eq('step_id', stepId)
+                .eq('completed_on', todayDate);
+            }
+          } catch { /* fail silently — local state is already updated */ }
+        })();
+      },
     }),
     {
       name: 'bioprecision-store',

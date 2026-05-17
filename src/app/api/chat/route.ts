@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { LabPanel, WearableData } from "@/lib/types";
 import { saveChatMessage } from "@/lib/supabase";
 import { BIOMARKER_LIBRARY, CLINICAL_DISCLAIMER, formatCitation } from "@/lib/clinicalLibrary";
@@ -17,6 +18,56 @@ function getClient(): Anthropic {
 }
 
 // ── Types ─────────────────────────────────────────────────────────────────────
+
+interface ProtocolStep {
+  title: string;
+  evidence_summary: string | null;
+}
+
+interface ProtocolContext {
+  protocolName: string;
+  currentDay: number;
+  durationDays: number | null;
+  todaysSteps: ProtocolStep[];
+}
+
+async function fetchProtocolContext(token: string): Promise<ProtocolContext | null> {
+  const supabase = createSupabaseClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    { global: { headers: { Authorization: `Bearer ${token}` } } }
+  );
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  const { data: up } = await supabase
+    .from("user_protocols")
+    .select("protocol_id, current_day, protocols_v2(name, duration_days)")
+    .eq("user_id", user.id)
+    .eq("status", "active")
+    .maybeSingle();
+
+  if (!up) return null;
+
+  const proto = up.protocols_v2 as unknown as { name: string; duration_days: number | null } | null;
+  if (!proto) return null;
+
+  const { data: steps } = await supabase
+    .from("protocol_steps")
+    .select("title, evidence_summary")
+    .eq("protocol_id", up.protocol_id)
+    .eq("day_number", 1)
+    .order("sort_order");
+
+  return {
+    protocolName: proto.name,
+    currentDay: up.current_day,
+    durationDays: proto.duration_days,
+    todaysSteps: (steps ?? []) as ProtocolStep[],
+  };
+}
+
 interface IntakeProfile {
   name?: string;
   goals?: string[];
@@ -73,12 +124,13 @@ function buildBiomarkerContext(biomarkerId: string, value: number, unit: string)
 function buildSystemPrompt(
   labPanel?: LabPanel,
   wearableData?: WearableData,
-  intakeProfile?: IntakeProfile
+  intakeProfile?: IntakeProfile,
+  protocolContext?: ProtocolContext | null
 ): string {
   const patientName = intakeProfile?.name?.split(" ")[0] ?? "the user";
 
   // ── 1. IDENTITY & ROLE ────────────────────────────────────────────────────
-  let prompt = `You are BioPrecision AI — a personalized health intelligence coach for ${patientName}.
+  let prompt = `You are a precision health coach. You speak directly and with clinical rigor. No platitudes. You are personalized to ${patientName}.
 
 Your role: translate lab results and lifestyle data into specific, actionable guidance that a non-medical person can actually understand and follow. You are not a physician and never diagnose or prescribe. You explain, educate, and recommend — always tied to this patient's actual numbers and goals, always in plain language.
 
@@ -91,7 +143,26 @@ Your role: translate lab results and lifestyle data into specific, actionable gu
 - Keep responses tight: answer what was asked, then add the single most useful follow-on insight
 `;
 
-  // ── 2. PATIENT PROFILE ────────────────────────────────────────────────────
+  // ── 2. PROTOCOL CONTEXT ───────────────────────────────────────────────────
+  if (protocolContext) {
+    const dayOf = protocolContext.durationDays
+      ? `Day ${protocolContext.currentDay} of ${protocolContext.durationDays}`
+      : `Day ${protocolContext.currentDay}`;
+    prompt += `
+## Active Protocol
+- Protocol: ${protocolContext.protocolName}, ${dayOf}
+- Today's steps:
+`;
+    for (const step of protocolContext.todaysSteps) {
+      const evidence = step.evidence_summary ? ` — ${step.evidence_summary}` : "";
+      prompt += `  • ${step.title}${evidence}\n`;
+    }
+    prompt += `
+When the user asks what to do, prioritize these protocol steps. Reference their evidence basis when relevant. Never recommend supplements or interventions outside this protocol without explicitly flagging that you are going beyond the prescribed protocol scope.
+`;
+  }
+
+  // ── 3. PATIENT PROFILE ────────────────────────────────────────────────────
   if (intakeProfile) {
     const age      = intakeProfile.age ? `${intakeProfile.age} years old` : "age not specified";
     const sex      = intakeProfile.biologicalSex ?? "sex not specified";
@@ -140,7 +211,7 @@ Your role: translate lab results and lifestyle data into specific, actionable gu
     }
   }
 
-  // ── 3. LAB RESULTS — FULL CLINICAL CONTEXT ───────────────────────────────
+  // ── 4. LAB RESULTS — FULL CLINICAL CONTEXT ───────────────────────────────
   if (labPanel && labPanel.biomarkers.length > 0) {
     prompt += `
 ## Lab Results (${labPanel.date ? new Date(labPanel.date).toLocaleDateString() : "recent"}, source: ${labPanel.source ?? "uploaded"})
@@ -194,7 +265,7 @@ ${optimal.map(b => `- ${BIOMARKER_LIBRARY[b.id]?.name ?? b.id}: ${b.value} ${b.u
     }
   }
 
-  // ── 4. WEARABLE DATA ─────────────────────────────────────────────────────
+  // ── 5. WEARABLE DATA ─────────────────────────────────────────────────────
   if (wearableData) {
     const hrvInterp = wearableData.hrv > 60
       ? "good autonomic recovery"
@@ -217,7 +288,7 @@ ${optimal.map(b => `- ${BIOMARKER_LIBRARY[b.id]?.name ?? b.id}: ${b.value} ${b.u
 `;
   }
 
-  // ── 5. RESPONSE STYLE ────────────────────────────────────────────────────
+  // ── 6. RESPONSE STYLE ────────────────────────────────────────────────────
   prompt += `
 ## How to Respond
 
@@ -245,7 +316,12 @@ export async function POST(req: Request) {
     const { messages, labPanel, wearableData, intakeProfile, todaysActions, patientId } = await req.json();
     let fullResponse = "";
 
-    let systemPrompt = buildSystemPrompt(labPanel, wearableData, intakeProfile);
+    const authHeader = req.headers.get("Authorization");
+    const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
+
+    const protocolContext = token ? await fetchProtocolContext(token).catch(() => null) : null;
+
+    let systemPrompt = buildSystemPrompt(labPanel, wearableData, intakeProfile, protocolContext);
 
     // Agent 3 synthesis: inject today's actions so the coach knows what the patient is working on
     if (todaysActions && Array.isArray(todaysActions) && todaysActions.length > 0) {

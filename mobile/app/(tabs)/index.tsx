@@ -85,13 +85,13 @@ function ActionRow({ label, done, onPress }: { label: string; done: boolean; onP
   );
 }
 
-// ── Protocol card ─────────────────────────────────────────────────────────────
-function ProtocolCard() {
-  const { patientProtocol, protocolSteps, protocolLoading, toggleProtocolStep } = useHealthStore();
+// ── Protocol Progress (ring + header) ────────────────────────────────────────
+function ProtocolProgress() {
+  const { patientProtocol, protocolSteps, protocolLoading } = useHealthStore();
 
   if (protocolLoading) {
     return (
-      <View style={pc.card}>
+      <View style={pc.progressCard}>
         <Text style={pc.loading}>Loading protocol...</Text>
       </View>
     );
@@ -105,59 +105,68 @@ function ProtocolCard() {
   const circumference = 2 * Math.PI * 18;
 
   return (
-    <View style={pc.card}>
-      {/* Header row */}
+    <View style={pc.progressCard}>
       <View style={pc.header}>
         <View style={pc.headerLeft}>
           <Text style={pc.label}>Active Protocol</Text>
           <Text style={pc.name} numberOfLines={1}>{patientProtocol.protocol.name}</Text>
+          <Text style={pc.sub}>{done} of {total} today</Text>
         </View>
-        {/* Mini progress ring */}
         <View style={pc.ringWrap}>
-          <Svg width={44} height={44} viewBox="0 0 44 44">
-            <Circle cx={22} cy={22} r={18} fill="none" stroke="#EAD9C5" strokeWidth={3.5} />
+          <Svg width={52} height={52} viewBox="0 0 52 52">
+            <Circle cx={26} cy={26} r={20} fill="none" stroke="#EAD9C5" strokeWidth={4} />
             <Circle
-              cx={22} cy={22} r={18} fill="none"
-              stroke={PURPLE} strokeWidth={3.5}
-              strokeDasharray={`${circumference}`}
-              strokeDashoffset={`${circumference * (1 - pct)}`}
+              cx={26} cy={26} r={20} fill="none"
+              stroke={pct === 1 ? '#2D8A5E' : PURPLE} strokeWidth={4}
+              strokeDasharray={`${2 * Math.PI * 20}`}
+              strokeDashoffset={`${2 * Math.PI * 20 * (1 - pct)}`}
               strokeLinecap="round"
-              transform="rotate(-90 22 22)"
+              transform="rotate(-90 26 26)"
             />
           </Svg>
           <View style={pc.ringInner}>
-            <Text style={pc.ringPct}>{Math.round(pct * 100)}</Text>
+            <Text style={[pc.ringPct, pct === 1 && { color: '#2D8A5E' }]}>
+              {Math.round(pct * 100)}
+            </Text>
           </View>
         </View>
       </View>
+    </View>
+  );
+}
 
-      {/* Steps */}
-      <View style={pc.steps}>
-        {protocolSteps.filter(s => s.description !== '').slice(0, 5).map((step, i) => (
-          <TouchableOpacity
-            key={step.id}
-            style={[pc.step, i < Math.min(protocolSteps.length, 5) - 1 && pc.stepBorder]}
-            onPress={() => toggleProtocolStep(step.id)}
-            activeOpacity={0.7}
-          >
-            <View style={[pc.circle, step.completed && pc.circleDone]}>
-              {step.completed
-                ? <CheckCircle2 color="#fff" size={13} />
-                : <Text style={pc.circleNum}>{i + 1}</Text>
-              }
-            </View>
-            <Text
-              style={[pc.stepTxt, step.completed && pc.stepTxtDone]}
-              numberOfLines={1}
-            >
-              {step.title}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
+// ── Daily Protocol Actions (step list) ────────────────────────────────────────
+function DailyProtocolActions() {
+  const { patientProtocol, protocolSteps, toggleProtocolStep } = useHealthStore();
 
-      {total > 5 && (
-        <Text style={pc.more}>+{total - 5} more steps</Text>
+  if (!patientProtocol?.protocol || protocolSteps.length === 0) return null;
+
+  const visible = protocolSteps.slice(0, 5);
+  const overflow = protocolSteps.length - 5;
+
+  return (
+    <View style={pc.actionsCard}>
+      <Text style={pc.actionsTitle}>Today's Protocol</Text>
+      {visible.map((step, i) => (
+        <TouchableOpacity
+          key={step.id}
+          style={[pc.step, i < visible.length - 1 && pc.stepBorder]}
+          onPress={() => toggleProtocolStep(step.id)}
+          activeOpacity={0.7}
+        >
+          <View style={[pc.circle, step.completed && pc.circleDone]}>
+            {step.completed
+              ? <CheckCircle2 color="#fff" size={13} />
+              : <Text style={pc.circleNum}>{i + 1}</Text>
+            }
+          </View>
+          <Text style={[pc.stepTxt, step.completed && pc.stepTxtDone]} numberOfLines={2}>
+            {step.title}
+          </Text>
+        </TouchableOpacity>
+      ))}
+      {overflow > 0 && (
+        <Text style={pc.more}>+{overflow} more steps in full protocol</Text>
       )}
     </View>
   );
@@ -255,8 +264,9 @@ export default function HomeScreen() {
           </View>
         )}
 
-        {/* ── Protocol card ───────────────────────────────────────────────── */}
-        <ProtocolCard />
+        {/* ── Protocol progress + daily actions (above the fold) ─────────── */}
+        <ProtocolProgress />
+        <DailyProtocolActions />
 
         {/* ── Lab-dependent sections ──────────────────────────────────────── */}
         {labPanel && (
@@ -475,24 +485,29 @@ const ar = StyleSheet.create({
   txtDone:  { color: '#9ca3af', textDecorationLine: 'line-through' },
 });
 
-// ── Protocol card styles ──────────────────────────────────────────────────────
+// ── Protocol component styles ─────────────────────────────────────────────────
 const pc = StyleSheet.create({
-  card:       { backgroundColor: '#fff', borderRadius: 16, padding: 16, marginBottom: 20, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 },
-  loading:    { fontSize: 13, color: '#9ca3af', textAlign: 'center', paddingVertical: 8 },
-  header:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 },
-  headerLeft: { flex: 1, marginRight: 12 },
-  label:      { fontSize: 11, fontWeight: '600', color: '#9ca3af', letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 3 },
-  name:       { fontSize: 16, fontWeight: '700', color: '#111827' },
-  ringWrap:   { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
-  ringInner:  { position: 'absolute', alignItems: 'center', justifyContent: 'center' },
-  ringPct:    { fontSize: 11, fontWeight: '800', color: PURPLE },
-  steps:      { gap: 0 },
-  step:       { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 11 },
-  stepBorder: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#f3f4f6' },
-  circle:     { width: 24, height: 24, borderRadius: 12, borderWidth: 1.5, borderColor: '#d1d5db', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-  circleDone: { backgroundColor: PURPLE, borderColor: PURPLE },
-  circleNum:  { fontSize: 11, fontWeight: '700', color: '#9ca3af' },
-  stepTxt:    { flex: 1, fontSize: 14, color: '#111827' },
-  stepTxtDone:{ color: '#9ca3af', textDecorationLine: 'line-through' },
-  more:       { fontSize: 12, color: '#9ca3af', textAlign: 'center', marginTop: 8 },
+  // ProtocolProgress
+  progressCard: { backgroundColor: '#fff', borderRadius: 16, padding: 16, marginBottom: 12, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 },
+  loading:      { fontSize: 13, color: '#9ca3af', textAlign: 'center', paddingVertical: 8 },
+  header:       { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  headerLeft:   { flex: 1, marginRight: 12 },
+  label:        { fontSize: 11, fontWeight: '600', color: '#9ca3af', letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 3 },
+  name:         { fontSize: 16, fontWeight: '700', color: '#111827', marginBottom: 2 },
+  sub:          { fontSize: 12, color: '#9ca3af' },
+  ringWrap:     { width: 52, height: 52, alignItems: 'center', justifyContent: 'center' },
+  ringInner:    { position: 'absolute', alignItems: 'center', justifyContent: 'center' },
+  ringPct:      { fontSize: 12, fontWeight: '800', color: PURPLE },
+
+  // DailyProtocolActions
+  actionsCard:  { backgroundColor: '#fff', borderRadius: 16, padding: 16, marginBottom: 20, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 },
+  actionsTitle: { fontSize: 13, fontWeight: '700', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 10 },
+  step:         { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 11 },
+  stepBorder:   { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#f3f4f6' },
+  circle:       { width: 26, height: 26, borderRadius: 13, borderWidth: 1.5, borderColor: '#d1d5db', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  circleDone:   { backgroundColor: PURPLE, borderColor: PURPLE },
+  circleNum:    { fontSize: 11, fontWeight: '700', color: '#9ca3af' },
+  stepTxt:      { flex: 1, fontSize: 14, color: '#111827', lineHeight: 20 },
+  stepTxtDone:  { color: '#9ca3af', textDecorationLine: 'line-through' },
+  more:         { fontSize: 12, color: '#9ca3af', textAlign: 'center', marginTop: 10 },
 });

@@ -12,6 +12,7 @@ import {
 } from 'lucide-react-native';
 import { useHealthStore } from '../../lib/store';
 import { BIOMARKER_REFS } from '../../lib/biomarkers';
+import { supabase } from '../../lib/supabase';
 import type { ChatMessage, LabPanel, IntakeProfile } from '../../lib/types';
 
 const API_URL = 'https://bp-beta-beta.vercel.app/api/chat';
@@ -23,14 +24,18 @@ async function streamChat(
   labPanel:      object | null,
   wearableData:  object | null,
   intakeProfile: object | null,
+  authToken:     string | null,
   onChunk: (text: string) => void,
   onDone:  () => void,
   onError: (msg: string) => void
 ) {
   try {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
+
     const res = await fetch(API_URL, {
       method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify({ messages, labPanel, wearableData, intakeProfile }),
     });
 
@@ -307,6 +312,9 @@ export default function CoachScreen() {
 
     setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 50);
 
+    const { data: { session } } = await supabase.auth.getSession();
+    const authToken = session?.access_token ?? null;
+
     let accumulated = '';
 
     await streamChat(
@@ -314,6 +322,7 @@ export default function CoachScreen() {
       labPanel,
       wearableData ?? null,
       intakeProfile ?? null,
+      authToken,
       // onChunk
       (chunk) => {
         accumulated += chunk;

@@ -1,9 +1,9 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { createClient } from "@supabase/supabase-js";
 import { getBiomarkerStatus } from "@/lib/biomarkers";
 import { LabPanel, Biomarker } from "@/lib/types";
 let saveLabPanel: ((patientId: string, source: string, biomarkers: unknown[], date: string) => Promise<unknown>) | null = null;
 try {
-  // Supabase is optional — parse-labs works without it
   saveLabPanel = (await import("@/lib/supabase")).saveLabPanel;
 } catch { /* supabase not configured */ }
 
@@ -131,6 +131,9 @@ CRITICAL RULES:
 
 export async function POST(req: Request) {
   try {
+    const authHeader = req.headers.get("Authorization");
+    const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
+
     const formData = await req.formData();
     const file = formData.get("file") as File;
     const source = (formData.get("source") as string) || "Unknown";
@@ -142,11 +145,9 @@ export async function POST(req: Request) {
 
     let textContent = "";
 
-    // Handle different file types
     if (file.type === "text/csv" || file.name.endsWith(".csv")) {
       textContent = await file.text();
     } else if (file.type === "application/pdf") {
-      // For PDF: convert to base64 and use Claude vision
       const buffer = await file.arrayBuffer();
       const base64 = Buffer.from(buffer).toString("base64");
 
@@ -157,57 +158,36 @@ export async function POST(req: Request) {
           {
             role: "user",
             content: [
-              {
-                type: "document",
-                source: {
-                  type: "base64",
-                  media_type: "application/pdf",
-                  data: base64,
-                },
-              },
-              {
-                type: "text",
-                text: PARSE_PROMPT,
-              },
+              { type: "document", source: { type: "base64", media_type: "application/pdf", data: base64 } },
+              { type: "text", text: PARSE_PROMPT },
             ],
           },
         ],
       });
 
       const rawJson = response.content[0].type === "text" ? response.content[0].text : "[]";
-      return buildResponse(rawJson, source, file.name, patientId);
+      return buildResponse(rawJson, source, file.name, patientId, token);
     } else {
-      // Excel: treat as text for now (a real implementation would use xlsx library)
       textContent = await file.text();
     }
 
-    // Parse text content with Claude
     const response = await getClient().messages.create({
       model: "claude-opus-4-6",
       max_tokens: 4096,
-      messages: [
-        {
-          role: "user",
-          content: `${PARSE_PROMPT}\n\nLab report content:\n\`\`\`\n${textContent.slice(0, 12000)}\n\`\`\``,
-        },
-      ],
+      messages: [{ role: "user", content: `${PARSE_PROMPT}\n\nLab report content:\n\`\`\`\n${textContent.slice(0, 12000)}\n\`\`\`` }],
     });
 
     const rawJson = response.content[0].type === "text" ? response.content[0].text : "[]";
-    return buildResponse(rawJson, source, file.name);
+    return buildResponse(rawJson, source, file.name, patientId, token);
   } catch (error) {
     console.error("Lab parsing error:", error);
     return Response.json({ error: "Failed to parse lab results" }, { status: 500 });
   }
 }
 
-function buildResponse(rawJson: string, source: string, fileName: string, patientId?: string) {
+function buildResponse(rawJson: string, source: string, fileName: string, patientId?: string, token?: string | null) {
   try {
-    // Strip markdown code fences if present, then extract the JSON array
-    const stripped = rawJson
-      .replace(/```(?:json)?\s*/gi, "")
-      .replace(/```/g, "")
-      .trim();
+    const stripped = rawJson.replace(/```(?:json)?\s*/gi, "").replace(/```/g, "").trim();
     const jsonMatch = stripped.match(/\[[\s\S]*\]/);
     if (!jsonMatch) {
       console.error("[parse-labs] No JSON array found in response. Raw:", rawJson.slice(0, 300));
@@ -231,9 +211,30 @@ function buildResponse(rawJson: string, source: string, fileName: string, patien
       biomarkers,
     };
 
-    // Persist to Supabase if patient_id provided (fire-and-forget, don't block response)
+    // Legacy persistence (fire-and-forget)
     if (patientId && saveLabPanel) {
       saveLabPanel(patientId, source, biomarkers, panel.date).catch(() => {});
+    }
+
+    // New schema: write to lab_readings using user JWT → triggers recommendation edge function
+    if (token && process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+      (async () => {
+        try {
+          const supabase = createClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+            { global: { headers: { Authorization: `Bearer ${token}` } } }
+          );
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            await supabase.from("lab_readings").insert({
+              user_id: user.id,
+              source,
+              biomarkers,
+            });
+          }
+        } catch { /* non-blocking */ }
+      })();
     }
 
     return Response.json({ panel, fileName });
