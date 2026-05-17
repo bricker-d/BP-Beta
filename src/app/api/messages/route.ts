@@ -25,6 +25,22 @@ export async function GET(req: NextRequest) {
   return NextResponse.json(data);
 }
 
+// PATCH — mark practitioner messages as read (called when patient views messages)
+export async function PATCH(req: NextRequest) {
+  const supabase = await createClient();
+  const { patient_id } = await req.json();
+  if (!patient_id) return NextResponse.json({ error: "patient_id required" }, { status: 400 });
+
+  await supabase
+    .from("messages")
+    .update({ read: true })
+    .eq("patient_id", patient_id)
+    .eq("sender", "practitioner")
+    .eq("read", false);
+
+  return NextResponse.json({ ok: true });
+}
+
 export async function POST(req: NextRequest) {
   const supabase = await createClient();
   const { patient_id, sender, body } = await req.json();

@@ -29,7 +29,7 @@ export async function GET(req: NextRequest) {
 
   const { data, error } = await supabase
     .from("patient_protocols")
-    .select("*, protocol:protocols(name, description)")
+    .select("*, protocol:protocols(name, description, protocol_actions(id, title, description, mechanism, category, time_of_day, biomarker_targets, evidence_grade, effect_size, time_to_effect, sort_order))")
     .eq("patient_id", patient_id)
     .eq("is_active", true)
     .maybeSingle();

@@ -109,3 +109,46 @@ export interface DailyLog {
   stressLevel: number | null;
   energyLevel: number | null;
 }
+
+// ── Protocols ─────────────────────────────────────────────────────────────────
+export interface ProtocolStep {
+  id: string;
+  title: string;
+  description: string;
+  mechanism?: string;
+  category: string;
+  timeOfDay?: string;
+  biomarkerTargets?: string[];
+  evidenceGrade?: string;
+  effectSize?: string;
+  timeToEffect?: string;
+  sortOrder?: number;
+  completed: boolean;
+}
+
+export interface PatientProtocol {
+  id: string;
+  patient_id: string;
+  protocol_id: string;
+  assigned_at: string;
+  is_active: boolean;
+  notes?: string;
+  personalized_actions?: HealthAction[] | null;
+  protocol: {
+    name: string;
+    description?: string;
+    protocol_actions?: Array<{
+      id: string;
+      title: string;
+      description?: string;
+      mechanism?: string;
+      category: string;
+      time_of_day?: string;
+      biomarker_targets?: string[];
+      evidence_grade?: string;
+      effect_size?: string;
+      time_to_effect?: string;
+      sort_order?: number;
+    }>;
+  };
+}

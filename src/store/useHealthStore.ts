@@ -329,7 +329,19 @@ export const useHealthStore = create<HealthStore>()(
         if (!patientId) return;
         try {
           const res = await fetch(`/api/messages?patient_id=${patientId}`);
-          if (res.ok) set({ practitionerMessages: await res.json() });
+          if (res.ok) {
+            const msgs = await res.json();
+            set({ practitionerMessages: msgs });
+            // Mark practitioner messages as read now that patient has viewed them
+            const hasUnread = msgs.some((m: { sender: string; read: boolean }) => m.sender === "practitioner" && !m.read);
+            if (hasUnread) {
+              fetch("/api/messages", {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ patient_id: patientId }),
+              }).catch(() => {});
+            }
+          }
         } catch { /* offline */ }
       },
       sendMessageToPractitioner: async (body: string) => {

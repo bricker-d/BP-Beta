@@ -7,7 +7,7 @@ import {
   generateActionsFromPanel,
   DEMO_LAB_VALUES,
 } from './biomarkers';
-import type { HealthAction, ChatMessage, LabPanel, WearableData, DailyLog } from './types';
+import type { HealthAction, ChatMessage, LabPanel, WearableData, DailyLog, PatientProtocol, ProtocolStep } from './types';
 import type { IntakeProfile } from './types';
 
 // ── Config ────────────────────────────────────────────────────────────────────
@@ -67,6 +67,13 @@ interface HealthStore {
   messages: ChatMessage[];
   addMessage: (msg: ChatMessage) => void;
   clearMessages: () => void;
+
+  // Protocol
+  patientProtocol: PatientProtocol | null;
+  protocolSteps: ProtocolStep[];
+  protocolLoading: boolean;
+  fetchProtocol: () => Promise<void>;
+  toggleProtocolStep: (stepId: string) => void;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -321,6 +328,68 @@ export const useHealthStore = create<HealthStore>()(
         set((state) => ({ messages: [...state.messages, msg] })),
 
       clearMessages: () => set({ messages: [] }),
+
+      // ── Protocol ────────────────────────────────────────────────────────
+      patientProtocol: null,
+      protocolSteps: [],
+      protocolLoading: false,
+
+      fetchProtocol: async () => {
+        const { patientId } = get();
+        if (!patientId) return;
+        set({ protocolLoading: true });
+        try {
+          const res = await fetch(`${API_BASE}/api/patient-protocols?patient_id=${patientId}`);
+          if (!res.ok) { set({ protocolLoading: false }); return; }
+          const data: PatientProtocol | null = await res.json();
+          if (!data) { set({ patientProtocol: null, protocolSteps: [], protocolLoading: false }); return; }
+
+          // Build steps: prefer personalized_actions, fall back to protocol_actions
+          const raw = data.personalized_actions?.length
+            ? data.personalized_actions.map((a, i) => ({
+                id: a.id ?? `step-${i}`,
+                title: a.title,
+                description: a.description ?? '',
+                mechanism: (a as any).why,
+                category: a.category,
+                timeOfDay: a.timeOfDay,
+                biomarkerTargets: a.targetBiomarkers,
+                sortOrder: i,
+                completed: false,
+              }))
+            : (data.protocol?.protocol_actions ?? [])
+                .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+                .map((a) => ({
+                  id: a.id,
+                  title: a.title,
+                  description: a.description ?? '',
+                  mechanism: a.mechanism,
+                  category: a.category,
+                  timeOfDay: a.time_of_day,
+                  biomarkerTargets: a.biomarker_targets,
+                  evidenceGrade: a.evidence_grade,
+                  effectSize: a.effect_size,
+                  timeToEffect: a.time_to_effect,
+                  sortOrder: a.sort_order,
+                  completed: false,
+                }));
+
+          // Preserve existing completion state
+          const existing = new Set(get().protocolSteps.filter(s => s.completed).map(s => s.id));
+          const steps: ProtocolStep[] = raw.map(s => ({ ...s, completed: existing.has(s.id) }));
+
+          set({ patientProtocol: data, protocolSteps: steps, protocolLoading: false });
+        } catch {
+          set({ protocolLoading: false });
+        }
+      },
+
+      toggleProtocolStep: (stepId: string) =>
+        set((state) => ({
+          protocolSteps: state.protocolSteps.map(s =>
+            s.id === stepId ? { ...s, completed: !s.completed } : s
+          ),
+        })),
     }),
     {
       name: 'bioprecision-store',
@@ -341,6 +410,8 @@ export const useHealthStore = create<HealthStore>()(
         lastWeeklySummaryDate:  state.lastWeeklySummaryDate,
         wearableProvider:       state.wearableProvider,
         wearableConnected:      state.wearableConnected,
+        patientProtocol:        state.patientProtocol,
+        protocolSteps:          state.protocolSteps,
       }),
     }
   )

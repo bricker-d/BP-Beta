@@ -25,6 +25,7 @@ function OnboardingGuard() {
   const segments = useSegments();
   const hasCompletedOnboarding = useHealthStore((s) => s.hasCompletedOnboarding);
   const syncWearable            = useHealthStore((s) => s.syncWearable);
+  const fetchProtocol           = useHealthStore((s) => s.fetchProtocol);
   const actions                 = useHealthStore((s) => s.actions);
   const intakeProfile           = useHealthStore((s) => s.intakeProfile);
   const streak                  = useHealthStore((s) => s.streak);
@@ -52,10 +53,11 @@ function OnboardingGuard() {
       .catch(() => {});
   }, [hasCompletedOnboarding]);
 
-  // Sync wearable on app open
+  // Sync wearable + protocol on app open
   useEffect(() => {
     if (!hasCompletedOnboarding) return;
     syncWearable().catch(() => {});
+    fetchProtocol().catch(() => {});
   }, [hasCompletedOnboarding]);
 
   // Init RevenueCat + analytics identity on onboarding complete

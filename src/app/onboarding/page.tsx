@@ -118,7 +118,13 @@ const DATA_STEPS = STEPS.slice(1, -2); // excludes welcome, summary, account fro
 
 export default function OnboardingPage() {
   const router = useRouter();
-  const { setIntakeProfile, setUser, labPanel, syncPatient } = useHealthStore();
+  const { setIntakeProfile, setUser, labPanel, syncPatient, intakeProfile } = useHealthStore();
+
+  // Redirect users who already completed onboarding
+  useEffect(() => {
+    if (intakeProfile?.name) router.replace("/");
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const [step, setStep]         = useState<Step>("welcome");
   const [showUpload,    setShowUpload]    = useState(false);

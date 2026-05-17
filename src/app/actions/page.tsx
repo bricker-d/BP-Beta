@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { useHealthStore } from "@/store/useHealthStore";
 import Header from "@/components/layout/Header";
 import ActionCard from "@/components/actions/ActionCard";
@@ -30,7 +31,13 @@ const GOAL_LABELS: Record<string, string> = {
 };
 
 export default function ActionsPage() {
-  const { actions, assignedProtocolActions, toggleAction, isGeneratingActions, streak, completionHistory, intakeProfile, allOptimal, labPanel, setLabPanel } = useHealthStore();
+  const { actions, assignedProtocolActions, loadAssignedProtocol, patientId, toggleAction, isGeneratingActions, streak, completionHistory, intakeProfile, allOptimal, labPanel, setLabPanel } = useHealthStore();
+
+  // Refresh assigned protocol on mount so practitioner edits are picked up immediately
+  useEffect(() => {
+    if (patientId) loadAssignedProtocol();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Use practitioner-assigned protocol if available, otherwise fall back to AI-generated
   const displayActions = assignedProtocolActions ?? actions;
