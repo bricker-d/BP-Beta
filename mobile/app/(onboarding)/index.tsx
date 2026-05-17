@@ -67,6 +67,24 @@ export default function OnboardingScreen() {
         onboarding_complete: true,
         updated_at:          new Date().toISOString(),
       });
+
+      // Auto-assign the default BioPrecision Foundation Protocol if user has no active protocol
+      const DEFAULT_PROTOCOL_ID = 'a0000000-0000-0000-0000-000000000001';
+      const { data: existing } = await supabase
+        .from('user_protocols')
+        .select('id')
+        .eq('user_id', session.user.id)
+        .eq('status', 'active')
+        .maybeSingle();
+
+      if (!existing) {
+        await supabase.from('user_protocols').insert({
+          user_id:     session.user.id,
+          protocol_id: DEFAULT_PROTOCOL_ID,
+          status:      'active',
+          current_day: 1,
+        });
+      }
     }
 
     completeOnboarding(profile as IntakeProfile, summaryMsg);

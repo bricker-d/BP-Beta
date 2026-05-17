@@ -237,7 +237,7 @@ export default function ProtocolsScreen() {
 
         {/* Assigned date */}
         <Text style={s.assignedTxt}>
-          Assigned {new Date(patientProtocol.assigned_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+          {patientProtocol.assigned_at ? `Assigned ${new Date(patientProtocol.assigned_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}` : 'Active Protocol'}
         </Text>
 
         <View style={{ height: 32 }} />

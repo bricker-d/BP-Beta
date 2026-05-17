@@ -7,8 +7,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import {
   FlaskConical, TrendingUp, TrendingDown, Minus,
-  AlertTriangle, Zap, ChevronRight, Activity,
+  AlertTriangle, Zap, ChevronRight, Activity, CheckCircle2,
 } from 'lucide-react-native';
+import Svg, { Circle } from 'react-native-svg';
 import { useHealthStore } from '../../lib/store';
 import {
   biomarkerPriorityScore,
@@ -84,6 +85,84 @@ function ActionRow({ label, done, onPress }: { label: string; done: boolean; onP
   );
 }
 
+// ── Protocol card ─────────────────────────────────────────────────────────────
+function ProtocolCard() {
+  const { patientProtocol, protocolSteps, protocolLoading, toggleProtocolStep } = useHealthStore();
+
+  if (protocolLoading) {
+    return (
+      <View style={pc.card}>
+        <Text style={pc.loading}>Loading protocol...</Text>
+      </View>
+    );
+  }
+
+  if (!patientProtocol?.protocol) return null;
+
+  const done  = protocolSteps.filter(s => s.completed).length;
+  const total = protocolSteps.length;
+  const pct   = total > 0 ? done / total : 0;
+  const circumference = 2 * Math.PI * 18;
+
+  return (
+    <View style={pc.card}>
+      {/* Header row */}
+      <View style={pc.header}>
+        <View style={pc.headerLeft}>
+          <Text style={pc.label}>Active Protocol</Text>
+          <Text style={pc.name} numberOfLines={1}>{patientProtocol.protocol.name}</Text>
+        </View>
+        {/* Mini progress ring */}
+        <View style={pc.ringWrap}>
+          <Svg width={44} height={44} viewBox="0 0 44 44">
+            <Circle cx={22} cy={22} r={18} fill="none" stroke="#EAD9C5" strokeWidth={3.5} />
+            <Circle
+              cx={22} cy={22} r={18} fill="none"
+              stroke={PURPLE} strokeWidth={3.5}
+              strokeDasharray={`${circumference}`}
+              strokeDashoffset={`${circumference * (1 - pct)}`}
+              strokeLinecap="round"
+              transform="rotate(-90 22 22)"
+            />
+          </Svg>
+          <View style={pc.ringInner}>
+            <Text style={pc.ringPct}>{Math.round(pct * 100)}</Text>
+          </View>
+        </View>
+      </View>
+
+      {/* Steps */}
+      <View style={pc.steps}>
+        {protocolSteps.filter(s => s.description !== '').slice(0, 5).map((step, i) => (
+          <TouchableOpacity
+            key={step.id}
+            style={[pc.step, i < Math.min(protocolSteps.length, 5) - 1 && pc.stepBorder]}
+            onPress={() => toggleProtocolStep(step.id)}
+            activeOpacity={0.7}
+          >
+            <View style={[pc.circle, step.completed && pc.circleDone]}>
+              {step.completed
+                ? <CheckCircle2 color="#fff" size={13} />
+                : <Text style={pc.circleNum}>{i + 1}</Text>
+              }
+            </View>
+            <Text
+              style={[pc.stepTxt, step.completed && pc.stepTxtDone]}
+              numberOfLines={1}
+            >
+              {step.title}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      {total > 5 && (
+        <Text style={pc.more}>+{total - 5} more steps</Text>
+      )}
+    </View>
+  );
+}
+
 // ── Main ──────────────────────────────────────────────────────────────────────
 export default function HomeScreen() {
   const router   = useRouter();
@@ -134,25 +213,6 @@ export default function HomeScreen() {
   const goals    = intakeProfile?.goals    ?? [];
   const symptoms = intakeProfile?.symptoms ?? [];
 
-  // ── No panel state ────────────────────────────────────────────────────────
-  if (!labPanel) {
-    return (
-      <SafeAreaView style={s.container}>
-        <View style={s.empty}>
-          <FlaskConical color={PURPLE} size={56} />
-          <Text style={s.emptyTitle}>Welcome to Bioprecision</Text>
-          <Text style={s.emptyBody}>
-            Complete onboarding and connect your lab results to unlock your personalised health dashboard.
-          </Text>
-          <TouchableOpacity style={s.emptyBtn} onPress={() => router.push('/(onboarding)')}>
-            <Zap color="#fff" size={16} />
-            <Text style={s.emptyBtnTxt}>Get Started</Text>
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
   // ── Score ring colour ─────────────────────────────────────────────────────
   const scoreColor = score !== null
     ? score >= 75 ? '#2D8A5E' : score >= 50 ? '#C07A1A' : '#B83232'
@@ -195,104 +255,112 @@ export default function HomeScreen() {
           </View>
         )}
 
-        {/* ── Score card ─────────────────────────────────────────────────── */}
-        <View style={s.scoreCard}>
-          <View style={[s.scoreRing, { borderColor: scoreColor }]}>
-            <Text style={[s.scoreNum, { color: scoreColor }]}>{score ?? '—'}</Text>
-            <Text style={s.scoreLbl}>Score</Text>
-          </View>
-          <View style={s.scoreRight}>
-            <Text style={s.scoreTitle}>Health Overview</Text>
-            <View style={s.pillRow}>
-              {(['optimal','borderline','elevated','low'] as const).map(k => {
-                const cfg = STATUS_CFG[k];
-                const n   = counts[k];
-                if (!n) return null;
-                return (
-                  <TouchableOpacity
-                    key={k}
-                    style={[s.pill, { backgroundColor: cfg.bg }]}
-                    onPress={() => router.push('/(tabs)/labs')}
-                  >
-                    <Text style={[s.pillTxt, { color: cfg.color }]}>
-                      {n} {cfg.label}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
+        {/* ── Protocol card ───────────────────────────────────────────────── */}
+        <ProtocolCard />
+
+        {/* ── Lab-dependent sections ──────────────────────────────────────── */}
+        {labPanel && (
+          <>
+            {/* ── Score card ─────────────────────────────────────────────── */}
+            <View style={s.scoreCard}>
+              <View style={[s.scoreRing, { borderColor: scoreColor }]}>
+                <Text style={[s.scoreNum, { color: scoreColor }]}>{score ?? '—'}</Text>
+                <Text style={s.scoreLbl}>Score</Text>
+              </View>
+              <View style={s.scoreRight}>
+                <Text style={s.scoreTitle}>Health Overview</Text>
+                <View style={s.pillRow}>
+                  {(['optimal','borderline','elevated','low'] as const).map(k => {
+                    const cfg = STATUS_CFG[k];
+                    const n   = counts[k];
+                    if (!n) return null;
+                    return (
+                      <TouchableOpacity
+                        key={k}
+                        style={[s.pill, { backgroundColor: cfg.bg }]}
+                        onPress={() => router.push('/(tabs)/labs')}
+                      >
+                        <Text style={[s.pillTxt, { color: cfg.color }]}>
+                          {n} {cfg.label}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+                <TouchableOpacity style={s.viewLabsBtn} onPress={() => router.push('/(tabs)/labs')}>
+                  <FlaskConical color={PURPLE} size={14} />
+                  <Text style={s.viewLabsTxt}>View all labs</Text>
+                  <ChevronRight color={PURPLE} size={14} />
+                </TouchableOpacity>
+              </View>
             </View>
-            <TouchableOpacity style={s.viewLabsBtn} onPress={() => router.push('/(tabs)/labs')}>
-              <FlaskConical color={PURPLE} size={14} />
-              <Text style={s.viewLabsTxt}>View all labs</Text>
-              <ChevronRight color={PURPLE} size={14} />
-            </TouchableOpacity>
-          </View>
-        </View>
 
-        {/* ── Goals ──────────────────────────────────────────────────────── */}
-        {goals.length > 0 && (
-          <View style={s.section}>
-            <Text style={s.sectionTitle}>Your Goals</Text>
-            <View style={s.goalRow}>
-              {goals.map(g => {
-                const meta = GOAL_META[g] ?? { emoji: '🎯', label: g };
-                return (
-                  <View key={g} style={s.goalChip}>
-                    <Text style={s.goalEmoji}>{meta.emoji}</Text>
-                    <Text style={s.goalLabel}>{meta.label}</Text>
-                  </View>
-                );
-              })}
+            {/* ── Goals ────────────────────────────────────────────────────── */}
+            {goals.length > 0 && (
+              <View style={s.section}>
+                <Text style={s.sectionTitle}>Your Goals</Text>
+                <View style={s.goalRow}>
+                  {goals.map(g => {
+                    const meta = GOAL_META[g] ?? { emoji: '🎯', label: g };
+                    return (
+                      <View key={g} style={s.goalChip}>
+                        <Text style={s.goalEmoji}>{meta.emoji}</Text>
+                        <Text style={s.goalLabel}>{meta.label}</Text>
+                      </View>
+                    );
+                  })}
+                </View>
+              </View>
+            )}
+
+            {/* ── Priority biomarkers ───────────────────────────────────────── */}
+            <View style={s.section}>
+              <View style={s.sectionHead}>
+                <Text style={s.sectionTitle}>Priority Biomarkers</Text>
+                <TouchableOpacity onPress={() => router.push('/(tabs)/labs')}>
+                  <Text style={s.seeAll}>See all</Text>
+                </TouchableOpacity>
+              </View>
+              <View style={s.cardGrid}>
+                {topBiomarkers.map(b => (
+                  <BiomarkerMini key={b.id} b={b} goals={goals} symptoms={symptoms} />
+                ))}
+              </View>
             </View>
-          </View>
-        )}
 
-        {/* ── Priority biomarkers ─────────────────────────────────────────── */}
-        <View style={s.section}>
-          <View style={s.sectionHead}>
-            <Text style={s.sectionTitle}>Priority Biomarkers</Text>
-            <TouchableOpacity onPress={() => router.push('/(tabs)/labs')}>
-              <Text style={s.seeAll}>See all</Text>
-            </TouchableOpacity>
-          </View>
-          <View style={s.cardGrid}>
-            {topBiomarkers.map(b => (
-              <BiomarkerMini key={b.id} b={b} goals={goals} symptoms={symptoms} />
-            ))}
-          </View>
-        </View>
-
-        {/* ── Actions ────────────────────────────────────────────────────── */}
-        <View style={s.section}>
-          <View style={s.sectionHead}>
-            <Text style={s.sectionTitle}>
-              Today's Actions
-              {doneCount > 0 && (
-                <Text style={s.doneBadge}> · {doneCount} done</Text>
+            {/* ── Actions ──────────────────────────────────────────────────── */}
+            <View style={s.section}>
+              <View style={s.sectionHead}>
+                <Text style={s.sectionTitle}>
+                  Today's Actions
+                  {doneCount > 0 && (
+                    <Text style={s.doneBadge}> · {doneCount} done</Text>
+                  )}
+                </Text>
+                <TouchableOpacity onPress={() => router.push('/(tabs)/actions')}>
+                  <Text style={s.seeAll}>See all</Text>
+                </TouchableOpacity>
+              </View>
+              {pendingActions.length === 0 ? (
+                <View style={s.allDone}>
+                  <Activity color="#16a34a" size={20} />
+                  <Text style={s.allDoneTxt}>All caught up! Great work.</Text>
+                </View>
+              ) : (
+                <View style={s.actionsCard}>
+                  {pendingActions.map((a) => (
+                    <ActionRow
+                      key={a.id}
+                      label={a.title}
+                      done={a.completed}
+                      onPress={() => router.push('/(tabs)/actions')}
+                    />
+                  ))}
+                </View>
               )}
-            </Text>
-            <TouchableOpacity onPress={() => router.push('/(tabs)/actions')}>
-              <Text style={s.seeAll}>See all</Text>
-            </TouchableOpacity>
-          </View>
-          {pendingActions.length === 0 ? (
-            <View style={s.allDone}>
-              <Activity color="#16a34a" size={20} />
-              <Text style={s.allDoneTxt}>All caught up! Great work.</Text>
             </View>
-          ) : (
-            <View style={s.actionsCard}>
-              {pendingActions.map((a) => (
-                <ActionRow
-                  key={a.id}
-                  label={a.title}
-                  done={a.completed}
-                  onPress={() => router.push('/(tabs)/actions')}
-                />
-              ))}
-            </View>
-          )}
-        </View>
+          </>
+        )}
 
         <View style={{ height: 32 }} />
       </ScrollView>
@@ -405,4 +473,26 @@ const ar = StyleSheet.create({
   checkDone:{ backgroundColor: '#16a34a', borderColor: '#16a34a' },
   txt:      { flex: 1, fontSize: 14, color: '#374151' },
   txtDone:  { color: '#9ca3af', textDecorationLine: 'line-through' },
+});
+
+// ── Protocol card styles ──────────────────────────────────────────────────────
+const pc = StyleSheet.create({
+  card:       { backgroundColor: '#fff', borderRadius: 16, padding: 16, marginBottom: 20, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 },
+  loading:    { fontSize: 13, color: '#9ca3af', textAlign: 'center', paddingVertical: 8 },
+  header:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 },
+  headerLeft: { flex: 1, marginRight: 12 },
+  label:      { fontSize: 11, fontWeight: '600', color: '#9ca3af', letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 3 },
+  name:       { fontSize: 16, fontWeight: '700', color: '#111827' },
+  ringWrap:   { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+  ringInner:  { position: 'absolute', alignItems: 'center', justifyContent: 'center' },
+  ringPct:    { fontSize: 11, fontWeight: '800', color: PURPLE },
+  steps:      { gap: 0 },
+  step:       { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 11 },
+  stepBorder: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#f3f4f6' },
+  circle:     { width: 24, height: 24, borderRadius: 12, borderWidth: 1.5, borderColor: '#d1d5db', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  circleDone: { backgroundColor: PURPLE, borderColor: PURPLE },
+  circleNum:  { fontSize: 11, fontWeight: '700', color: '#9ca3af' },
+  stepTxt:    { flex: 1, fontSize: 14, color: '#111827' },
+  stepTxtDone:{ color: '#9ca3af', textDecorationLine: 'line-through' },
+  more:       { fontSize: 12, color: '#9ca3af', textAlign: 'center', marginTop: 8 },
 });

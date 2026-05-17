@@ -127,14 +127,15 @@ export interface ProtocolStep {
 }
 
 export interface PatientProtocol {
-  id: string;
+  id?: string;
   patient_id: string;
   protocol_id: string;
-  assigned_at: string;
-  is_active: boolean;
+  assigned_at?: string;
+  is_active?: boolean;
   notes?: string;
   personalized_actions?: HealthAction[] | null;
   protocol: {
+    id?: string;
     name: string;
     description?: string;
     protocol_actions?: Array<{

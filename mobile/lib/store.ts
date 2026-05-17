@@ -335,50 +335,65 @@ export const useHealthStore = create<HealthStore>()(
       protocolLoading: false,
 
       fetchProtocol: async () => {
-        const { patientId } = get();
-        if (!patientId) return;
         set({ protocolLoading: true });
         try {
-          const res = await fetch(`${API_BASE}/api/patient-protocols?patient_id=${patientId}`);
-          if (!res.ok) { set({ protocolLoading: false }); return; }
-          const data: PatientProtocol | null = await res.json();
-          if (!data) { set({ patientProtocol: null, protocolSteps: [], protocolLoading: false }); return; }
+          const { supabase } = await import('./supabase');
+          const { data: { session } } = await supabase.auth.getSession();
+          if (!session) { set({ protocolLoading: false }); return; }
 
-          // Build steps: prefer personalized_actions, fall back to protocol_actions
-          const raw = data.personalized_actions?.length
-            ? data.personalized_actions.map((a, i) => ({
-                id: a.id ?? `step-${i}`,
-                title: a.title,
-                description: a.description ?? '',
-                mechanism: (a as any).why,
-                category: a.category,
-                timeOfDay: a.timeOfDay,
-                biomarkerTargets: a.targetBiomarkers,
-                sortOrder: i,
-                completed: false,
-              }))
-            : (data.protocol?.protocol_actions ?? [])
-                .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
-                .map((a) => ({
-                  id: a.id,
-                  title: a.title,
-                  description: a.description ?? '',
-                  mechanism: a.mechanism,
-                  category: a.category,
-                  timeOfDay: a.time_of_day,
-                  biomarkerTargets: a.biomarker_targets,
-                  evidenceGrade: a.evidence_grade,
-                  effectSize: a.effect_size,
-                  timeToEffect: a.time_to_effect,
-                  sortOrder: a.sort_order,
-                  completed: false,
-                }));
+          // Fetch active user_protocol with joined protocol
+          const { data: up } = await supabase
+            .from('user_protocols')
+            .select('*, protocol:protocols_v2(id, name, description, duration_days)')
+            .eq('user_id', session.user.id)
+            .eq('status', 'active')
+            .maybeSingle();
 
-          // Preserve existing completion state
-          const existing = new Set(get().protocolSteps.filter(s => s.completed).map(s => s.id));
-          const steps: ProtocolStep[] = raw.map(s => ({ ...s, completed: existing.has(s.id) }));
+          if (!up) {
+            set({ patientProtocol: null, protocolSteps: [], protocolLoading: false });
+            return;
+          }
 
-          set({ patientProtocol: data, protocolSteps: steps, protocolLoading: false });
+          // Fetch steps for day 1 (daily repeating actions)
+          const { data: rawSteps } = await supabase
+            .from('protocol_steps')
+            .select('*')
+            .eq('protocol_id', up.protocol_id)
+            .eq('day_number', 1)
+            .order('sort_order', { ascending: true });
+
+          const existing = new Set(
+            get().protocolSteps.filter(s => s.completed).map(s => s.id)
+          );
+
+          const steps: ProtocolStep[] = (rawSteps ?? []).map(s => ({
+            id:               s.id,
+            title:            s.title,
+            description:      s.description ?? '',
+            mechanism:        s.evidence_summary ?? '',
+            category:         s.step_type === 'check_in' ? 'Lifestyle' : 'Lifestyle',
+            timeOfDay:        'morning' as const,
+            biomarkerTargets: [],
+            completed:        existing.has(s.id),
+          }));
+
+          const proto = up.protocol as { id: string; name: string; description: string | null; duration_days: number | null };
+
+          set({
+            patientProtocol: {
+              patient_id:           session.user.id,
+              protocol_id:          up.protocol_id,
+              personalized_actions: null,
+              protocol: {
+                id:               proto.id,
+                name:             proto.name,
+                description:      proto.description ?? undefined,
+                protocol_actions: [],
+              },
+            } as PatientProtocol,
+            protocolSteps:   steps,
+            protocolLoading: false,
+          });
         } catch {
           set({ protocolLoading: false });
         }
