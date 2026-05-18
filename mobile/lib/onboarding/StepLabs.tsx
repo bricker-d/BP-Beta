@@ -77,7 +77,7 @@ export default function StepLabs({ step, totalSteps, profile, update, next, back
       setLoading(false);
       const msg = err instanceof Error ? err.message : 'Upload failed';
       setUploadMsg('');
-      Alert.alert('Upload failed', `${msg}\n\nTry a different file or use demo data.`);
+      Alert.alert('Upload failed', `${msg}\n\nTry a different file or skip this step.`);
     }
   }
 
@@ -169,21 +169,6 @@ export default function StepLabs({ step, totalSteps, profile, update, next, back
         </View>
       )}
 
-      {/* Demo option */}
-      <TouchableOpacity
-        style={[s.card, selected === 'demo' && s.cardActive]}
-        onPress={() => { setSelected('demo'); setUploaded(false); setUploadMsg(''); }}
-        activeOpacity={0.8}
-      >
-        <View style={s.cardLeft}>
-          <Text style={s.cardEmoji}>🔬</Text>
-        </View>
-        <View style={s.cardBody}>
-          <Text style={[s.cardTitle, selected === 'demo' && s.cardTitleActive]}>Use demo data</Text>
-          <Text style={s.cardSub}>See the full experience with realistic sample results</Text>
-        </View>
-      </TouchableOpacity>
-
       {/* Skip option */}
       <TouchableOpacity
         style={[s.card, selected === 'skip' && s.cardActive]}
@@ -195,7 +180,7 @@ export default function StepLabs({ step, totalSteps, profile, update, next, back
         </View>
         <View style={s.cardBody}>
           <Text style={[s.cardTitle, selected === 'skip' && s.cardTitleActive]}>Skip for now</Text>
-          <Text style={s.cardSub}>Add labs later from the Labs tab</Text>
+          <Text style={s.cardSub}>You can upload labs after setup</Text>
         </View>
       </TouchableOpacity>
 

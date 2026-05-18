@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, ScrollView, StyleSheet,
-  TouchableOpacity, Alert, Modal, Pressable,
+  TouchableOpacity, Alert, Modal, Pressable, Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -341,12 +341,12 @@ export default function ProfileScreen() {
           <Row
             icon={Target}
             label="Privacy Policy"
-            onPress={() => {}}
+            onPress={() => Linking.openURL('https://bp-beta-beta.vercel.app/privacy')}
           />
           <Row
             icon={Target}
             label="Terms of Service"
-            onPress={() => {}}
+            onPress={() => Linking.openURL('https://bp-beta-beta.vercel.app/terms')}
           />
           <Row
             icon={LogOut}

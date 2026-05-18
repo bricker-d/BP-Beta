@@ -258,7 +258,7 @@ export async function scheduleDailyNotifications(
     trigger: { type: Notifications.SchedulableTriggerInputTypes.WEEKLY, weekday: 1, hour: 9, minute: 0 },
   });
 
-  console.log('[notifications] Scheduled: morning, midday, evening, streak, coach x3, weekly');
+  if (__DEV__) console.log('[notifications] Scheduled: morning, midday, evening, streak, coach x3, weekly');
 }
 
 // ── Schedule 90-day lab upload reminder ──────────────────────────────────────

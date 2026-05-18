@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
-  View, Text, TouchableOpacity, StyleSheet, Linking, ActivityIndicator,
+  View, Text, TouchableOpacity, StyleSheet, Linking, ActivityIndicator, AppState,
 } from 'react-native';
 import StepBase from './StepBase';
 import type { StepProps } from './types';
@@ -24,20 +24,43 @@ const DEVICES: {
 ];
 
 export default function StepWearables({ step, totalSteps, profile, update, next, back }: StepProps) {
-  const [selected, setSelected]   = useState<WearableSource | ''>(profile.wearableSource ?? '');
+  const [selected, setSelected]     = useState<WearableSource | ''>(profile.wearableSource ?? '');
   const [connecting, setConnecting] = useState(false);
   const [connected, setConnected]   = useState(false);
+  const [pending, setPending]       = useState(false);
+  const oauthProvider               = useRef<string | null>(null);
+
+  // When app returns to foreground after OAuth, verify connection via backend
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', async (state) => {
+      if (state === 'active' && pending && oauthProvider.current && profile.patientId) {
+        try {
+          const res = await fetch(
+            `${API_BASE}/api/wearables/${oauthProvider.current}/sync`,
+            { method: 'POST', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ patientId: profile.patientId }) }
+          );
+          if (res.ok) {
+            setPending(false);
+            setConnected(true);
+          }
+        } catch { /* remain pending */ }
+      }
+    });
+    return () => sub.remove();
+  }, [pending, profile.patientId]);
 
   async function handleConnect(device: typeof DEVICES[0]) {
     setSelected(device.value);
 
-    // Devices with OAuth — open browser
+    // Devices with OAuth — open browser, then verify on return
     if (device.oauthProvider && profile.patientId) {
       setConnecting(true);
+      oauthProvider.current = device.oauthProvider;
       const url = `${API_BASE}/api/wearables/${device.oauthProvider}/authorize?patientId=${profile.patientId}`;
       await Linking.openURL(url);
       setConnecting(false);
-      setConnected(true); // Optimistic — user returns from browser
+      setPending(true); // Connection unconfirmed until callback verified
     }
   }
 
@@ -53,7 +76,7 @@ export default function StepWearables({ step, totalSteps, profile, update, next,
       title="Connect a wearable"
       subtitle="Your AI coach uses sleep, HRV, and activity data to personalise your daily actions."
       onBack={back}
-      ctaLabel={connected ? 'Continue ✓' : 'Continue'}
+      ctaLabel={connected ? 'Continue ✓' : pending ? 'Continue (pending)' : 'Continue'}
       onCta={handleNext}
       ctaDisabled={!selected}
       skipLabel="Skip for now"
@@ -92,6 +115,11 @@ export default function StepWearables({ step, totalSteps, profile, update, next,
       {connected && (
         <View style={s.connectedBanner}>
           <Text style={s.connectedTxt}>✓ Connected — data will sync automatically</Text>
+        </View>
+      )}
+      {pending && !connected && (
+        <View style={[s.connectedBanner, { backgroundColor: '#fefce8' }]}>
+          <Text style={[s.connectedTxt, { color: '#ca8a04' }]}>Pending connection — verifying…</Text>
         </View>
       )}
 
