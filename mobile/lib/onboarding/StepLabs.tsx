@@ -4,6 +4,7 @@ import {
   ActivityIndicator, Alert,
 } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
+import { supabase } from '../supabase';
 import StepBase from './StepBase';
 import type { StepProps } from './types';
 
@@ -50,8 +51,13 @@ export default function StepLabs({ step, totalSteps, profile, update, next, back
 
       setUploadMsg('AI extracting biomarkers...');
 
+      const { data: { session } } = await supabase.auth.getSession();
+      const headers: Record<string, string> = {};
+      if (session?.access_token) headers['Authorization'] = `Bearer ${session.access_token}`;
+
       const res = await fetch(`${API_BASE}/api/parse-labs`, {
         method: 'POST',
+        headers,
         body: formData,
       });
 

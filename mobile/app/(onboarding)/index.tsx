@@ -49,42 +49,52 @@ export default function OnboardingScreen() {
   const back = () => setStep(s => Math.max(s - 1, 0));
 
   async function finish(summaryMsg: string) {
-    // Write profile + onboarding_complete to Supabase
     const { data: { session } } = await supabase.auth.getSession();
-    if (session?.user) {
-      await supabase.from('profiles').upsert({
-        id:                  session.user.id,
-        name:                profile.name ?? null,
-        primary_focus:       profile.primaryFocus ?? null,
-        goals:               profile.goals ?? [],
-        age:                 profile.age ?? null,
-        biological_sex:      profile.biologicalSex ?? null,
-        height_ft:           profile.heightFt ?? null,
-        height_in:           profile.heightIn ?? null,
-        weight_lbs:          profile.weightLbs ?? null,
-        symptoms:            profile.symptoms ?? [],
-        habits:              profile.habits ?? null,
-        onboarding_complete: true,
-        updated_at:          new Date().toISOString(),
+
+    if (!session?.user) {
+      // No session — auth flow did not complete correctly. Still transition locally.
+      completeOnboarding(profile as IntakeProfile, summaryMsg);
+      router.replace('/(tabs)');
+      return;
+    }
+
+    // Write profile + onboarding_complete
+    const { error: upsertErr } = await supabase.from('profiles').upsert({
+      id:                  session.user.id,
+      name:                profile.name ?? null,
+      primary_focus:       profile.primaryFocus ?? null,
+      goals:               profile.goals ?? [],
+      age:                 profile.age ?? null,
+      biological_sex:      profile.biologicalSex ?? null,
+      height_ft:           profile.heightFt ?? null,
+      height_in:           profile.heightIn ?? null,
+      weight_lbs:          profile.weightLbs ?? null,
+      symptoms:            profile.symptoms ?? [],
+      habits:              profile.habits ?? null,
+      onboarding_complete: true,
+      updated_at:          new Date().toISOString(),
+    });
+
+    if (upsertErr) {
+      console.error('[onboarding] Profile upsert failed:', upsertErr.message);
+    }
+
+    // Auto-assign the default BioPrecision Foundation Protocol if user has no active protocol
+    const DEFAULT_PROTOCOL_ID = 'a0000000-0000-0000-0000-000000000001';
+    const { data: existing } = await supabase
+      .from('user_protocols')
+      .select('id')
+      .eq('user_id', session.user.id)
+      .eq('status', 'active')
+      .maybeSingle();
+
+    if (!existing) {
+      await supabase.from('user_protocols').insert({
+        user_id:     session.user.id,
+        protocol_id: DEFAULT_PROTOCOL_ID,
+        status:      'active',
+        current_day: 1,
       });
-
-      // Auto-assign the default BioPrecision Foundation Protocol if user has no active protocol
-      const DEFAULT_PROTOCOL_ID = 'a0000000-0000-0000-0000-000000000001';
-      const { data: existing } = await supabase
-        .from('user_protocols')
-        .select('id')
-        .eq('user_id', session.user.id)
-        .eq('status', 'active')
-        .maybeSingle();
-
-      if (!existing) {
-        await supabase.from('user_protocols').insert({
-          user_id:     session.user.id,
-          protocol_id: DEFAULT_PROTOCOL_ID,
-          status:      'active',
-          current_day: 1,
-        });
-      }
     }
 
     completeOnboarding(profile as IntakeProfile, summaryMsg);

@@ -22,17 +22,34 @@ export default function StepAuth({ onAuthenticated }: Props) {
     setLoading(true);
     setError('');
 
-    const { error: authError } = mode === 'signup'
-      ? await supabase.auth.signUp({ email: email.trim(), password })
-      : await supabase.auth.signInWithPassword({ email: email.trim(), password });
+    if (mode === 'signup') {
+      const { error: signUpErr } = await supabase.auth.signUp({
+        email: email.trim(),
+        password,
+      });
+      if (signUpErr) { setLoading(false); setError(signUpErr.message); return; }
 
-    setLoading(false);
-
-    if (authError) {
-      setError(authError.message);
-      return;
+      // signUp may not establish a session if email confirmation is enabled.
+      // Sign in immediately to guarantee a live session before proceeding.
+      const { error: signInErr } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      });
+      if (signInErr) {
+        setLoading(false);
+        setError('Account created — please check your email to confirm, then sign in.');
+        setMode('signin');
+        return;
+      }
+    } else {
+      const { error: authError } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      });
+      if (authError) { setLoading(false); setError(authError.message); return; }
     }
 
+    setLoading(false);
     onAuthenticated();
   }
 
