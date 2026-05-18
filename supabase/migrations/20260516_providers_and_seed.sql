@@ -17,6 +17,8 @@ CREATE INDEX IF NOT EXISTS providers_profile_idx ON providers(profile_id);
 
 ALTER TABLE providers ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "providers_read_own"     ON providers;
+DROP POLICY IF EXISTS "org_read_own_providers" ON providers;
 CREATE POLICY "providers_read_own"       ON providers FOR SELECT USING (auth.uid() = profile_id);
 CREATE POLICY "org_read_own_providers"   ON providers FOR SELECT
   USING (auth.uid() IN (

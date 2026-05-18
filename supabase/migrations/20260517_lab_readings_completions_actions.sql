@@ -53,6 +53,9 @@ ALTER TABLE lab_readings      ENABLE ROW LEVEL SECURITY;
 ALTER TABLE step_completions  ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_daily_actions ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "users_own_lab_readings"    ON lab_readings;
+DROP POLICY IF EXISTS "users_own_step_completions" ON step_completions;
+DROP POLICY IF EXISTS "users_read_daily_actions"   ON user_daily_actions;
 CREATE POLICY "users_own_lab_readings"
   ON lab_readings FOR ALL USING (auth.uid() = user_id);
 

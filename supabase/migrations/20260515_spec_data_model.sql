@@ -104,6 +104,11 @@ ALTER TABLE protocol_steps     ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_protocols     ENABLE ROW LEVEL SECURITY;
 ALTER TABLE outcomes_snapshots ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "users_own_profile"     ON profiles;
+DROP POLICY IF EXISTS "users_own_protocols"   ON user_protocols;
+DROP POLICY IF EXISTS "users_own_snapshots"   ON outcomes_snapshots;
+DROP POLICY IF EXISTS "read_active_protocols" ON protocols_v2;
+DROP POLICY IF EXISTS "read_protocol_steps"   ON protocol_steps;
 CREATE POLICY "users_own_profile"     ON profiles           FOR ALL    USING (auth.uid() = id);
 CREATE POLICY "users_own_protocols"   ON user_protocols     FOR ALL    USING (auth.uid() = user_id);
 CREATE POLICY "users_own_snapshots"   ON outcomes_snapshots FOR SELECT USING (auth.uid() = user_id);
