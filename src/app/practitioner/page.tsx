@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase-browser";
-import { Plus, Search, RefreshCw, CheckCircle2, Clock, AlertCircle } from "lucide-react";
+import { Plus, Search, RefreshCw, CheckCircle2, Clock, AlertCircle, Mail, X } from "lucide-react";
 
 interface PatientRow {
   id: string;
@@ -98,12 +98,38 @@ function PatientCard({ p, onClick }: { p: PatientRow; onClick: () => void }) {
   );
 }
 
+interface ProtocolOption {
+  id: string;
+  name: string;
+}
+
 export default function PractitionerDashboard() {
   const router   = useRouter();
   const [patients, setPatients] = useState<PatientRow[]>([]);
   const [loading,  setLoading]  = useState(true);
   const [search,   setSearch]   = useState("");
   const [filter,   setFilter]   = useState<"all" | "no_protocol">("all");
+
+  // Invite patient modal
+  const [inviteOpen,       setInviteOpen]       = useState(false);
+  const [inviteEmail,      setInviteEmail]      = useState("");
+  const [inviteProtocolId, setInviteProtocolId] = useState("");
+  const [inviteSending,    setInviteSending]    = useState(false);
+  const [inviteResult,     setInviteResult]     = useState<{ ok?: boolean; error?: string } | null>(null);
+  const [protocols,        setProtocols]        = useState<ProtocolOption[]>([]);
+
+  async function loadProtocols(organizationId: string) {
+    const supabase = createClient();
+    const { data } = await supabase
+      .from("protocols_v2")
+      .select("id, name")
+      .eq("organization_id", organizationId)
+      .eq("is_active", true)
+      .order("created_at");
+    const list = data ?? [];
+    setProtocols(list);
+    if (list.length) setInviteProtocolId(list[0].id);
+  }
 
   async function load() {
     setLoading(true);
@@ -119,6 +145,7 @@ export default function PractitionerDashboard() {
       .single();
 
     if (!me?.organization_id) { setLoading(false); return; }
+    loadProtocols(me.organization_id);
 
     // Load patients in same org
     const { data: profiles } = await supabase
@@ -188,6 +215,35 @@ export default function PractitionerDashboard() {
     setLoading(false);
   }
 
+  async function handleInvitePatient(e: React.FormEvent) {
+    e.preventDefault();
+    if (!inviteEmail) return;
+    setInviteSending(true);
+    setInviteResult(null);
+
+    try {
+      const res  = await fetch("/api/practitioner/invite-patient", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({
+          email:       inviteEmail,
+          protocol_id: inviteProtocolId || undefined,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) setInviteResult({ error: data.error ?? "Invite failed" });
+      else {
+        setInviteResult({ ok: true });
+        setInviteEmail("");
+        load(); // Refresh patient list
+      }
+    } catch {
+      setInviteResult({ error: "Network error — try again." });
+    }
+
+    setInviteSending(false);
+  }
+
   useEffect(() => { load(); }, []);
 
   const filtered = patients.filter(p => {
@@ -215,6 +271,12 @@ export default function PractitionerDashboard() {
           <button onClick={load} disabled={loading}
             className="flex items-center gap-1.5 px-3 py-2 text-sm text-gray-500 bg-white border border-gray-200 rounded-lg hover:bg-gray-50">
             <RefreshCw size={13} className={loading ? "animate-spin" : ""} />
+          </button>
+          <button
+            onClick={() => { setInviteOpen(true); setInviteResult(null); }}
+            className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-gray-700 text-sm font-semibold rounded-xl hover:bg-gray-50 transition-colors"
+          >
+            <Mail size={14} /> Invite Patient
           </button>
           <button onClick={() => router.push("/practitioner/protocols/new")}
             className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white text-sm font-semibold rounded-xl hover:bg-emerald-700">
@@ -267,6 +329,95 @@ export default function PractitionerDashboard() {
           {filtered.map(p => (
             <PatientCard key={p.id} p={p} onClick={() => router.push(`/practitioner/patients/${p.id}`)} />
           ))}
+        </div>
+      )}
+
+      {/* Invite Patient Modal */}
+      {inviteOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 relative">
+            <button
+              onClick={() => { setInviteOpen(false); setInviteResult(null); setInviteEmail(""); }}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+            >
+              <X size={18} />
+            </button>
+
+            <h2 className="text-base font-semibold text-gray-900 mb-1">Invite Patient</h2>
+            <p className="text-xs text-gray-500 mb-5">
+              They&apos;ll receive an email to set up their account and download the app. Their protocol will be pre-assigned.
+            </p>
+
+            {inviteResult?.ok ? (
+              <div className="text-center py-4">
+                <p className="text-emerald-600 font-semibold text-sm mb-1">Invite sent.</p>
+                <p className="text-xs text-gray-500 mb-4">
+                  The patient will receive an email with a link to activate their account.
+                </p>
+                <button
+                  onClick={() => { setInviteOpen(false); setInviteResult(null); setInviteEmail(""); }}
+                  className="px-5 py-2 rounded-xl bg-emerald-600 text-white text-sm font-semibold"
+                >
+                  Done
+                </button>
+              </div>
+            ) : (
+              <form onSubmit={handleInvitePatient} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">
+                    Patient email
+                  </label>
+                  <input
+                    type="email"
+                    value={inviteEmail}
+                    onChange={e => setInviteEmail(e.target.value)}
+                    placeholder="patient@example.com"
+                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-emerald-400"
+                    required
+                    autoFocus
+                  />
+                </div>
+
+                {protocols.length > 0 && (
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">
+                      Protocol
+                    </label>
+                    <select
+                      value={inviteProtocolId}
+                      onChange={e => setInviteProtocolId(e.target.value)}
+                      className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-emerald-400 bg-white"
+                    >
+                      {protocols.map(p => (
+                        <option key={p.id} value={p.id}>{p.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {inviteResult?.error && (
+                  <p className="text-xs text-red-500">{inviteResult.error}</p>
+                )}
+
+                <div className="flex gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => { setInviteOpen(false); setInviteResult(null); setInviteEmail(""); }}
+                    className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={inviteSending || !inviteEmail}
+                    className="flex-1 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-semibold disabled:opacity-40 hover:bg-emerald-700 transition-colors"
+                  >
+                    {inviteSending ? "Sending…" : "Send invite"}
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
         </div>
       )}
     </div>

@@ -10,13 +10,18 @@ const NAV = [
   { href: "/practitioner/protocols", label: "Protocols", icon: "M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2" },
 ];
 
+const ADMIN_NAV_ITEM = { href: "/practitioner/admin", label: "Admin", icon: "M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 0 0 2.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 0 0 1.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 0 0-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 0 0-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 0 0-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 0 0-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 0 0 1.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0z" };
+
+const BYPASS_PATHS = ["/practitioner/login", "/practitioner/accept-invite"];
+
 export default function PractitionerLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router   = useRouter();
   const [orgName, setOrgName] = useState<string | null>(null);
+  const [role,    setRole]    = useState<string | null>(null);
 
   useEffect(() => {
-    if (pathname === "/practitioner/login") return;
+    if (BYPASS_PATHS.includes(pathname)) return;
 
     const supabase = createClient();
     supabase.auth.getSession().then(async ({ data: { session } }) => {
@@ -36,10 +41,11 @@ export default function PractitionerLayout({ children }: { children: React.React
 
       const org = profile?.organizations as unknown as { name: string } | null;
       setOrgName(org?.name ?? "My Clinic");
+      setRole(profile?.role ?? null);
     });
   }, [pathname]);
 
-  if (pathname === "/practitioner/login") {
+  if (BYPASS_PATHS.includes(pathname)) {
     return <>{children}</>;
   }
 
@@ -65,7 +71,7 @@ export default function PractitionerLayout({ children }: { children: React.React
         </div>
 
         <nav className="flex-1 space-y-1">
-          {NAV.map(item => {
+          {[...NAV, ...(role === "bp_admin" ? [ADMIN_NAV_ITEM] : [])].map(item => {
             const active = pathname === item.href || (item.href !== "/practitioner" && pathname.startsWith(item.href));
             return (
               <Link
