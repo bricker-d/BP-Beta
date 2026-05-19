@@ -220,6 +220,7 @@ export default function CoachScreen() {
   const {
     messages, addMessage, clearMessages,
     labPanel, intakeProfile, wearableData,
+    coachPrimePrompt, setCoachPrimePrompt,
   } = useHealthStore();
 
   const [input,          setInput]          = useState('');
@@ -240,17 +241,21 @@ export default function CoachScreen() {
     }, [clearMessages])
   );
 
-  // Auto-briefing: fire a health snapshot on first open when labs are loaded
+  // Auto-briefing: if a biomarker prime prompt is set, use it; otherwise default health snapshot
   useEffect(() => {
-    if (briefingFiredRef.current || messages.length > 0 || !labPanel) return;
+    if (briefingFiredRef.current || messages.length > 0) return;
+    if (!labPanel && !coachPrimePrompt) return;
     briefingFiredRef.current = true;
-    const timer = setTimeout(() => {
-      handleSend(
-        "Give me a brief health snapshot — the 3 most important things I should know from my labs right now. Be direct, plain English, no clinical terms or lab values."
-      );
-    }, 700);
+
+    const prompt = coachPrimePrompt
+      ? coachPrimePrompt
+      : "Give me a brief health snapshot — the 3 most important things I should know from my labs right now. Be direct, plain English, no clinical terms or lab values.";
+
+    if (coachPrimePrompt) setCoachPrimePrompt(null);
+
+    const timer = setTimeout(() => handleSend(prompt), 700);
     return () => clearTimeout(timer);
-  }, [labPanel]);
+  }, [labPanel, coachPrimePrompt]);
 
   // Load weekly summary on Sundays
   useEffect(() => {

@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import * as DocumentPicker from 'expo-document-picker';
 import {
   View, Text, ScrollView, StyleSheet,
-  TouchableOpacity, Dimensions, ActivityIndicator,
+  TouchableOpacity, Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -14,6 +14,7 @@ import {
   computeHealthScore,
 } from '../../lib/biomarkers';
 import type { Biomarker } from '../../lib/types';
+import BiomarkerDetailModal from '../../lib/BiomarkerDetailModal';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 
@@ -214,10 +215,11 @@ const empty = StyleSheet.create({
 
 export default function LabsScreen() {
   const router = useRouter();
-  const { labPanel, previousLabPanel, intakeProfile, resetOnboarding } = useHealthStore();
-  const [activeCategory, setActiveCategory] = useState('all');
-  const [sortBy, setSortBy] = useState<'priority' | 'status' | 'name'>('priority');
-  const [showAll, setShowAll] = useState(false);
+  const { labPanel, previousLabPanel, intakeProfile, resetOnboarding, setCoachPrimePrompt } = useHealthStore();
+  const [activeCategory,   setActiveCategory]   = useState('all');
+  const [sortBy,           setSortBy]           = useState<'priority' | 'status' | 'name'>('priority');
+  const [showAll,          setShowAll]          = useState(false);
+  const [selectedBiomarker, setSelectedBiomarker] = useState<Biomarker | null>(null);
 
   const profile = intakeProfile;
 
@@ -407,7 +409,7 @@ export default function LabsScreen() {
               key={b.id}
               b={b}
               profile={profile}
-              onPress={() => router.push('/(tabs)/coach')}
+              onPress={() => setSelectedBiomarker(b)}
             />
           ))}
           {visibleBiomarkers.length === 0 && (
@@ -428,6 +430,16 @@ export default function LabsScreen() {
 
         <View style={{ height: 32 }} />
       </ScrollView>
+
+      <BiomarkerDetailModal
+        biomarker={selectedBiomarker}
+        onClose={() => setSelectedBiomarker(null)}
+        onAskCoach={(prompt) => {
+          setSelectedBiomarker(null);
+          setCoachPrimePrompt(prompt);
+          router.push('/(tabs)/coach');
+        }}
+      />
     </SafeAreaView>
   );
 }

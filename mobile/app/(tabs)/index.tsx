@@ -18,7 +18,9 @@ import {
 } from '../../lib/biomarkers';
 import type { Biomarker } from '../../lib/types';
 import DailyCheckIn from '../../lib/DailyCheckIn';
+import BiomarkerDetailModal from '../../lib/BiomarkerDetailModal';
 import type { DailyLog } from '../../lib/types';
+import type { Biomarker } from '../../lib/types';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 const PURPLE = '#C96A2B';
@@ -44,8 +46,7 @@ const GOAL_META: Record<string, { emoji: string; label: string }> = {
 };
 
 // ── Mini biomarker card ───────────────────────────────────────────────────────
-function BiomarkerMini({ b, goals, symptoms }: { b: Biomarker; goals: string[]; symptoms: string[] }) {
-  const router = useRouter();
+function BiomarkerMini({ b, goals, symptoms, onPress }: { b: Biomarker; goals: string[]; symptoms: string[]; onPress: () => void }) {
   const cfg = STATUS_CFG[b.status] ?? STATUS_CFG.optimal;
   const StatusIcon = cfg.icon;
   const ref = BIOMARKER_REFS[b.id];
@@ -54,7 +55,7 @@ function BiomarkerMini({ b, goals, symptoms }: { b: Biomarker; goals: string[]; 
   const priorityColor = priority === 'high' ? '#dc2626' : priority === 'watch' ? '#d97706' : '#16a34a';
 
   return (
-    <TouchableOpacity style={ms.card} onPress={() => router.push('/(tabs)/coach')} activeOpacity={0.7}>
+    <TouchableOpacity style={ms.card} onPress={onPress} activeOpacity={0.7}>
       <View style={ms.cardTop}>
         <Text style={ms.cardName}>{ref?.name ?? b.id}</Text>
         <View style={[ms.badge, { backgroundColor: cfg.bg }]}>
@@ -135,22 +136,59 @@ function ProtocolProgress() {
   );
 }
 
+const TIME_SLOTS = ['Morning', 'Afternoon', 'Evening'] as const;
+type TimeSlot = typeof TIME_SLOTS[number];
+
+function inferTimeSlot(title: string, desc?: string | null): TimeSlot {
+  const text = (title + ' ' + (desc ?? '')).toLowerCase();
+  if (/morning|sunlight|wak|check.in|readiness|wake/.test(text)) return 'Morning';
+  if (/bed|sleep|alcohol|evening|night|before sleep/.test(text))  return 'Evening';
+  return 'Afternoon';
+}
+
 // ── Daily Protocol Actions (step list) ────────────────────────────────────────
 function DailyProtocolActions() {
   const { patientProtocol, protocolSteps, toggleProtocolStep } = useHealthStore();
 
   if (!patientProtocol?.protocol || protocolSteps.length === 0) return null;
 
-  const visible = protocolSteps.slice(0, 5);
-  const overflow = protocolSteps.length - 5;
+  // Assign one step per time slot, max 3 total
+  const slotted: { slot: TimeSlot; step: typeof protocolSteps[0] }[] = [];
+  const usedSlots = new Set<TimeSlot>();
+  const usedIds   = new Set<string>();
+
+  // First pass: assign steps to their preferred slot
+  for (const step of protocolSteps) {
+    if (slotted.length >= 3) break;
+    const slot = inferTimeSlot(step.title, step.description);
+    if (!usedSlots.has(slot)) {
+      slotted.push({ slot, step });
+      usedSlots.add(slot);
+      usedIds.add(step.id);
+    }
+  }
+  // Second pass: fill remaining slots with any unassigned steps
+  for (const slot of TIME_SLOTS) {
+    if (slotted.length >= 3) break;
+    if (usedSlots.has(slot)) continue;
+    const next = protocolSteps.find(s => !usedIds.has(s.id));
+    if (next) {
+      slotted.push({ slot, step: next });
+      usedSlots.add(slot);
+      usedIds.add(next.id);
+    }
+  }
+  // Sort by Morning → Afternoon → Evening
+  const order: Record<TimeSlot, number> = { Morning: 0, Afternoon: 1, Evening: 2 };
+  slotted.sort((a, b) => order[a.slot] - order[b.slot]);
 
   return (
     <View style={pc.actionsCard}>
       <Text style={pc.actionsTitle}>Today's Protocol</Text>
-      {visible.map((step, i) => (
+      {slotted.map(({ slot, step }, i) => (
         <TouchableOpacity
           key={step.id}
-          style={[pc.step, i < visible.length - 1 && pc.stepBorder]}
+          style={[pc.step, i < slotted.length - 1 && pc.stepBorder]}
           onPress={() => toggleProtocolStep(step.id)}
           activeOpacity={0.7}
         >
@@ -160,14 +198,14 @@ function DailyProtocolActions() {
               : <Text style={pc.circleNum}>{i + 1}</Text>
             }
           </View>
-          <Text style={[pc.stepTxt, step.completed && pc.stepTxtDone]} numberOfLines={2}>
-            {step.title}
-          </Text>
+          <View style={{ flex: 1 }}>
+            <Text style={pc.slotLabel}>{slot}</Text>
+            <Text style={[pc.stepTxt, step.completed && pc.stepTxtDone]} numberOfLines={2}>
+              {step.title}
+            </Text>
+          </View>
         </TouchableOpacity>
       ))}
-      {overflow > 0 && (
-        <Text style={pc.more}>+{overflow} more steps in full protocol</Text>
-      )}
     </View>
   );
 }
@@ -175,8 +213,13 @@ function DailyProtocolActions() {
 // ── Main ──────────────────────────────────────────────────────────────────────
 export default function HomeScreen() {
   const router   = useRouter();
-  const { actions, intakeProfile, labPanel, streak, needsCheckIn, submitDailyLog, skipCheckIn } = useHealthStore();
-  const [showCheckIn, setShowCheckIn] = useState(false);
+  const {
+    actions, intakeProfile, labPanel, streak,
+    needsCheckIn, submitDailyLog, skipCheckIn,
+    protocolSteps, setCoachPrimePrompt,
+  } = useHealthStore();
+  const [showCheckIn,       setShowCheckIn]       = useState(false);
+  const [selectedBiomarker, setSelectedBiomarker] = useState<Biomarker | null>(null);
 
   // Show check-in modal on mount if needed
   useEffect(() => {
@@ -215,8 +258,15 @@ export default function HomeScreen() {
     }, { optimal: 0, borderline: 0, elevated: 0, low: 0 });
   }, [labPanel]);
 
-  // Pending actions (first 3)
-  const pendingActions = useMemo(() => actions.filter(a => !a.completed).slice(0, 3), [actions]);
+  // Pending AI actions — deduplicated against protocol steps, max 3
+  const pendingActions = useMemo(() => {
+    const keyword = (s: string) =>
+      s.toLowerCase().split(/\s+/).find(w => w.length > 4) ?? s.slice(0, 6).toLowerCase();
+    const protocolKeywords = new Set(protocolSteps.map(s => keyword(s.title)));
+    return actions
+      .filter(a => !a.completed && !protocolKeywords.has(keyword(a.title)))
+      .slice(0, 3);
+  }, [actions, protocolSteps]);
   const doneCount      = useMemo(() => actions.filter(a => a.completed).length, [actions]);
 
   const goals    = intakeProfile?.goals    ?? [];
@@ -333,7 +383,13 @@ export default function HomeScreen() {
               </View>
               <View style={s.cardGrid}>
                 {topBiomarkers.map(b => (
-                  <BiomarkerMini key={b.id} b={b} goals={goals} symptoms={symptoms} />
+                  <BiomarkerMini
+                    key={b.id}
+                    b={b}
+                    goals={goals}
+                    symptoms={symptoms}
+                    onPress={() => setSelectedBiomarker(b)}
+                  />
                 ))}
               </View>
             </View>
@@ -374,6 +430,17 @@ export default function HomeScreen() {
 
         <View style={{ height: 32 }} />
       </ScrollView>
+
+      {/* ── Biomarker detail modal ───────────────────────────────────── */}
+      <BiomarkerDetailModal
+        biomarker={selectedBiomarker}
+        onClose={() => setSelectedBiomarker(null)}
+        onAskCoach={(prompt) => {
+          setSelectedBiomarker(null);
+          setCoachPrimePrompt(prompt);
+          router.push('/(tabs)/coach');
+        }}
+      />
 
       {/* ── Daily check-in modal ─────────────────────────────────────── */}
       <Modal
@@ -507,7 +574,7 @@ const pc = StyleSheet.create({
   circle:       { width: 26, height: 26, borderRadius: 13, borderWidth: 1.5, borderColor: '#d1d5db', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   circleDone:   { backgroundColor: PURPLE, borderColor: PURPLE },
   circleNum:    { fontSize: 11, fontWeight: '700', color: '#9ca3af' },
-  stepTxt:      { flex: 1, fontSize: 14, color: '#111827', lineHeight: 20 },
+  slotLabel:    { fontSize: 10, fontWeight: '700', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 },
+  stepTxt:      { fontSize: 14, color: '#111827', lineHeight: 20 },
   stepTxtDone:  { color: '#9ca3af', textDecorationLine: 'line-through' },
-  more:         { fontSize: 12, color: '#9ca3af', textAlign: 'center', marginTop: 10 },
 });

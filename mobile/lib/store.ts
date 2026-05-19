@@ -67,6 +67,8 @@ interface HealthStore {
   messages: ChatMessage[];
   addMessage: (msg: ChatMessage) => void;
   clearMessages: () => void;
+  coachPrimePrompt: string | null;
+  setCoachPrimePrompt: (prompt: string | null) => void;
 
   // Protocol
   patientProtocol: PatientProtocol | null;
@@ -328,6 +330,9 @@ export const useHealthStore = create<HealthStore>()(
         set((state) => ({ messages: [...state.messages, msg] })),
 
       clearMessages: () => set({ messages: [] }),
+
+      coachPrimePrompt: null,
+      setCoachPrimePrompt: (prompt) => set({ coachPrimePrompt: prompt }),
 
       // ── Protocol ────────────────────────────────────────────────────────
       patientProtocol: null,
