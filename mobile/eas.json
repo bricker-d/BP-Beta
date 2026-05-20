@@ -25,6 +25,7 @@
     },
     "production": {
       "autoIncrement": true,
+      "autoSubmit": true,
       "env": {
         "APP_ENV": "production"
       }
