@@ -376,16 +376,21 @@ export const useHealthStore = create<HealthStore>()(
 
           const completedIds = new Set((completions ?? []).map(c => c.step_id));
 
-          const steps: ProtocolStep[] = (rawSteps ?? []).map(s => ({
-            id:               s.id,
-            title:            s.title,
-            description:      s.description ?? '',
-            mechanism:        s.evidence_summary ?? '',
-            category:         'Lifestyle' as const,
-            timeOfDay:        'morning' as const,
-            biomarkerTargets: [],
-            completed:        completedIds.has(s.id),
-          }));
+          // Deduplicate by title (guards against seed running twice), then cap at 7
+          const seen = new Set<string>();
+          const steps: ProtocolStep[] = (rawSteps ?? [])
+            .filter(s => { if (seen.has(s.title)) return false; seen.add(s.title); return true; })
+            .slice(0, 7)
+            .map(s => ({
+              id:               s.id,
+              title:            s.title,
+              description:      s.description ?? '',
+              mechanism:        s.evidence_summary ?? '',
+              category:         'Lifestyle' as const,
+              timeOfDay:        'morning' as const,
+              biomarkerTargets: [],
+              completed:        completedIds.has(s.id),
+            }));
 
           const proto = up.protocol as { id: string; name: string; description: string | null; duration_days: number | null };
 
