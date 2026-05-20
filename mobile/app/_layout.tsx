@@ -4,6 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useHealthStore } from '../lib/store';
 import { supabase } from '../lib/supabase';
 import { ErrorBoundary } from '../lib/ErrorBoundary';
+import { WhiteLabelProvider } from '../lib/WhiteLabelContext';
 import { configureRevenueCat } from '../lib/paywall';
 import { identify } from '../lib/analytics';
 import {
@@ -162,9 +163,11 @@ export default function RootLayout() {
 
   return (
     <ErrorBoundary>
-      <StatusBar style="dark" />
-      <OnboardingGuard />
-      <Stack screenOptions={{ headerShown: false }} />
+      <WhiteLabelProvider>
+        <StatusBar style="dark" />
+        <OnboardingGuard />
+        <Stack screenOptions={{ headerShown: false }} />
+      </WhiteLabelProvider>
     </ErrorBoundary>
   );
 }

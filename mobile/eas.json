@@ -25,6 +25,7 @@
     },
     "production": {
       "autoIncrement": true,
+      "autoSubmit": true,
       "env": {
         "APP_ENV": "production"
       }
@@ -36,7 +37,7 @@
         "appleId": "bricker.daniel5@gmail.com",
         "appleTeamId": "8KRYG768QC",
         "ascAppId": "6766655554",
-        "ascApiKeyPath": "/Users/danbricker/Downloads/AuthKey_C3NQ4QMGQ4.p8",
+        "ascApiKeyPath": "$ASC_API_KEY",
         "ascApiKeyIssuerId": "0a97e1a5-69ed-48fb-91aa-36e15295f841",
         "ascApiKeyId": "C3NQ4QMGQ4"
       }

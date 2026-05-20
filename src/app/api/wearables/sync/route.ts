@@ -1,4 +1,21 @@
-import { getSupabase } from "@/lib/supabase";
+import { createClient } from "@supabase/supabase-js";
+
+// Service role client for querying user_wearable_tokens (bypasses RLS)
+function getServiceClient() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+}
+
+// User-scoped client for verifying JWT identity
+function getUserClient(token: string) {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    { global: { headers: { Authorization: `Bearer ${token}` } } }
+  );
+}
 
 interface WearableData {
   source: string;
@@ -152,20 +169,42 @@ async function fetchWhoopData(accessToken: string): Promise<WearableData> {
 }
 
 // ── POST /api/wearables/sync ──────────────────────────────────────────────────
+// Accepts: Authorization: Bearer <jwt> header (user derived from JWT server-side)
+// Legacy: also accepts { patientId } in body as fallback for older clients
 
 export async function POST(req: Request) {
   try {
-    const { patientId } = await req.json();
-    if (!patientId) return Response.json({ error: "patientId required" }, { status: 400 });
+    // Derive user ID from JWT (new path) or fall back to legacy patientId body param
+    const authHeader = req.headers.get("Authorization");
+    const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
 
-    // Get connection from Supabase
-    const { data: conn, error } = await getSupabase()
-      .from("wearable_connections")
+    let userId: string | null = null;
+
+    if (token) {
+      const userClient = getUserClient(token);
+      const { data: { user } } = await userClient.auth.getUser();
+      userId = user?.id ?? null;
+    }
+
+    if (!userId) {
+      // Legacy fallback — patientId in body (old store.ts path)
+      const body = await req.json().catch(() => ({}));
+      userId = body.patientId ?? null;
+    }
+
+    if (!userId) {
+      return Response.json({ error: "Unauthorized — provide Bearer token or patientId", connected: false }, { status: 401 });
+    }
+
+    // Look up token in user_wearable_tokens (service role bypasses RLS)
+    const serviceClient = getServiceClient();
+    const { data: conn, error } = await serviceClient
+      .from("user_wearable_tokens")
       .select("*")
-      .eq("patient_id", patientId)
+      .eq("user_id", userId)
       .order("connected_at", { ascending: false })
       .limit(1)
-      .single();
+      .maybeSingle();
 
     if (error || !conn) {
       return Response.json({ error: "No wearable connected", connected: false }, { status: 404 });
@@ -173,25 +212,27 @@ export async function POST(req: Request) {
 
     let accessToken = conn.access_token;
 
-    // Refresh token if expired
-    const expiresAt = new Date(conn.token_expires_at).getTime();
-    if (Date.now() > expiresAt - 60000) {
-      const refreshFn = conn.provider === "oura" ? refreshOuraToken : refreshWhoopToken;
-      const refreshed = await refreshFn(conn.refresh_token);
-      if (refreshed) {
-        accessToken = refreshed.access_token;
-        await getSupabase()
-          .from("wearable_connections")
-          .update({
-            access_token: refreshed.access_token,
-            refresh_token: refreshed.refresh_token,
-            token_expires_at: new Date(Date.now() + refreshed.expires_in * 1000).toISOString(),
-          })
-          .eq("id", conn.id);
+    // Refresh token if expired (or expiring within 60s)
+    if (conn.token_expires_at) {
+      const expiresAt = new Date(conn.token_expires_at).getTime();
+      if (Date.now() > expiresAt - 60000) {
+        const refreshFn = conn.provider === "oura" ? refreshOuraToken : refreshWhoopToken;
+        const refreshed = conn.refresh_token ? await refreshFn(conn.refresh_token) : null;
+        if (refreshed) {
+          accessToken = refreshed.access_token;
+          await serviceClient
+            .from("user_wearable_tokens")
+            .update({
+              access_token: refreshed.access_token,
+              refresh_token: refreshed.refresh_token,
+              token_expires_at: new Date(Date.now() + refreshed.expires_in * 1000).toISOString(),
+            })
+            .eq("id", conn.id);
+        }
       }
     }
 
-    // Fetch real data
+    // Fetch real data from provider
     const wearableData = conn.provider === "oura"
       ? await fetchOuraData(accessToken)
       : await fetchWhoopData(accessToken);
@@ -203,19 +244,28 @@ export async function POST(req: Request) {
   }
 }
 
-// ── GET /api/wearables/sync?patientId=xxx — check connection status ───────────
+// ── GET /api/wearables/sync — check connection status ────────────────────────
+// Accepts: Authorization: Bearer <jwt> header
 
 export async function GET(req: Request) {
-  const { searchParams } = new URL(req.url);
-  const patientId = searchParams.get("patientId");
-  if (!patientId) return Response.json({ error: "patientId required" }, { status: 400 });
+  const authHeader = req.headers.get("Authorization");
+  const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
 
-  const { data: conn } = await getSupabase()
-    .from("wearable_connections")
+  if (!token) {
+    return Response.json({ error: "Bearer token required" }, { status: 401 });
+  }
+
+  const userClient = getUserClient(token);
+  const { data: { user } } = await userClient.auth.getUser();
+  if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
+
+  const serviceClient = getServiceClient();
+  const { data: conn } = await serviceClient
+    .from("user_wearable_tokens")
     .select("provider, connected_at, token_expires_at")
-    .eq("patient_id", patientId)
+    .eq("user_id", user.id)
     .limit(1)
-    .single();
+    .maybeSingle();
 
   if (!conn) return Response.json({ connected: false });
   return Response.json({ connected: true, provider: conn.provider, connectedAt: conn.connected_at });

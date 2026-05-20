@@ -6,8 +6,9 @@ import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase-browser";
 
 const NAV = [
-  { href: "/practitioner",           label: "Patients",  icon: "M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 7a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" },
-  { href: "/practitioner/protocols", label: "Protocols", icon: "M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2" },
+  { href: "/practitioner",            label: "Patients",  icon: "M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 7a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" },
+  { href: "/practitioner/protocols",  label: "Protocols", icon: "M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2" },
+  { href: "/practitioner/outcomes",   label: "Outcomes",  icon: "M22 12h-4l-3 9L9 3l-3 9H2" },
 ];
 
 const ADMIN_NAV_ITEM = { href: "/practitioner/admin", label: "Admin", icon: "M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 0 0 2.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 0 0 1.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 0 0-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 0 0-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 0 0-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 0 0-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 0 0 1.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0z" };
@@ -17,8 +18,9 @@ const BYPASS_PATHS = ["/practitioner/login", "/practitioner/accept-invite"];
 export default function PractitionerLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router   = useRouter();
-  const [orgName, setOrgName] = useState<string | null>(null);
-  const [role,    setRole]    = useState<string | null>(null);
+  const [orgName,    setOrgName]    = useState<string | null>(null);
+  const [role,       setRole]       = useState<string | null>(null);
+  const [brandColor, setBrandColor] = useState<string>('#10b981');
 
   useEffect(() => {
     if (BYPASS_PATHS.includes(pathname)) return;
@@ -29,7 +31,7 @@ export default function PractitionerLayout({ children }: { children: React.React
 
       const { data: profile } = await supabase
         .from("profiles")
-        .select("role, organization_id, organizations(name)")
+        .select("role, organization_id, organizations(name, branding)")
         .eq("id", session.user.id)
         .single();
 
@@ -39,9 +41,10 @@ export default function PractitionerLayout({ children }: { children: React.React
         return;
       }
 
-      const org = profile?.organizations as unknown as { name: string } | null;
+      const org = profile?.organizations as unknown as { name: string; branding?: { primaryColor?: string } | null } | null;
       setOrgName(org?.name ?? "My Clinic");
       setRole(profile?.role ?? null);
+      setBrandColor(org?.branding?.primaryColor ?? '#10b981');
     });
   }, [pathname]);
 
@@ -56,7 +59,7 @@ export default function PractitionerLayout({ children }: { children: React.React
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <div className="flex min-h-screen bg-gray-50" style={{ '--brand-color': brandColor } as React.CSSProperties}>
       <aside className="w-56 bg-white border-r border-gray-100 flex flex-col py-6 px-4 fixed inset-y-0 left-0 z-10">
         <div className="flex items-center gap-2.5 mb-8 px-2">
           <div className="w-8 h-8 rounded-lg bg-emerald-600 flex items-center justify-center flex-shrink-0">

@@ -1,7 +1,7 @@
-import { getSupabase } from "@/lib/supabase";
+import { createClient } from "@supabase/supabase-js";
 
 // GET /api/wearables/oura/callback?code=xxx&state=xxx
-// Exchanges auth code for tokens, stores in Supabase, redirects back to app
+// Exchanges auth code for tokens, stores in user_wearable_tokens, redirects back to app.
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const code = searchParams.get("code");
@@ -17,12 +17,12 @@ export async function GET(req: Request) {
     return Response.json({ error: "Missing code or state" }, { status: 400 });
   }
 
-  // Decode state
-  let patientId: string;
+  // Decode state — now carries userId (Supabase auth user ID) instead of patientId
+  let userId: string;
   let returnTo: string;
   try {
     const decoded = JSON.parse(Buffer.from(stateParam, "base64url").toString());
-    patientId = decoded.patientId;
+    userId = decoded.userId;
     returnTo = decoded.returnTo ?? "bioprecision://wearable-connected";
   } catch {
     return Response.json({ error: "Invalid state" }, { status: 400 });
@@ -54,23 +54,33 @@ export async function GET(req: Request) {
 
   const tokens = await tokenRes.json();
 
-  // Store tokens in Supabase (upsert on patient_id + provider)
-  const { error: dbError } = await getSupabase()
-    .from("wearable_connections")
-    .upsert({
-      patient_id: patientId,
-      provider: "oura",
-      access_token: tokens.access_token,
-      refresh_token: tokens.refresh_token,
-      token_expires_at: new Date(Date.now() + tokens.expires_in * 1000).toISOString(),
-      connected_at: new Date().toISOString(),
-    }, { onConflict: "patient_id,provider" });
+  // Use service role client to bypass RLS — callback runs server-side without user session
+  const serviceClient = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+
+  const { error: dbError } = await serviceClient
+    .from("user_wearable_tokens")
+    .upsert(
+      {
+        user_id: userId,
+        provider: "oura",
+        access_token: tokens.access_token,
+        refresh_token: tokens.refresh_token ?? null,
+        token_expires_at: tokens.expires_in
+          ? new Date(Date.now() + tokens.expires_in * 1000).toISOString()
+          : null,
+        scopes: "daily email heartrate personal session spo2 workout",
+        connected_at: new Date().toISOString(),
+      },
+      { onConflict: "user_id,provider" }
+    );
 
   if (dbError) {
     console.error("[oura callback] db error:", dbError.message);
   }
 
-  // Show success page (mobile deep link won't work from server redirect in all cases)
-  const BASE_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://bp-beta-beta.vercel.app";
-  return Response.redirect(`${BASE_URL}/connect/success?provider=oura&patientId=${patientId}`);
+  // Redirect to success page — mobile deep link handled client-side
+  return Response.redirect(`${BASE}/connect/success?provider=oura&userId=${userId}`);
 }

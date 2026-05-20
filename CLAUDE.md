@@ -210,20 +210,23 @@ Two affiliated clinics, targeting 15–50 initial users. Define the protocol bei
 - **Priority 3:** AI coach grounded in active protocol + steps via JWT propagation (`/api/chat`)
 - **Priority 4:** `lab_readings` table + Postgres trigger → `generate-recommendations` edge function (protocol steps fill first, AI fills remaining slots up to 5). `parse-labs` persists to `lab_readings` via JWT.
 - **Priority 5:** `step_completions` table. `toggleProtocolStep` persists to Supabase. `fetchProtocol` loads completion state from Supabase. `ProtocolProgress` (ring) + `DailyProtocolActions` (step list) surfaced above the fold.
+- **Protocol dedup fix:** `fetchProtocol` deduplicates steps by title (guards against seed running twice) and caps at 7. Protocols tab reorganized into Morning/Afternoon/Evening sections.
+- **Priority 6:** Outcomes snapshots migration + `compute_outcomes_snapshot()` function + milestone trigger + provider portal `/practitioner/outcomes` aggregate view.
 
 ### 🔴 Dan must run these migrations in Supabase SQL Editor
 1. `supabase/migrations/20260517_lab_readings_completions_actions.sql`
 2. After running: `SELECT vault.create_secret('<service-role-key>', 'supabase_service_role_key');` — required for the Postgres trigger to call the edge function. Get service role key from Supabase dashboard → Settings → API.
 3. Deploy edge function: `supabase functions deploy generate-recommendations` (requires Supabase CLI + `ANTHROPIC_API_KEY` set in edge function secrets)
+4. `supabase/migrations/20260520_outcomes_snapshots.sql` — adds unique constraint on `outcomes_snapshots`, `compute_outcomes_snapshot()` function, and milestone trigger on `user_protocols.current_day`.
 
 ### 🔴 Provider portal — protocol assignment
 - Practitioner needs UI to assign a protocol to a patient (writes `user_protocols` row)
 - Until this exists, auto-assignment at onboarding handles it for the default protocol
 
-### 🟡 Priority 6 — Outcomes snapshot
-- Trigger at day 30, 60, 90 per active user_protocols record
-- Calculate adherence rate and biomarker deltas against baseline
-- Provider portal: org admin aggregate outcomes view
+### ✅ Priority 6 — Outcomes snapshot
+- `compute_outcomes_snapshot()` Postgres function: adherence_rate from step_completions, biomarker_deltas from lab_readings baseline vs latest
+- Trigger fires when user_protocols.current_day reaches 30, 60, or 90
+- Provider portal `/practitioner/outcomes` — aggregate adherence + biomarker delta view grouped by protocol and milestone day
 
 ### 🟢 Priority 7 — White label theming
 - `WhiteLabelProvider` loads `organizations.branding` on auth
@@ -261,3 +264,4 @@ The outcomes data is the enterprise sales asset. Instrument everything. Keep it 
 | 2026-04-28 | Initial build: agents, onboarding, Supabase sync, clinician dashboard, push notifications, PDF reports |
 | 2026-05-16 | Architecture decision: Next.js (provider portal) + Vite (consumer web, TBD) + Expo (mobile). Clean data model: organizations/profiles/Supabase Auth/RLS. Migration SQL written. Mobile onboarding wired to Supabase Auth. Discarded: clinics table, HMAC session cookies. AI-assisted protocol drafting added to provider portal. |
 | 2026-05-17 | Priority 3: AI coach grounded in active protocol context via JWT passthrough. Priority 4: lab_readings table + Postgres trigger → generate-recommendations edge function (protocol steps first, AI fills remaining slots). Priority 5: step_completions table, toggleProtocolStep persists to Supabase, ProtocolProgress + DailyProtocolActions components on home tab. Auth token propagation pattern established — all edge function calls use Bearer JWT. |
+| 2026-05-20 | Protocol dedup + cap at 7 + Protocols tab grouped by time of day. Priority 6: outcomes_snapshots migration with compute_outcomes_snapshot() + milestone trigger. Provider portal /practitioner/outcomes aggregate view added to nav. |

@@ -16,11 +16,9 @@ import {
   BIOMARKER_REFS,
   computeHealthScore,
 } from '../../lib/biomarkers';
-import type { Biomarker } from '../../lib/types';
+import type { Biomarker, DailyLog } from '../../lib/types';
 import DailyCheckIn from '../../lib/DailyCheckIn';
 import BiomarkerDetailModal from '../../lib/BiomarkerDetailModal';
-import type { DailyLog } from '../../lib/types';
-import type { Biomarker } from '../../lib/types';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 const PURPLE = '#C96A2B';
