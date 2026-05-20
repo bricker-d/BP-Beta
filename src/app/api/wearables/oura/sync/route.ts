@@ -1,40 +1,42 @@
 import { createClient } from "@supabase/supabase-js";
 
-// POST /api/wearables/oura/sync — called by StepWearables after OAuth return
-// Verifies the Oura token is valid by checking user_wearable_tokens.
-// patientId in the request body is actually the Supabase auth user ID (store.patientId).
+// POST /api/wearables/oura/sync
+// Called by StepWearables after returning from Oura OAuth to verify the token was stored.
+// Accepts: Authorization: Bearer <jwt> header
 export async function POST(req: Request) {
   try {
-    const { patientId } = await req.json();
-    if (!patientId) {
-      return Response.json({ error: "patientId required" }, { status: 400 });
+    const authHeader = req.headers.get("Authorization");
+    const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
+
+    if (!token) {
+      return Response.json({ connected: false, error: "Unauthorized" }, { status: 401 });
     }
 
-    // Use service role to bypass RLS — this endpoint is called from mobile with no user session
+    const userClient = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      { global: { headers: { Authorization: `Bearer ${token}` } } }
+    );
+    const { data: { user } } = await userClient.auth.getUser();
+    if (!user) {
+      return Response.json({ connected: false, error: "Invalid token" }, { status: 401 });
+    }
+
     const serviceClient = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
-
-    const { data, error } = await serviceClient
+    const { data } = await serviceClient
       .from("user_wearable_tokens")
-      .select("user_id, provider, connected_at")
-      .eq("user_id", patientId)
+      .select("provider, connected_at")
+      .eq("user_id", user.id)
       .eq("provider", "oura")
       .maybeSingle();
 
-    if (error) {
-      console.error("[oura/sync] db error:", error.message);
-      return Response.json({ connected: false }, { status: 500 });
-    }
-
-    if (!data) {
-      return Response.json({ connected: false });
-    }
-
-    return Response.json({ connected: true, provider: "oura" });
-  } catch (error) {
-    console.error("[oura/sync] error:", error);
-    return Response.json({ error: "Sync check failed" }, { status: 500 });
+    if (!data) return Response.json({ connected: false });
+    return Response.json({ connected: true, provider: "oura", connectedAt: data.connected_at });
+  } catch (err) {
+    console.error("[oura/sync]", err);
+    return Response.json({ connected: false, error: "Sync check failed" }, { status: 500 });
   }
 }
