@@ -3,6 +3,7 @@ import {
   View, Text, TouchableOpacity, StyleSheet, Linking, ActivityIndicator, AppState,
 } from 'react-native';
 import StepBase from './StepBase';
+import { supabase } from '../supabase';
 import type { StepProps } from './types';
 
 type WearableSource = 'Apple Health' | 'Whoop' | 'Oura' | 'Garmin' | 'none';
@@ -33,31 +34,42 @@ export default function StepWearables({ step, totalSteps, profile, update, next,
   // When app returns to foreground after OAuth, verify connection via backend
   useEffect(() => {
     const sub = AppState.addEventListener('change', async (state) => {
-      if (state === 'active' && pending && oauthProvider.current && profile.patientId) {
+      if (state === 'active' && pending && oauthProvider.current) {
         try {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (!session) return;
           const res = await fetch(
             `${API_BASE}/api/wearables/${oauthProvider.current}/sync`,
-            { method: 'POST', headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ patientId: profile.patientId }) }
+            { method: 'POST', headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${session.access_token}`,
+              },
+            }
           );
           if (res.ok) {
-            setPending(false);
-            setConnected(true);
+            const data = await res.json();
+            if (data.connected) {
+              setPending(false);
+              setConnected(true);
+            }
           }
         } catch { /* remain pending */ }
       }
     });
     return () => sub.remove();
-  }, [pending, profile.patientId]);
+  }, [pending]);
 
   async function handleConnect(device: typeof DEVICES[0]) {
     setSelected(device.value);
 
-    // Devices with OAuth — open browser, then verify on return
-    if (device.oauthProvider && profile.patientId) {
+    // Devices with OAuth — get user ID, open browser, then verify on return
+    if (device.oauthProvider) {
+      const { data: { session } } = await supabase.auth.getSession();
+      const userId = session?.user?.id;
+      if (!userId) return;
       setConnecting(true);
       oauthProvider.current = device.oauthProvider;
-      const url = `${API_BASE}/api/wearables/${device.oauthProvider}/authorize?patientId=${profile.patientId}`;
+      const url = `${API_BASE}/api/wearables/${device.oauthProvider}/authorize?userId=${userId}`;
       await Linking.openURL(url);
       setConnecting(false);
       setPending(true); // Connection unconfirmed until callback verified

@@ -1,12 +1,13 @@
-// GET /api/wearables/oura/authorize?patientId=xxx
-// Redirects patient to Oura OAuth consent screen
+// GET /api/wearables/oura/authorize?userId=xxx
+// Redirects user to Oura OAuth consent screen.
+// userId is the Supabase auth user ID (profiles.id).
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
-  const patientId = searchParams.get("patientId");
+  const userId = searchParams.get("userId");
   const returnTo = searchParams.get("returnTo") ?? "bioprecision://wearable-connected";
 
-  if (!patientId) {
-    return Response.json({ error: "patientId required" }, { status: 400 });
+  if (!userId) {
+    return Response.json({ error: "userId required" }, { status: 400 });
   }
 
   const clientId = process.env.OURA_CLIENT_ID;
@@ -20,8 +21,8 @@ export async function GET(req: Request) {
   const BASE = process.env.NEXT_PUBLIC_APP_URL ?? "https://bp-beta-beta.vercel.app";
   const redirectUri = `${BASE}/api/wearables/oura/callback`;
 
-  // State encodes patientId + returnTo for callback
-  const state = Buffer.from(JSON.stringify({ patientId, returnTo })).toString("base64url");
+  // State encodes userId + returnTo for callback
+  const state = Buffer.from(JSON.stringify({ userId, returnTo })).toString("base64url");
 
   const params = new URLSearchParams({
     response_type: "code",

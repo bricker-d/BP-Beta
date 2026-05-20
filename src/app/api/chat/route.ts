@@ -31,6 +31,45 @@ interface ProtocolContext {
   todaysSteps: ProtocolStep[];
 }
 
+interface OrgContext {
+  orgName: string;
+  coachName: string;
+  isWhiteLabeled: boolean;
+}
+
+async function fetchOrgContext(token: string): Promise<OrgContext | null> {
+  const supabase = createSupabaseClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    { global: { headers: { Authorization: `Bearer ${token}` } } }
+  );
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  const { data } = await supabase
+    .from("profiles")
+    .select("organizations(name, white_label_slug, branding)")
+    .eq("id", user.id)
+    .single();
+
+  if (!data) return null;
+
+  const org = data.organizations as unknown as {
+    name: string;
+    white_label_slug: string | null;
+    branding: { primaryColor?: string; coachName?: string } | null;
+  } | null;
+
+  if (!org) return null;
+
+  return {
+    orgName: org.name,
+    coachName: org.branding?.coachName ?? "Your Health Coach",
+    isWhiteLabeled: org.white_label_slug != null,
+  };
+}
+
 async function fetchProtocolContext(token: string): Promise<ProtocolContext | null> {
   const supabase = createSupabaseClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -125,12 +164,17 @@ function buildSystemPrompt(
   labPanel?: LabPanel,
   wearableData?: WearableData,
   intakeProfile?: IntakeProfile,
-  protocolContext?: ProtocolContext | null
+  protocolContext?: ProtocolContext | null,
+  orgContext?: OrgContext | null
 ): string {
   const patientName = intakeProfile?.name?.split(" ")[0] ?? "the user";
 
   // ── 1. IDENTITY & ROLE ────────────────────────────────────────────────────
-  let prompt = `You are a precision health coach. You speak directly and with clinical rigor. No platitudes. You are personalized to ${patientName}.
+  const identityLine = orgContext?.isWhiteLabeled
+    ? `You are ${orgContext.coachName}, the health coach at ${orgContext.orgName}.`
+    : "You are a precision health coach.";
+
+  let prompt = `${identityLine} You speak directly and with clinical rigor. No platitudes. You are personalized to ${patientName}.
 
 Your role: translate lab results and lifestyle data into specific, actionable guidance that a non-medical person can actually understand and follow. You are not a physician and never diagnose or prescribe. You explain, educate, and recommend — always tied to this patient's actual numbers and goals, always in plain language.
 
@@ -142,6 +186,10 @@ Your role: translate lab results and lifestyle data into specific, actionable gu
 - Flag when something needs a doctor. Don't overdo this — only when genuinely needed
 - Keep responses tight: answer what was asked, then add the single most useful follow-on insight
 `;
+
+  if (orgContext?.isWhiteLabeled) {
+    prompt += `You represent ${orgContext.orgName} exclusively. Never mention BioPrecision or any other platform.\n`;
+  }
 
   // ── 2. PROTOCOL CONTEXT ───────────────────────────────────────────────────
   if (protocolContext) {
@@ -320,8 +368,9 @@ export async function POST(req: Request) {
     const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
 
     const protocolContext = token ? await fetchProtocolContext(token).catch(() => null) : null;
+    const orgContext = token ? await fetchOrgContext(token).catch(() => null) : null;
 
-    let systemPrompt = buildSystemPrompt(labPanel, wearableData, intakeProfile, protocolContext);
+    let systemPrompt = buildSystemPrompt(labPanel, wearableData, intakeProfile, protocolContext, orgContext);
 
     // Agent 3 synthesis: inject today's actions so the coach knows what the patient is working on
     if (todaysActions && Array.isArray(todaysActions) && todaysActions.length > 0) {

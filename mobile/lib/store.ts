@@ -216,13 +216,18 @@ export const useHealthStore = create<HealthStore>()(
       setWearableData: (data: WearableData) => set({ wearableData: data }),
       markWearableConnected: (provider: string) => set({ wearableProvider: provider, wearableConnected: true }),
       syncWearable: async () => {
-        const { wearableProvider, patientId } = get();
-        if (!wearableProvider || !patientId) return;
+        const { wearableProvider } = get();
+        if (!wearableProvider) return;
         try {
-          const res = await fetch(`${API_BASE}/api/wearables/${wearableProvider}/sync`, {
+          const { supabase } = await import('./supabase');
+          const { data: { session } } = await supabase.auth.getSession();
+          if (!session) return;
+          const res = await fetch(`${API_BASE}/api/wearables/sync`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ patientId }),
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${session.access_token}`,
+            },
           });
           if (!res.ok) return;
           const data = await res.json();

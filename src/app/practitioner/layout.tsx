@@ -18,8 +18,9 @@ const BYPASS_PATHS = ["/practitioner/login", "/practitioner/accept-invite"];
 export default function PractitionerLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router   = useRouter();
-  const [orgName, setOrgName] = useState<string | null>(null);
-  const [role,    setRole]    = useState<string | null>(null);
+  const [orgName,    setOrgName]    = useState<string | null>(null);
+  const [role,       setRole]       = useState<string | null>(null);
+  const [brandColor, setBrandColor] = useState<string>('#10b981');
 
   useEffect(() => {
     if (BYPASS_PATHS.includes(pathname)) return;
@@ -30,7 +31,7 @@ export default function PractitionerLayout({ children }: { children: React.React
 
       const { data: profile } = await supabase
         .from("profiles")
-        .select("role, organization_id, organizations(name)")
+        .select("role, organization_id, organizations(name, branding)")
         .eq("id", session.user.id)
         .single();
 
@@ -40,9 +41,10 @@ export default function PractitionerLayout({ children }: { children: React.React
         return;
       }
 
-      const org = profile?.organizations as unknown as { name: string } | null;
+      const org = profile?.organizations as unknown as { name: string; branding?: { primaryColor?: string } | null } | null;
       setOrgName(org?.name ?? "My Clinic");
       setRole(profile?.role ?? null);
+      setBrandColor(org?.branding?.primaryColor ?? '#10b981');
     });
   }, [pathname]);
 
@@ -57,7 +59,7 @@ export default function PractitionerLayout({ children }: { children: React.React
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <div className="flex min-h-screen bg-gray-50" style={{ '--brand-color': brandColor } as React.CSSProperties}>
       <aside className="w-56 bg-white border-r border-gray-100 flex flex-col py-6 px-4 fixed inset-y-0 left-0 z-10">
         <div className="flex items-center gap-2.5 mb-8 px-2">
           <div className="w-8 h-8 rounded-lg bg-emerald-600 flex items-center justify-center flex-shrink-0">
